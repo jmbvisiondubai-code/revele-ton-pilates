@@ -1,9 +1,9 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import type { Course, CourseLevel, CourseFocus } from '@/types/database'
-import { Plus, Pencil, Trash2, Eye, EyeOff, X, Check } from 'lucide-react'
+import { Plus, Pencil, Trash2, Eye, EyeOff, X, Check, Upload, ImageIcon } from 'lucide-react'
 
 const LEVELS: { value: CourseLevel; label: string }[] = [
   { value: 'debutante', label: 'Débutante' },
@@ -37,8 +37,22 @@ export default function AdminCoursPage() {
   const [form, setForm] = useState(EMPTY_FORM)
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState<string | null>(null)
+  const [uploading, setUploading] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const supabase = createClient()
+
+  async function uploadThumbnail(file: File) {
+    setUploading(true)
+    const ext = file.name.split('.').pop()
+    const path = `thumbnails/${Date.now()}.${ext}`
+    const { error } = await supabase.storage.from('courses').upload(path, file, { upsert: true })
+    if (!error) {
+      const { data } = supabase.storage.from('courses').getPublicUrl(path)
+      setForm(p => ({ ...p, thumbnail_url: data.publicUrl }))
+    }
+    setUploading(false)
+  }
 
   async function loadCourses() {
     const { data } = await supabase.from('courses').select('*').order('created_at', { ascending: false })
@@ -183,9 +197,37 @@ export default function AdminCoursPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-[#6B6359] mb-1">URL miniature (image)</label>
-                <input value={form.thumbnail_url} onChange={e => setForm(p => ({ ...p, thumbnail_url: e.target.value }))}
-                  className="w-full border border-[#DCCFBF] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#C6684F]" placeholder="https://..." />
+                <label className="block text-sm font-medium text-[#6B6359] mb-1">Vignette</label>
+                <input ref={fileInputRef} type="file" accept="image/*" className="hidden"
+                  onChange={e => { if (e.target.files?.[0]) uploadThumbnail(e.target.files[0]) }} />
+                {form.thumbnail_url ? (
+                  <div className="relative w-full aspect-video rounded-lg overflow-hidden border border-[#DCCFBF] bg-[#F2E8DF]">
+                    <img src={form.thumbnail_url} alt="Aperçu" className="w-full h-full object-cover" />
+                    <div className="absolute inset-0 bg-black/40 opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                      <button type="button" onClick={() => fileInputRef.current?.click()}
+                        className="bg-white text-[#2C2C2C] text-xs font-medium px-3 py-1.5 rounded-lg flex items-center gap-1">
+                        <Upload size={12} /> Changer
+                      </button>
+                      <button type="button" onClick={() => setForm(p => ({ ...p, thumbnail_url: '' }))}
+                        className="bg-red-500 text-white text-xs font-medium px-3 py-1.5 rounded-lg flex items-center gap-1">
+                        <X size={12} /> Supprimer
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <button type="button" onClick={() => fileInputRef.current?.click()} disabled={uploading}
+                    className="w-full aspect-video border-2 border-dashed border-[#DCCFBF] rounded-lg flex flex-col items-center justify-center gap-2 hover:border-[#C6684F] hover:bg-[#F2E8DF]/50 transition-colors cursor-pointer disabled:opacity-50">
+                    {uploading ? (
+                      <span className="text-sm text-[#6B6359]">Envoi en cours...</span>
+                    ) : (
+                      <>
+                        <ImageIcon size={28} className="text-[#DCCFBF]" />
+                        <span className="text-sm text-[#6B6359]">Cliquer pour uploader une image</span>
+                        <span className="text-xs text-[#9C9189]">JPG, PNG, WEBP</span>
+                      </>
+                    )}
+                  </button>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-3">
