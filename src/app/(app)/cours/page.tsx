@@ -178,8 +178,8 @@ export default function CoursPage() {
 
   const tabs: { key: Tab; label: string; icon: React.ReactNode }[] = [
     { key: 'lives', label: 'En direct', icon: <Radio size={14} /> },
-    { key: 'vod', label: 'VOD', icon: <Play size={14} /> },
     { key: 'replays', label: 'Replays', icon: <Film size={14} /> },
+    { key: 'vod', label: 'VOD', icon: <Play size={14} /> },
   ]
 
   return (
