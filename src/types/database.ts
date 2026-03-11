@@ -81,8 +81,17 @@ export interface LiveSession {
   replay_url: string | null
   max_participants: number | null
   is_cancelled: boolean
+  is_collective: boolean
+  equipment: string | null
   registered_count: number
   created_at: string
+}
+
+export interface AppSettings {
+  id: string
+  key: string
+  value: string | null
+  updated_at: string
 }
 
 export interface Badge {
