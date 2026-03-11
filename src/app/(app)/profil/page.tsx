@@ -15,6 +15,7 @@ import {
   Flame,
   Trophy,
   CheckCircle2,
+  Camera,
 } from 'lucide-react'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/client'
 import { useAuthStore } from '@/stores/auth-store'
@@ -54,6 +55,7 @@ export default function ProfilPage() {
   const [badges, setBadges] = useState<AllBadge[]>([])
   const [recentCompletions, setRecentCompletions] = useState<Completion[]>([])
   const [sessionsThisWeek, setSessionsThisWeek] = useState(0)
+  const [uploadingAvatar, setUploadingAvatar] = useState(false)
   const supabase = createClient()
 
   useEffect(() => {
@@ -107,6 +109,24 @@ export default function ProfilPage() {
     loadData()
   }, [supabase, setProfile])
 
+  async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file || !profile) return
+    setUploadingAvatar(true)
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) { setUploadingAvatar(false); return }
+    const fileExt = file.name.split('.').pop()
+    const filePath = `${user.id}/avatar.${fileExt}`
+    const { error: uploadError } = await supabase.storage
+      .from('avatars').upload(filePath, file, { upsert: true })
+    if (!uploadError) {
+      const { data } = supabase.storage.from('avatars').getPublicUrl(filePath)
+      await supabase.from('profiles').update({ avatar_url: data.publicUrl }).eq('id', user.id)
+      setProfile({ ...profile, avatar_url: data.publicUrl })
+    }
+    setUploadingAvatar(false)
+  }
+
   async function handleLogout() {
     await supabase.auth.signOut()
     router.push('/login')
@@ -127,11 +147,19 @@ export default function ProfilPage() {
     <div className="px-5 pt-6 pb-4 max-w-lg mx-auto">
       {/* Profile header */}
       <div className="text-center mb-6">
-        <Avatar
-          src={profile.avatar_url}
-          fallback={profile.first_name}
-          size="xl"
-        />
+        <div className="relative inline-block">
+          <Avatar
+            src={profile.avatar_url}
+            fallback={profile.first_name}
+            size="xl"
+          />
+          <label className="absolute bottom-0 right-0 w-7 h-7 bg-primary rounded-full flex items-center justify-center cursor-pointer shadow-md">
+            {uploadingAvatar
+              ? <div className="w-3 h-3 border border-white border-t-transparent rounded-full animate-spin" />
+              : <Camera size={13} className="text-white" />}
+            <input type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} disabled={uploadingAvatar} />
+          </label>
+        </div>
         <h1 className="font-[family-name:var(--font-heading)] text-2xl text-text mt-3">
           {profile.first_name}
         </h1>
