@@ -126,12 +126,6 @@ export default function CommunautePage() {
     return () => { channelRef.current?.unsubscribe() }
   }, [profile?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Fermer les menus si on clique ailleurs
-  useEffect(() => {
-    function closeMenus() { setPostMenu(null); setCommentMenu(null) }
-    document.addEventListener('click', closeMenus)
-    return () => document.removeEventListener('click', closeMenus)
-  }, [])
 
   async function handlePost() {
     if (!newPost.trim() || !profile) return
@@ -267,6 +261,10 @@ export default function CommunautePage() {
 
   return (
     <div className="px-5 pt-6 pb-24 max-w-lg mx-auto">
+      {/* Backdrop transparent pour fermer les menus */}
+      {(postMenu || commentMenu) && (
+        <div className="fixed inset-0 z-10" onClick={() => { setPostMenu(null); setCommentMenu(null) }} />
+      )}
       <div className="mb-6">
         <h1 className="font-[family-name:var(--font-heading)] text-3xl text-text">Communauté</h1>
         <p className="text-text-secondary mt-1">Partage, inspire et célèbre ensemble</p>
