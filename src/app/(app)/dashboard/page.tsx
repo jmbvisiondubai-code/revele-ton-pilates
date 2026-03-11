@@ -11,6 +11,7 @@ import {
   Users,
   Video,
 } from 'lucide-react'
+import { useRouter } from 'next/navigation'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/client'
 import { useAuthStore } from '@/stores/auth-store'
 import { Card, ProgressBar, StreakBadge, BadgePill } from '@/components/ui'
@@ -29,74 +30,60 @@ const fadeInUp = {
 }
 
 export default function DashboardPage() {
+  const router = useRouter()
   const { profile, setProfile } = useAuthStore()
   const [inspiration, setInspiration] = useState<DailyInspiration | null>(null)
   const [nextLive, setNextLive] = useState<LiveSession | null>(null)
-  const supabase = createClient()
 
   useEffect(() => {
+    const supabase = createClient()
+
     async function loadData() {
       if (!isSupabaseConfigured()) {
-        // Use demo data when Supabase is not configured
         setProfile(DEMO_PROFILE)
-        setNextLive({
-          id: 'demo-live',
-          title: 'Pilates Flow Spécial Dos',
-          description: 'Session live avec Marjorie',
-          scheduled_at: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(),
-          duration_minutes: 45,
-          meeting_url: null,
-          replay_url: null,
-          max_participants: 20,
-          is_cancelled: false,
-          registered_count: 12,
-          created_at: new Date().toISOString(),
-        })
         return
       }
 
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
+      const { data: { user } } = await supabase.auth.getUser()
       if (!user) {
-        setProfile(DEMO_PROFILE)
+        router.replace('/login')
         return
       }
 
       // Load profile
       const { data: profileData } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .single()
+        .from('profiles').select('*').eq('id', user.id).single()
 
-      if (profileData) setProfile(profileData as Profile)
+      if (profileData) {
+        setProfile(profileData as Profile)
+      } else {
+        // Profile doesn't exist yet — use first_name from auth metadata
+        const fallback = {
+          ...DEMO_PROFILE,
+          id: user.id,
+          first_name: user.user_metadata?.first_name ?? 'Toi',
+        }
+        setProfile(fallback)
+      }
 
       // Load today's inspiration
       const today = new Date().toISOString().split('T')[0]
       const { data: inspirationData } = await supabase
-        .from('daily_inspirations')
-        .select('*')
-        .eq('display_date', today)
-        .single()
-
+        .from('daily_inspirations').select('*').eq('display_date', today).single()
       if (inspirationData) setInspiration(inspirationData as DailyInspiration)
 
       // Load next live session
       const { data: liveData } = await supabase
-        .from('live_sessions')
-        .select('*')
+        .from('live_sessions').select('*')
         .eq('is_cancelled', false)
         .gte('scheduled_at', new Date().toISOString())
         .order('scheduled_at', { ascending: true })
-        .limit(1)
-        .single()
-
+        .limit(1).single()
       if (liveData) setNextLive(liveData as LiveSession)
     }
 
     loadData()
-  }, [supabase, setProfile])
+  }, [setProfile, router])
 
   if (!profile) {
     return (
