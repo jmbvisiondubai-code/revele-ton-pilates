@@ -14,11 +14,14 @@ type Tab = 'lives' | 'vod' | 'replays'
 
 const focusFilters: { value: CourseFocus | 'all'; label: string }[] = [
   { value: 'all', label: 'Tous' },
-  { value: 'posture', label: 'Posture' },
-  { value: 'renforcement', label: 'Renforcement' },
+  { value: 'programme', label: 'Programme' },
+  { value: 'full_body', label: 'Full Body' },
+  { value: 'reformer', label: 'Reformer' },
+  { value: 'perfect_time', label: 'Perfect Time (16-30 min)' },
+  { value: 'quick', label: 'Quick Pilates (15 min max)' },
+  { value: 'session_longue', label: 'Sessions Longues (35 min-1h)' },
   { value: 'souplesse', label: 'Souplesse' },
-  { value: 'relaxation', label: 'Relaxation' },
-  { value: 'cardio', label: 'Cardio' },
+  { value: 'accessoires', label: 'Accessoires / Petit matériel' },
 ]
 
 const durationFilters = [
@@ -54,7 +57,7 @@ const DEMO_COURSES: Course[] = [
     thumbnail_url: null,
     duration_minutes: 30,
     level: 'debutante',
-    focus: ['posture', 'renforcement'],
+    focus: ['full_body', 'programme'],
     equipment: ['tapis'],
     marjorie_notes: null,
     benefits: ['Meilleure posture', 'Renforcement profond'],
@@ -71,7 +74,7 @@ const DEMO_COURSES: Course[] = [
     thumbnail_url: null,
     duration_minutes: 45,
     level: 'tous_niveaux',
-    focus: ['souplesse', 'relaxation'],
+    focus: ['souplesse', 'session_longue'],
     equipment: ['tapis', 'foam_roller'],
     marjorie_notes: null,
     benefits: ['Souplesse', 'Détente musculaire'],
@@ -88,7 +91,7 @@ const DEMO_COURSES: Course[] = [
     thumbnail_url: null,
     duration_minutes: 40,
     level: 'intermediaire',
-    focus: ['cardio', 'renforcement'],
+    focus: ['quick', 'full_body'],
     equipment: ['tapis', 'elastique'],
     marjorie_notes: null,
     benefits: ['Tonicité', 'Endurance'],

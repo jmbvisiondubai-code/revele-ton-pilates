@@ -17,7 +17,7 @@ const DEMO_COURSE: Course = {
   thumbnail_url: null,
   duration_minutes: 30,
   level: 'debutante',
-  focus: ['posture', 'renforcement'],
+  focus: ['full_body', 'programme'],
   equipment: ['tapis'],
   marjorie_notes: 'Prends le temps de sentir chaque mouvement. La qualité prime sur la quantité.',
   benefits: ['Meilleure posture', 'Renforcement profond', 'Conscience corporelle'],

@@ -54,11 +54,14 @@ export const LEVEL_LABELS: Record<string, string> = {
 }
 
 export const FOCUS_LABELS: Record<string, string> = {
-  posture: 'Posture',
-  renforcement: 'Renforcement',
+  programme: 'Programme',
+  full_body: 'Full Body',
+  reformer: 'Reformer',
+  perfect_time: 'Pilates Perfect Time (16 à 30 min)',
+  quick: 'Quick Pilates (15 min max)',
+  session_longue: 'Sessions Longues (35 min à 1h)',
   souplesse: 'Souplesse',
-  relaxation: 'Relaxation',
-  cardio: 'Cardio-Pilates',
+  accessoires: 'Avec Accessoires / Petit matériel Pilates',
 }
 
 export const EQUIPMENT_LABELS: Record<string, string> = {

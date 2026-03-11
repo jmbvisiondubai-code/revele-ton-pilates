@@ -13,11 +13,14 @@ const LEVELS: { value: CourseLevel; label: string }[] = [
 ]
 
 const FOCUSES: { value: CourseFocus; label: string }[] = [
-  { value: 'posture', label: 'Posture' },
-  { value: 'renforcement', label: 'Renforcement' },
+  { value: 'programme', label: 'Programme' },
+  { value: 'full_body', label: 'Full Body' },
+  { value: 'reformer', label: 'Reformer' },
+  { value: 'perfect_time', label: 'Pilates Perfect Time (16-30 min)' },
+  { value: 'quick', label: 'Quick Pilates (15 min max)' },
+  { value: 'session_longue', label: 'Sessions Longues (35 min à 1h)' },
   { value: 'souplesse', label: 'Souplesse' },
-  { value: 'relaxation', label: 'Relaxation' },
-  { value: 'cardio', label: 'Cardio' },
+  { value: 'accessoires', label: 'Avec Accessoires / Petit matériel' },
 ]
 
 const EMPTY_FORM = {
