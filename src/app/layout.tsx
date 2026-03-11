@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next'
 import './globals.css'
+import { PWARegister } from '@/components/pwa-register'
 
 export const metadata: Metadata = {
   title: 'Révèle Ton Pilates — MJ Pilates',
@@ -10,6 +11,9 @@ export const metadata: Metadata = {
     capable: true,
     statusBarStyle: 'default',
     title: 'Révèle Ton Pilates',
+  },
+  icons: {
+    apple: '/icon-180.png',
   },
 }
 
@@ -43,7 +47,10 @@ export default function RootLayout({
           rel="stylesheet"
         />
       </head>
-      <body className="antialiased">{children}</body>
+      <body className="antialiased">
+        {children}
+        <PWARegister />
+      </body>
     </html>
   )
 }
