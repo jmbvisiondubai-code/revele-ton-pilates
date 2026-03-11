@@ -183,6 +183,10 @@ export default function CoursPage() {
     })
   }
 
+  function openExternal(url: string) {
+    window.open(url, '_blank', 'noopener,noreferrer')
+  }
+
   const tabs: { key: Tab; label: string; icon: React.ReactNode }[] = [
     { key: 'lives', label: 'En direct', icon: <Radio size={14} /> },
     { key: 'replays', label: 'Replays', icon: <Film size={14} /> },
@@ -257,12 +261,10 @@ export default function CoursPage() {
               </div>
               <div className="flex gap-2 mt-4">
                 {zoomUrl ? (
-                  <a href={zoomUrl} target="_blank" rel="noopener noreferrer" className="flex-1">
-                    <Button size="sm" fullWidth>
-                      <Video size={14} />
-                      Rejoindre sur Zoom
-                    </Button>
-                  </a>
+                  <Button size="sm" className="flex-1" onClick={() => openExternal(zoomUrl)}>
+                    <Video size={14} />
+                    Rejoindre sur Zoom
+                  </Button>
                 ) : (
                   <Button size="sm" variant="outline" disabled className="flex-1">
                     Lien disponible bientôt
@@ -296,14 +298,13 @@ export default function CoursPage() {
         <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
           <div className="flex items-center justify-between mb-4">
             <p className="text-sm text-text-secondary">Accès à tous les cours sur Uscreen</p>
-            <a
-              href="https://mjpilates.uscreen.io"
-              target="_blank"
-              rel="noopener noreferrer"
+            <button
+              type="button"
+              onClick={() => openExternal('https://mjpilates.uscreen.io')}
               className="flex items-center gap-1 text-xs font-medium text-[#C6684F]"
             >
               Voir tout <ExternalLink size={11} />
-            </a>
+            </button>
           </div>
 
           {/* Search */}
@@ -419,15 +420,14 @@ export default function CoursPage() {
                             <Monitor size={12} />
                             {linkCopied === course.id ? 'Copié !' : 'Ordi'}
                           </button>
-                          <a
-                            href={course.uscreen_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex items-center gap-1.5 text-xs font-semibold text-white bg-[#C6684F] hover:bg-[#A8543D] transition-colors px-3 py-1.5 rounded-lg"
+                          <button
+                            type="button"
+                            onClick={() => openExternal(course.uscreen_url)}
+                            className="flex items-center gap-1.5 text-xs font-semibold text-white bg-[#C6684F] hover:bg-[#A8543D] transition-colors px-3 py-1.5 rounded-lg cursor-pointer"
                           >
                             <Play size={11} />
                             Regarder
-                          </a>
+                          </button>
                         </div>
                       </div>
                     </div>
@@ -472,12 +472,10 @@ export default function CoursPage() {
 
             {vimeoUrl ? (
               <div className="flex flex-col gap-3 items-center">
-                <a href={vimeoUrl} target="_blank" rel="noopener noreferrer" className="w-full max-w-xs">
-                  <Button fullWidth>
-                    <Film size={15} />
-                    Accéder aux replays
-                  </Button>
-                </a>
+                <Button fullWidth onClick={() => openExternal(vimeoUrl)} className="w-full max-w-xs">
+                  <Film size={15} />
+                  Accéder aux replays
+                </Button>
                 <button
                   type="button"
                   onClick={() => copyLink(vimeoUrl, 'vimeo')}
