@@ -21,6 +21,7 @@ export default function AdminLivesPage() {
 
   // App settings
   const [vimeoUrl, setVimeoUrl] = useState('')
+  const [vimeoCode, setVimeoCode] = useState('')
   const [zoomUrl, setZoomUrl] = useState('')
   const [savingSettings, setSavingSettings] = useState(false)
   const [settingsSaved, setSettingsSaved] = useState(false)
@@ -36,11 +37,13 @@ export default function AdminLivesPage() {
     const { data } = await supabase
       .from('app_settings')
       .select('key, value')
-      .in('key', ['vimeo_replay_url', 'collective_zoom_url'])
+      .in('key', ['vimeo_replay_url', 'vimeo_replay_code', 'collective_zoom_url'])
     if (data) {
       const vimeo = data.find((s: { key: string; value: string | null }) => s.key === 'vimeo_replay_url')
+      const code = data.find((s: { key: string; value: string | null }) => s.key === 'vimeo_replay_code')
       const zoom = data.find((s: { key: string; value: string | null }) => s.key === 'collective_zoom_url')
       if (vimeo?.value) setVimeoUrl(vimeo.value)
+      if (code?.value) setVimeoCode(code.value)
       if (zoom?.value) setZoomUrl(zoom.value)
     }
   }
@@ -51,6 +54,7 @@ export default function AdminLivesPage() {
     setSavingSettings(true)
     await supabase.from('app_settings').upsert([
       { key: 'vimeo_replay_url', value: vimeoUrl || null },
+      { key: 'vimeo_replay_code', value: vimeoCode || null },
       { key: 'collective_zoom_url', value: zoomUrl || null },
     ], { onConflict: 'key' })
     setSavingSettings(false)
@@ -126,6 +130,16 @@ export default function AdminLivesPage() {
               placeholder="https://vimeo.com/showcase/..."
               className="w-full border border-[#DCCFBF] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#C6684F]"
             />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-[#6B6359] mb-1">Code d'accès Vimeo</label>
+            <input
+              value={vimeoCode}
+              onChange={e => setVimeoCode(e.target.value)}
+              placeholder="ex: pilates2025"
+              className="w-full border border-[#DCCFBF] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#C6684F]"
+            />
+            <p className="text-xs text-[#A09488] mt-1">Les clientes verront ce code et pourront le copier pour accéder au showcase Vimeo.</p>
           </div>
           <div>
             <label className="block text-sm font-medium text-[#6B6359] mb-1">Lien Zoom — Cours collectifs</label>

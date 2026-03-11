@@ -104,6 +104,7 @@ export default function CoursPage() {
   const [courses, setCourses] = useState<Course[]>([])
   const [nextLive, setNextLive] = useState<LiveSession | null>(null)
   const [vimeoUrl, setVimeoUrl] = useState<string | null>(null)
+  const [vimeoCode, setVimeoCode] = useState<string | null>(null)
   const [zoomUrl, setZoomUrl] = useState<string | null>(null)
   const [search, setSearch] = useState('')
   const [focusFilter, setFocusFilter] = useState<CourseFocus | 'all'>('all')
@@ -118,6 +119,7 @@ export default function CoursPage() {
         setCourses(DEMO_COURSES)
         setNextLive(DEMO_LIVE)
         setVimeoUrl('https://vimeo.com/showcase/mjpilates')
+        setVimeoCode('pilates2025')
         setZoomUrl('https://zoom.us/j/mjpilates')
         return
       }
@@ -138,11 +140,13 @@ export default function CoursPage() {
       const { data: settings } = await supabase
         .from('app_settings')
         .select('key, value')
-        .in('key', ['vimeo_replay_url', 'collective_zoom_url'])
+        .in('key', ['vimeo_replay_url', 'vimeo_replay_code', 'collective_zoom_url'])
       if (settings) {
         const vimeo = settings.find((s: { key: string; value: string | null }) => s.key === 'vimeo_replay_url')
+        const code = settings.find((s: { key: string; value: string | null }) => s.key === 'vimeo_replay_code')
         const zoom = settings.find((s: { key: string; value: string | null }) => s.key === 'collective_zoom_url')
         if (vimeo?.value) setVimeoUrl(vimeo.value)
+        if (code?.value) setVimeoCode(code.value)
         if (zoom?.value) setZoomUrl(zoom.value)
       }
 
@@ -417,9 +421,28 @@ export default function CoursPage() {
             <h3 className="font-[family-name:var(--font-heading)] text-xl text-text mb-2">
               Replays des lives
             </h3>
-            <p className="text-sm text-text-secondary mb-6 max-w-xs mx-auto">
+            <p className="text-sm text-text-secondary mb-4 max-w-xs mx-auto">
               Retrouve tous les enregistrements de tes sessions live sur Vimeo, disponibles après chaque cours.
             </p>
+
+            {/* Code d'accès Vimeo */}
+            {vimeoCode && (
+              <div className="mb-6 w-full max-w-xs mx-auto">
+                <p className="text-xs text-[#6B6359] mb-2">Code d'accès Vimeo</p>
+                <div className="flex items-center gap-2 bg-[#F2E8DF] rounded-xl px-4 py-3">
+                  <span className="flex-1 font-mono font-semibold text-[#2C2C2C] tracking-widest text-lg">{vimeoCode}</span>
+                  <button
+                    type="button"
+                    onClick={() => copyLink(vimeoCode, 'vimeo-code')}
+                    className="flex items-center gap-1.5 text-xs font-medium text-[#C6684F] hover:text-[#A8543D] transition-colors cursor-pointer"
+                  >
+                    <Monitor size={13} />
+                    {linkCopied === 'vimeo-code' ? 'Copié ✓' : 'Copier'}
+                  </button>
+                </div>
+              </div>
+            )}
+
             {vimeoUrl ? (
               <div className="flex flex-col gap-3 items-center">
                 <a href={vimeoUrl} target="_blank" rel="noopener noreferrer" className="w-full max-w-xs">
