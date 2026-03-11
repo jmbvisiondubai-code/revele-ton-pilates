@@ -357,7 +357,7 @@ export default function CommunautePage() {
                       >
                         {(post.comments ?? []).map(comment => (
                           <div key={comment.id} className="flex gap-2">
-                            <Avatar src={comment.profiles?.avatar_url} fallback={comment.profiles?.first_name} size="xs" />
+                            <Avatar src={comment.profiles?.avatar_url} fallback={comment.profiles?.first_name} size="sm" />
                             <div className="flex-1 bg-bg-elevated rounded-xl px-3 py-2">
                               <span className="text-xs font-medium text-text">{comment.profiles?.first_name} </span>
                               <span className="text-xs text-text">{comment.content}</span>
@@ -366,7 +366,7 @@ export default function CommunautePage() {
                         ))}
                         {profile && (
                           <div className="flex gap-2">
-                            <Avatar src={profile.avatar_url} fallback={profile.first_name} size="xs" />
+                            <Avatar src={profile.avatar_url} fallback={profile.first_name} size="sm" />
                             <div className="flex-1 flex gap-2">
                               <input
                                 value={newComment}
