@@ -27,7 +27,7 @@ import {
 } from '@/components/ui'
 import { GOAL_LABELS, LEVEL_LABELS, formatDuration } from '@/lib/utils'
 import { DEMO_PROFILE } from '@/lib/demo-data'
-import type { Profile, UserBadge, Badge } from '@/types/database'
+import type { Profile, Badge } from '@/types/database'
 
 type Tab = 'profil' | 'parcours' | 'objectifs' | 'badges'
 

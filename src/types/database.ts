@@ -37,6 +37,7 @@ export interface Profile {
   longest_streak: number
   total_sessions: number
   total_practice_minutes: number
+  is_admin: boolean
   created_at: string
   updated_at: string
 }
