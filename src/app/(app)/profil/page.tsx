@@ -78,7 +78,7 @@ export default function ProfilPage() {
         .eq('user_id', user.id)
         .order('completed_at', { ascending: false })
         .limit(10)
-      if (completions) setRecentCompletions(completions as Completion[])
+      if (completions) setRecentCompletions(completions as unknown as Completion[])
 
       // Sessions this week
       const startOfWeek = new Date()
@@ -266,7 +266,7 @@ export default function ProfilPage() {
               <ProgressBar
                 value={Math.min(100, (sessionsThisWeek / profile.weekly_rhythm) * 100)}
                 size="md"
-                color={sessionsThisWeek >= profile.weekly_rhythm ? 'success' : 'default'}
+                color={sessionsThisWeek >= profile.weekly_rhythm ? 'success' : 'primary'}
               />
               <p className="text-xs text-text-muted mt-2">
                 {sessionsThisWeek >= profile.weekly_rhythm
@@ -317,7 +317,7 @@ export default function ProfilPage() {
                     <span className="text-sm text-text">{label}</span>
                     <span className="text-xs text-text-muted">{Math.min(current, target)}/{target}</span>
                   </div>
-                  <ProgressBar value={Math.min(100, (current / target) * 100)} size="sm" color={current >= target ? 'success' : 'default'} />
+                  <ProgressBar value={Math.min(100, (current / target) * 100)} size="sm" color={current >= target ? 'success' : 'primary'} />
                 </div>
               ))}
             </Card>

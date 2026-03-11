@@ -18,6 +18,7 @@ export const DEMO_PROFILE: Profile = {
   longest_streak: 28,
   total_sessions: 47,
   total_practice_minutes: 1410,
+  is_admin: false,
   created_at: new Date().toISOString(),
   updated_at: new Date().toISOString(),
 }

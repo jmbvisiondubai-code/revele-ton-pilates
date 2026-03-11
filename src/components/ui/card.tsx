@@ -7,6 +7,7 @@ interface CardProps {
   hover?: boolean
   padding?: 'sm' | 'md' | 'lg'
   className?: string
+  onClick?: () => void
   children: ReactNode
 }
 
@@ -20,6 +21,7 @@ export function Card({
   hover = false,
   padding = 'md',
   className = '',
+  onClick,
   children,
 }: CardProps) {
   const classes = `
@@ -37,11 +39,12 @@ export function Card({
         whileHover={{ y: -2, boxShadow: '0 8px 30px rgba(0,0,0,0.08)' }}
         transition={{ type: 'spring' as const, stiffness: 300, damping: 25 }}
         className={classes}
+        onClick={onClick}
       >
         {children}
       </motion.div>
     )
   }
 
-  return <div className={classes}>{children}</div>
+  return <div className={classes} onClick={onClick}>{children}</div>
 }
