@@ -15,7 +15,7 @@ import { createClient, isSupabaseConfigured } from '@/lib/supabase/client'
 import { useAuthStore } from '@/stores/auth-store'
 import { Card, ProgressBar, StreakBadge, BadgePill } from '@/components/ui'
 import { getGreeting, formatDuration } from '@/lib/utils'
-import type { DailyInspiration, LiveSession } from '@/types/database'
+import type { Profile, DailyInspiration, LiveSession } from '@/types/database'
 import { DEMO_PROFILE } from '@/lib/demo-data'
 import Link from 'next/link'
 
