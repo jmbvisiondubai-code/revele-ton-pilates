@@ -13,6 +13,10 @@ export const metadata: Metadata = {
     title: 'Révèle Ton Pilates',
   },
   icons: {
+    icon: [
+      { url: '/icon-192.png', sizes: '192x192', type: 'image/png' },
+      { url: '/icon-512.png', sizes: '512x512', type: 'image/png' },
+    ],
     apple: '/icon-180.png',
   },
 }
