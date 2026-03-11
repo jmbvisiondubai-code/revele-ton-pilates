@@ -31,38 +31,38 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   if (checking) {
     return (
-      <div className="min-h-screen bg-[#faf8f5] flex items-center justify-center">
-        <div className="w-6 h-6 border-2 border-[#93877e] border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen bg-[FAF6F1] flex items-center justify-center">
+        <div className="w-6 h-6 border-2 border-[#C6684F] border-t-transparent rounded-full animate-spin" />
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-[#faf8f5]">
+    <div className="min-h-screen bg-[#FAF6F1]">
       {/* Header */}
-      <div className="bg-white border-b border-[#e8e0d8] px-6 py-4 flex items-center gap-4">
-        <Link href="/dashboard" className="text-[#93877e] hover:text-[#6b5f57]">
+      <div className="bg-white border-b border-[#DCCFBF] px-6 py-4 flex items-center gap-4">
+        <Link href="/dashboard" className="text-[#C6684F] hover:text-[#6B6359]">
           <ArrowLeft size={20} />
         </Link>
-        <h1 className="font-serif text-xl text-[#2c2825]">Admin — MJ Pilates</h1>
+        <h1 className="font-serif text-xl text-[#2C2C2C]">Admin — MJ Pilates</h1>
       </div>
 
       <div className="flex">
         {/* Sidebar */}
-        <nav className="w-56 min-h-[calc(100vh-57px)] bg-white border-r border-[#e8e0d8] p-4 space-y-1">
-          <Link href="/admin" className="flex items-center gap-3 px-3 py-2 rounded-lg text-[#6b5f57] hover:bg-[#f5f0eb] text-sm font-medium">
+        <nav className="w-56 min-h-[calc(100vh-57px)] bg-white border-r border-[#DCCFBF] p-4 space-y-1">
+          <Link href="/admin" className="flex items-center gap-3 px-3 py-2 rounded-lg text-[#6B6359] hover:bg-[#F2E8DF] text-sm font-medium">
             <LayoutDashboard size={16} /> Tableau de bord
           </Link>
-          <Link href="/admin/cours" className="flex items-center gap-3 px-3 py-2 rounded-lg text-[#6b5f57] hover:bg-[#f5f0eb] text-sm font-medium">
+          <Link href="/admin/cours" className="flex items-center gap-3 px-3 py-2 rounded-lg text-[#6B6359] hover:bg-[#F2E8DF] text-sm font-medium">
             <Video size={16} /> Cours VOD
           </Link>
-          <Link href="/admin/lives" className="flex items-center gap-3 px-3 py-2 rounded-lg text-[#6b5f57] hover:bg-[#f5f0eb] text-sm font-medium">
+          <Link href="/admin/lives" className="flex items-center gap-3 px-3 py-2 rounded-lg text-[#6B6359] hover:bg-[#F2E8DF] text-sm font-medium">
             <Calendar size={16} /> Sessions Live
           </Link>
-          <Link href="/admin/articles" className="flex items-center gap-3 px-3 py-2 rounded-lg text-[#6b5f57] hover:bg-[#f5f0eb] text-sm font-medium">
+          <Link href="/admin/articles" className="flex items-center gap-3 px-3 py-2 rounded-lg text-[#6B6359] hover:bg-[#F2E8DF] text-sm font-medium">
             <BookOpen size={16} /> Articles
           </Link>
-          <Link href="/admin/invitations" className="flex items-center gap-3 px-3 py-2 rounded-lg text-[#6b5f57] hover:bg-[#f5f0eb] text-sm font-medium">
+          <Link href="/admin/invitations" className="flex items-center gap-3 px-3 py-2 rounded-lg text-[#6B6359] hover:bg-[#F2E8DF] text-sm font-medium">
             <Mail size={16} /> Invitations
           </Link>
         </nav>

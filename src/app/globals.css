@@ -1,32 +1,42 @@
 @import "tailwindcss";
 
 @theme inline {
-  /* MJ Pilates Color Palette */
-  --color-primary: #93877e;
-  --color-primary-light: #a89d95;
-  --color-primary-dark: #7d7269;
-  --color-secondary: #c4b5a7;
-  --color-secondary-light: #d4c8bd;
-  --color-accent: #6b5e54;
-  --color-accent-light: #8a7d73;
+  /* MJ Pilates — Nouvelle palette */
 
-  --color-bg: #faf8f5;
-  --color-bg-card: #ffffff;
-  --color-bg-elevated: #f5f2ee;
+  /* Terracotta — couleur principale / CTA */
+  --color-primary: #C6684F;
+  --color-primary-light: #D4856F;
+  --color-primary-dark: #A8543D;
 
-  --color-text: #2d2a26;
-  --color-text-secondary: #7a7067;
-  --color-text-muted: #a09890;
+  /* Beige chaud — fond cartes / sections */
+  --color-secondary: #E8D5C4;
+  --color-secondary-light: #F0E3D6;
 
-  --color-success: #8fa87e;
-  --color-success-light: #e8f0e3;
-  --color-alert: #d4a574;
-  --color-alert-light: #f5e6d5;
-  --color-error: #c27070;
-  --color-error-light: #f5dede;
+  /* Terracotta profond — accents */
+  --color-accent: #A8543D;
+  --color-accent-light: #CC7D65;
 
-  --color-border: #e8e2dc;
-  --color-border-light: #f0ebe6;
+  /* Crème — fond principal */
+  --color-bg: #FAF6F1;
+  --color-bg-card: #FFFFFF;
+  --color-bg-elevated: #F2E8DF;
+
+  /* Charbon — textes */
+  --color-text: #2C2C2C;
+  --color-text-secondary: #6B6359;
+  --color-text-muted: #A09488;
+
+  /* Statuts */
+  --color-success: #7BA05B;
+  --color-success-light: #E5EFD8;
+  --color-alert: #D4874A;
+  --color-alert-light: #F7E9D8;
+  --color-error: #C94F4F;
+  --color-error-light: #F9E0E0;
+
+  /* Bordures */
+  --color-border: #DCCFBF;
+  --color-border-light: #EDE5DA;
 
   /* Typography */
   --font-heading: 'Cormorant Garamond', Georgia, serif;

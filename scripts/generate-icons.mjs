@@ -30,10 +30,10 @@ function pngChunk(type, data) {
 }
 
 function createPNG(size) {
-  // Couleurs de la marque
-  const BG  = [0xfa, 0xf8, 0xf5]; // #faf8f5 beige clair
-  const FG  = [0x93, 0x87, 0x7e]; // #93877e taupe principal
-  const FG2 = [0x6b, 0x5f, 0x57]; // #6b5f57 taupe foncé (anneau intérieur)
+  // Couleurs de la marque — nouvelle palette
+  const BG    = [0xfa, 0xf6, 0xf1]; // #FAF6F1 crème
+  const FG    = [0xc6, 0x68, 0x4f]; // #C6684F terracotta principal
+  const FG2   = [0xa8, 0x54, 0x3d]; // #A8543D terracotta foncé (anneau intérieur)
   const WHITE = [0xff, 0xff, 0xff];
 
   const sig = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);

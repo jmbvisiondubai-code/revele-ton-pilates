@@ -116,8 +116,8 @@ export default function AdminCoursPage() {
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <h2 className="font-serif text-2xl text-[#2c2825]">Cours VOD</h2>
-        <button onClick={openNew} className="flex items-center gap-2 bg-[#93877e] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#7a6f67] transition-colors">
+        <h2 className="font-serif text-2xl text-[#2C2C2C]">Cours VOD</h2>
+        <button onClick={openNew} className="flex items-center gap-2 bg-[#C6684F] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#A8543D] transition-colors">
           <Plus size={16} /> Ajouter un cours
         </button>
       </div>
@@ -125,29 +125,29 @@ export default function AdminCoursPage() {
       {/* Course list */}
       <div className="space-y-3">
         {courses.length === 0 && (
-          <div className="text-center py-12 text-[#93877e] bg-white rounded-xl border border-[#e8e0d8]">
+          <div className="text-center py-12 text-[#C6684F] bg-white rounded-xl border border-[#DCCFBF]">
             Aucun cours pour l'instant. Clique sur "Ajouter un cours" pour commencer.
           </div>
         )}
         {courses.map(course => (
-          <div key={course.id} className="bg-white rounded-xl border border-[#e8e0d8] p-4 flex items-center gap-4">
+          <div key={course.id} className="bg-white rounded-xl border border-[#DCCFBF] p-4 flex items-center gap-4">
             {course.thumbnail_url && (
               <img src={course.thumbnail_url} alt={course.title} className="w-16 h-12 object-cover rounded-lg" />
             )}
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
-                <h3 className="font-medium text-[#2c2825] truncate">{course.title}</h3>
+                <h3 className="font-medium text-[#2C2C2C] truncate">{course.title}</h3>
                 <span className={`text-xs px-2 py-0.5 rounded-full ${course.is_published ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
                   {course.is_published ? 'Publié' : 'Brouillon'}
                 </span>
               </div>
-              <p className="text-sm text-[#93877e]">{course.duration_minutes} min · {LEVELS.find(l => l.value === course.level)?.label}</p>
+              <p className="text-sm text-[#C6684F]">{course.duration_minutes} min · {LEVELS.find(l => l.value === course.level)?.label}</p>
             </div>
             <div className="flex items-center gap-2">
-              <button onClick={() => togglePublish(course)} className="p-2 text-[#93877e] hover:text-[#2c2825] transition-colors" title={course.is_published ? 'Dépublier' : 'Publier'}>
+              <button onClick={() => togglePublish(course)} className="p-2 text-[#C6684F] hover:text-[#2C2C2C] transition-colors" title={course.is_published ? 'Dépublier' : 'Publier'}>
                 {course.is_published ? <EyeOff size={16} /> : <Eye size={16} />}
               </button>
-              <button onClick={() => openEdit(course)} className="p-2 text-[#93877e] hover:text-[#2c2825] transition-colors">
+              <button onClick={() => openEdit(course)} className="p-2 text-[#C6684F] hover:text-[#2C2C2C] transition-colors">
                 <Pencil size={16} />
               </button>
               <button onClick={() => deleteCourse(course.id)} disabled={deleting === course.id} className="p-2 text-red-400 hover:text-red-600 transition-colors">
@@ -162,50 +162,50 @@ export default function AdminCoursPage() {
       {showForm && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between p-6 border-b border-[#e8e0d8]">
-              <h3 className="font-serif text-xl text-[#2c2825]">{editing ? 'Modifier le cours' : 'Nouveau cours'}</h3>
-              <button onClick={() => setShowForm(false)}><X size={20} className="text-[#93877e]" /></button>
+            <div className="flex items-center justify-between p-6 border-b border-[#DCCFBF]">
+              <h3 className="font-serif text-xl text-[#2C2C2C]">{editing ? 'Modifier le cours' : 'Nouveau cours'}</h3>
+              <button onClick={() => setShowForm(false)}><X size={20} className="text-[#C6684F]" /></button>
             </div>
             <div className="p-6 space-y-4">
               <div>
-                <label className="block text-sm font-medium text-[#6b5f57] mb-1">Titre *</label>
+                <label className="block text-sm font-medium text-[#6B6359] mb-1">Titre *</label>
                 <input value={form.title} onChange={e => setForm(p => ({ ...p, title: e.target.value }))}
-                  className="w-full border border-[#e8e0d8] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#93877e]" placeholder="Pilates Fondamentaux" />
+                  className="w-full border border-[#DCCFBF] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#C6684F]" placeholder="Pilates Fondamentaux" />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-[#6b5f57] mb-1">URL uscreen *</label>
+                <label className="block text-sm font-medium text-[#6B6359] mb-1">URL uscreen *</label>
                 <input value={form.uscreen_url} onChange={e => setForm(p => ({ ...p, uscreen_url: e.target.value }))}
-                  className="w-full border border-[#e8e0d8] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#93877e]" placeholder="https://mjpilates.uscreen.tv/..." />
+                  className="w-full border border-[#DCCFBF] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#C6684F]" placeholder="https://mjpilates.uscreen.tv/..." />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-[#6b5f57] mb-1">URL miniature (image)</label>
+                <label className="block text-sm font-medium text-[#6B6359] mb-1">URL miniature (image)</label>
                 <input value={form.thumbnail_url} onChange={e => setForm(p => ({ ...p, thumbnail_url: e.target.value }))}
-                  className="w-full border border-[#e8e0d8] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#93877e]" placeholder="https://..." />
+                  className="w-full border border-[#DCCFBF] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#C6684F]" placeholder="https://..." />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-[#6b5f57] mb-1">Durée (min)</label>
+                  <label className="block text-sm font-medium text-[#6B6359] mb-1">Durée (min)</label>
                   <input type="number" value={form.duration_minutes} onChange={e => setForm(p => ({ ...p, duration_minutes: parseInt(e.target.value) || 0 }))}
-                    className="w-full border border-[#e8e0d8] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#93877e]" />
+                    className="w-full border border-[#DCCFBF] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#C6684F]" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-[#6b5f57] mb-1">Niveau</label>
+                  <label className="block text-sm font-medium text-[#6B6359] mb-1">Niveau</label>
                   <select value={form.level} onChange={e => setForm(p => ({ ...p, level: e.target.value as CourseLevel }))}
-                    className="w-full border border-[#e8e0d8] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#93877e]">
+                    className="w-full border border-[#DCCFBF] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#C6684F]">
                     {LEVELS.map(l => <option key={l.value} value={l.value}>{l.label}</option>)}
                   </select>
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-[#6b5f57] mb-2">Focus</label>
+                <label className="block text-sm font-medium text-[#6B6359] mb-2">Focus</label>
                 <div className="flex flex-wrap gap-2">
                   {FOCUSES.map(f => (
                     <button key={f.value} type="button" onClick={() => toggleFocus(f.value)}
-                      className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${form.focus.includes(f.value) ? 'bg-[#93877e] text-white border-[#93877e]' : 'border-[#e8e0d8] text-[#6b5f57]'}`}>
+                      className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${form.focus.includes(f.value) ? 'bg-[#C6684F] text-white border-[#C6684F]' : 'border-[#DCCFBF] text-[#6B6359]'}`}>
                       {form.focus.includes(f.value) && <Check size={12} />}
                       {f.label}
                     </button>
@@ -214,38 +214,38 @@ export default function AdminCoursPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-[#6b5f57] mb-1">Description</label>
+                <label className="block text-sm font-medium text-[#6B6359] mb-1">Description</label>
                 <textarea value={form.description} onChange={e => setForm(p => ({ ...p, description: e.target.value }))} rows={3}
-                  className="w-full border border-[#e8e0d8] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#93877e] resize-none" />
+                  className="w-full border border-[#DCCFBF] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#C6684F] resize-none" />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-[#6b5f57] mb-1">Note de Marjorie</label>
+                <label className="block text-sm font-medium text-[#6B6359] mb-1">Note de Marjorie</label>
                 <textarea value={form.marjorie_notes} onChange={e => setForm(p => ({ ...p, marjorie_notes: e.target.value }))} rows={2}
-                  className="w-full border border-[#e8e0d8] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#93877e] resize-none" />
+                  className="w-full border border-[#DCCFBF] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#C6684F] resize-none" />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-[#6b5f57] mb-1">Bénéfices (séparés par des virgules)</label>
+                <label className="block text-sm font-medium text-[#6B6359] mb-1">Bénéfices (séparés par des virgules)</label>
                 <input value={form.benefits} onChange={e => setForm(p => ({ ...p, benefits: e.target.value }))}
-                  className="w-full border border-[#e8e0d8] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#93877e]" placeholder="Renforce le core, Améliore la posture" />
+                  className="w-full border border-[#DCCFBF] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#C6684F]" placeholder="Renforce le core, Améliore la posture" />
               </div>
 
               <label className="flex items-center gap-3 cursor-pointer">
-                <div className={`w-10 h-6 rounded-full transition-colors ${form.is_published ? 'bg-[#93877e]' : 'bg-gray-200'}`}
+                <div className={`w-10 h-6 rounded-full transition-colors ${form.is_published ? 'bg-[#C6684F]' : 'bg-gray-200'}`}
                   onClick={() => setForm(p => ({ ...p, is_published: !p.is_published }))}>
                   <div className={`w-5 h-5 bg-white rounded-full shadow m-0.5 transition-transform ${form.is_published ? 'translate-x-4' : ''}`} />
                 </div>
-                <span className="text-sm text-[#6b5f57]">Publier immédiatement</span>
+                <span className="text-sm text-[#6B6359]">Publier immédiatement</span>
               </label>
             </div>
 
-            <div className="p-6 border-t border-[#e8e0d8] flex gap-3">
-              <button onClick={() => setShowForm(false)} className="flex-1 border border-[#e8e0d8] text-[#6b5f57] py-2 rounded-lg text-sm font-medium">
+            <div className="p-6 border-t border-[#DCCFBF] flex gap-3">
+              <button onClick={() => setShowForm(false)} className="flex-1 border border-[#DCCFBF] text-[#6B6359] py-2 rounded-lg text-sm font-medium">
                 Annuler
               </button>
               <button onClick={save} disabled={saving || !form.title || !form.uscreen_url}
-                className="flex-1 bg-[#93877e] text-white py-2 rounded-lg text-sm font-medium disabled:opacity-50 hover:bg-[#7a6f67] transition-colors">
+                className="flex-1 bg-[#C6684F] text-white py-2 rounded-lg text-sm font-medium disabled:opacity-50 hover:bg-[#A8543D] transition-colors">
                 {saving ? 'Enregistrement...' : editing ? 'Mettre à jour' : 'Ajouter'}
               </button>
             </div>

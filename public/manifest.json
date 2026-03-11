@@ -5,8 +5,8 @@
   "start_url": "/dashboard",
   "scope": "/",
   "display": "standalone",
-  "background_color": "#faf8f5",
-  "theme_color": "#93877e",
+  "background_color": "#FAF6F1",
+  "theme_color": "#C6684F",
   "orientation": "portrait",
   "categories": ["health", "fitness"],
   "icons": [
