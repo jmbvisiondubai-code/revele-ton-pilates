@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { Search, Clock, Star, Filter, Play, Monitor, Video, ExternalLink, Radio, Film } from 'lucide-react'
+import { Search, Clock, Star, Filter, Play, Monitor, Video, ExternalLink, Radio, Film, X } from 'lucide-react'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/client'
 import { Card, BadgePill, Chip, Button } from '@/components/ui'
 import { LEVEL_LABELS, FOCUS_LABELS } from '@/lib/utils'
@@ -114,6 +114,7 @@ export default function CoursPage() {
   const [durationFilter, setDurationFilter] = useState(0)
   const [showFilters, setShowFilters] = useState(false)
   const [linkCopied, setLinkCopied] = useState<string | null>(null)
+  const [iosPrompt, setIosPrompt] = useState<string | null>(null)
   const supabase = createClient()
 
   useEffect(() => {
@@ -184,7 +185,14 @@ export default function CoursPage() {
   }
 
   function openExternal(url: string) {
-    window.open(url, '_blank', 'noopener,noreferrer')
+    const isIosPwa = (navigator as Navigator & { standalone?: boolean }).standalone === true
+    if (isIosPwa) {
+      navigator.clipboard.writeText(url).catch(() => {})
+      setIosPrompt(url)
+      setTimeout(() => setIosPrompt(null), 5000)
+    } else {
+      window.open(url, '_blank', 'noopener,noreferrer')
+    }
   }
 
   const tabs: { key: Tab; label: string; icon: React.ReactNode }[] = [
@@ -195,6 +203,19 @@ export default function CoursPage() {
 
   return (
     <div className="px-5 pt-6 pb-4 lg:px-8 lg:pt-8 max-w-3xl mx-auto">
+      {/* iOS PWA prompt */}
+      {iosPrompt && (
+        <div className="fixed bottom-24 left-4 right-4 z-50 bg-[#2C2C2C] text-white rounded-2xl px-4 py-3 shadow-xl flex items-start gap-3">
+          <span className="text-xl mt-0.5">📋</span>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium">Lien copié !</p>
+            <p className="text-xs text-white/70 mt-0.5">Ouvre <strong>Safari</strong> et colle le lien pour accéder au cours.</p>
+          </div>
+          <button onClick={() => setIosPrompt(null)} className="text-white/50 hover:text-white mt-0.5">
+            <X size={16} />
+          </button>
+        </div>
+      )}
       {/* Header */}
       <div className="mb-5">
         <h1 className="font-[family-name:var(--font-heading)] text-3xl text-text">Tes cours</h1>
