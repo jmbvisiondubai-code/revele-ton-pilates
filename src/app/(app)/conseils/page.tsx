@@ -38,7 +38,7 @@ export default function ConseilsPage() {
   }, [supabase, activeCategory])
 
   return (
-    <div className="px-5 pt-6 pb-4 max-w-lg mx-auto">
+    <div className="px-5 pt-6 pb-4 lg:px-8 lg:pt-8 max-w-5xl mx-auto">
       {/* Header */}
       <div className="mb-6">
         <h1 className="font-[family-name:var(--font-heading)] text-3xl text-text">
@@ -70,7 +70,7 @@ export default function ConseilsPage() {
       </div>
 
       {/* Articles */}
-      <div className="space-y-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {articles.length === 0 ? (
           <div className="text-center py-12">
             <BookOpen size={40} className="mx-auto text-text-muted mb-3" />

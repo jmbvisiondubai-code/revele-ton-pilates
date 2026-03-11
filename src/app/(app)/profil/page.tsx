@@ -204,7 +204,7 @@ export default function ProfilPage() {
   }
 
   return (
-    <div className="px-5 pt-6 pb-4 max-w-lg mx-auto">
+    <div className="px-5 pt-6 pb-4 lg:px-8 lg:pt-8 max-w-5xl mx-auto">
       {/* Crop modal */}
       {cropSrc && (
         <div className="fixed inset-0 z-50 bg-black flex flex-col" style={{ height: '100dvh' }}>
@@ -245,6 +245,9 @@ export default function ProfilPage() {
           </div>
         </div>
       )}
+      {/* Layout desktop 2 colonnes */}
+      <div className="lg:grid lg:grid-cols-3 lg:gap-8">
+      <div className="lg:col-span-1">
       {/* Profile header */}
       <div className="text-center mb-6">
         <div className="relative inline-block">
@@ -277,6 +280,10 @@ export default function ProfilPage() {
         </div>
       </div>
 
+      </div>{/* end col-span-1 */}
+
+      {/* Colonne droite desktop — onglets */}
+      <div className="lg:col-span-2">
       {/* Tab navigation */}
       <div className="flex gap-1 bg-bg-elevated rounded-[var(--radius-lg)] p-1 mb-6">
         {tabs.map((tab) => (
@@ -494,6 +501,8 @@ export default function ProfilPage() {
           </div>
         )}
       </motion.div>
+      </div>{/* end col-span-2 */}
+      </div>{/* end lg:grid */}
     </div>
   )
 }

@@ -183,7 +183,7 @@ export default function CoursPage() {
   ]
 
   return (
-    <div className="px-5 pt-6 pb-4 max-w-lg mx-auto">
+    <div className="px-5 pt-6 pb-4 lg:px-8 lg:pt-8 max-w-3xl mx-auto">
       {/* Header */}
       <div className="mb-5">
         <h1 className="font-[family-name:var(--font-heading)] text-3xl text-text">Tes cours</h1>

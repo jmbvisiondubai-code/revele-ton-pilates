@@ -270,7 +270,7 @@ export default function CommunautePage() {
   }
 
   return (
-    <div className="px-5 pt-6 pb-24 max-w-lg mx-auto">
+    <div className="px-5 pt-6 pb-24 lg:px-8 lg:pt-8 max-w-5xl mx-auto">
       {/* Backdrop transparent pour fermer les menus */}
       {(postMenu || commentMenu) && (
         <div className="fixed inset-0 z-10" onClick={() => { setPostMenu(null); setCommentMenu(null) }} />
@@ -280,27 +280,38 @@ export default function CommunautePage() {
         <p className="text-text-secondary mt-1">Partage, inspire et célèbre ensemble</p>
       </div>
 
-      {/* Nouveau post */}
-      <Card className="mb-6">
-        <div className="flex gap-3">
-          <Avatar src={profile?.avatar_url} fallback={profile?.first_name} size="md" />
-          <div className="flex-1">
-            <textarea
-              placeholder="Partage ton expérience, une victoire, un ressenti..."
-              value={newPost}
-              onChange={(e) => setNewPost(e.target.value)}
-              rows={3}
-              className="w-full resize-none bg-transparent text-sm text-text placeholder:text-text-muted focus:outline-none"
-            />
-            <div className="flex items-center justify-end mt-2 pt-2 border-t border-border-light">
-              <Button size="sm" onClick={handlePost} isLoading={isPosting} disabled={!newPost.trim()}>
-                <Send size={14} />Publier
-              </Button>
+      <div className="lg:grid lg:grid-cols-3 lg:gap-6">
+        {/* Colonne droite desktop — nouveau post + infos */}
+        <div className="lg:col-span-1 lg:order-2 space-y-4 mb-6 lg:mb-0">
+          <Card>
+            <div className="flex gap-3">
+              <Avatar src={profile?.avatar_url} fallback={profile?.first_name} size="md" />
+              <div className="flex-1">
+                <textarea
+                  placeholder="Partage ton expérience, une victoire, un ressenti..."
+                  value={newPost}
+                  onChange={(e) => setNewPost(e.target.value)}
+                  rows={3}
+                  className="w-full resize-none bg-transparent text-sm text-text placeholder:text-text-muted focus:outline-none"
+                />
+                <div className="flex items-center justify-end mt-2 pt-2 border-t border-border-light">
+                  <Button size="sm" onClick={handlePost} isLoading={isPosting} disabled={!newPost.trim()}>
+                    <Send size={14} />Publier
+                  </Button>
+                </div>
+              </div>
             </div>
-          </div>
+          </Card>
+          <Card className="bg-primary/5 border-primary/10 hidden lg:block">
+            <p className="font-[family-name:var(--font-heading)] text-base italic text-text leading-relaxed">
+              "Ensemble, on va plus loin."
+            </p>
+            <p className="text-sm text-text-secondary mt-1">— Marjorie</p>
+          </Card>
         </div>
-      </Card>
 
+        {/* Colonne gauche desktop — fil des posts */}
+        <div className="lg:col-span-2 lg:order-1">
       {/* Posts */}
       <div className="space-y-4">
         {posts.length === 0 ? (
@@ -550,6 +561,8 @@ export default function CommunautePage() {
             })}
           </AnimatePresence>
         )}
+      </div>
+        </div>
       </div>
     </div>
   )
