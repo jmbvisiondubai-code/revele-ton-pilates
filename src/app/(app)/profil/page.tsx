@@ -207,8 +207,8 @@ export default function ProfilPage() {
     <div className="px-5 pt-6 pb-4 max-w-lg mx-auto">
       {/* Crop modal */}
       {cropSrc && (
-        <div className="fixed inset-0 z-50 bg-black/80 flex flex-col">
-          <div className="relative flex-1">
+        <div className="fixed inset-0 z-50 bg-black flex flex-col" style={{ height: '100dvh' }}>
+          <div className="relative" style={{ height: 'calc(100dvh - 140px)' }}>
             <Cropper
               image={cropSrc}
               crop={crop}
@@ -221,7 +221,7 @@ export default function ProfilPage() {
               onCropComplete={onCropComplete}
             />
           </div>
-          <div className="bg-black px-6 py-4 space-y-3">
+          <div className="bg-black px-6 pt-4 pb-6 space-y-3" style={{ height: 140 }}>
             <input
               type="range" min={1} max={3} step={0.01}
               value={zoom}
@@ -231,7 +231,7 @@ export default function ProfilPage() {
             <div className="flex gap-3">
               <button
                 onClick={() => setCropSrc(null)}
-                className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border border-white/20 text-white text-sm"
+                className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border border-white/30 text-white text-sm"
               >
                 <X size={16} /> Annuler
               </button>
