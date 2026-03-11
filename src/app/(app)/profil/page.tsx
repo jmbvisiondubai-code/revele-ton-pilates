@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import {
@@ -16,7 +16,10 @@ import {
   Trophy,
   CheckCircle2,
   Camera,
+  X,
 } from 'lucide-react'
+import Cropper from 'react-easy-crop'
+import type { Area } from 'react-easy-crop'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/client'
 import { useAuthStore } from '@/stores/auth-store'
 import {
@@ -29,6 +32,29 @@ import {
 import { GOAL_LABELS, LEVEL_LABELS, formatDuration } from '@/lib/utils'
 import { DEMO_PROFILE } from '@/lib/demo-data'
 import type { Profile, Badge } from '@/types/database'
+
+async function getCroppedImg(imageSrc: string, croppedAreaPixels: Area): Promise<Blob> {
+  const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+    const img = new Image()
+    img.addEventListener('load', () => resolve(img))
+    img.addEventListener('error', reject)
+    img.src = imageSrc
+  })
+  const canvas = document.createElement('canvas')
+  canvas.width = croppedAreaPixels.width
+  canvas.height = croppedAreaPixels.height
+  const ctx = canvas.getContext('2d')!
+  ctx.drawImage(
+    image,
+    croppedAreaPixels.x, croppedAreaPixels.y,
+    croppedAreaPixels.width, croppedAreaPixels.height,
+    0, 0,
+    croppedAreaPixels.width, croppedAreaPixels.height
+  )
+  return new Promise((resolve, reject) =>
+    canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error('Canvas is empty')), 'image/jpeg', 0.9)
+  )
+}
 
 type Tab = 'profil' | 'parcours' | 'objectifs' | 'badges'
 
@@ -57,7 +83,15 @@ export default function ProfilPage() {
   const [sessionsThisWeek, setSessionsThisWeek] = useState(0)
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
   const [avatarError, setAvatarError] = useState('')
+  const [cropSrc, setCropSrc] = useState<string | null>(null)
+  const [crop, setCrop] = useState({ x: 0, y: 0 })
+  const [zoom, setZoom] = useState(1)
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null)
   const supabase = createClient()
+
+  const onCropComplete = useCallback((_: Area, croppedPixels: Area) => {
+    setCroppedAreaPixels(croppedPixels)
+  }, [])
 
   useEffect(() => {
     async function loadData() {
@@ -110,27 +144,45 @@ export default function ProfilPage() {
     loadData()
   }, [supabase, setProfile])
 
-  async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
+  function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
-    if (!file || !profile) return
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = () => {
+      setCropSrc(reader.result as string)
+      setCrop({ x: 0, y: 0 })
+      setZoom(1)
+    }
+    reader.readAsDataURL(file)
+    e.target.value = ''
+  }
+
+  async function handleCropConfirm() {
+    if (!cropSrc || !croppedAreaPixels || !profile) return
     setUploadingAvatar(true)
     setAvatarError('')
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) { setUploadingAvatar(false); return }
-    const fileExt = file.name.split('.').pop()
-    const filePath = `${user.id}/avatar.${fileExt}`
-    const { error: uploadError } = await supabase.storage
-      .from('avatars').upload(filePath, file, { upsert: true })
-    if (uploadError) {
-      setAvatarError(uploadError.message)
-    } else {
-      const { data } = supabase.storage.from('avatars').getPublicUrl(filePath)
-      const { error: updateError } = await supabase.from('profiles').update({ avatar_url: data.publicUrl }).eq('id', user.id)
-      if (updateError) {
-        setAvatarError(updateError.message)
+    setCropSrc(null)
+    try {
+      const blob = await getCroppedImg(cropSrc, croppedAreaPixels)
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+      const filePath = `${user.id}/avatar.jpg`
+      const { error: uploadError } = await supabase.storage
+        .from('avatars').upload(filePath, blob, { upsert: true, contentType: 'image/jpeg' })
+      if (uploadError) {
+        setAvatarError(uploadError.message)
       } else {
-        setProfile({ ...profile, avatar_url: data.publicUrl })
+        const { data } = supabase.storage.from('avatars').getPublicUrl(filePath)
+        const avatarUrl = `${data.publicUrl}?t=${Date.now()}`
+        const { error: updateError } = await supabase.from('profiles').update({ avatar_url: avatarUrl }).eq('id', user.id)
+        if (updateError) {
+          setAvatarError(updateError.message)
+        } else {
+          setProfile({ ...profile, avatar_url: avatarUrl })
+        }
       }
+    } catch {
+      setAvatarError('Erreur lors du recadrage')
     }
     setUploadingAvatar(false)
   }
@@ -153,6 +205,46 @@ export default function ProfilPage() {
 
   return (
     <div className="px-5 pt-6 pb-4 max-w-lg mx-auto">
+      {/* Crop modal */}
+      {cropSrc && (
+        <div className="fixed inset-0 z-50 bg-black/80 flex flex-col">
+          <div className="relative flex-1">
+            <Cropper
+              image={cropSrc}
+              crop={crop}
+              zoom={zoom}
+              aspect={1}
+              cropShape="round"
+              showGrid={false}
+              onCropChange={setCrop}
+              onZoomChange={setZoom}
+              onCropComplete={onCropComplete}
+            />
+          </div>
+          <div className="bg-black px-6 py-4 space-y-3">
+            <input
+              type="range" min={1} max={3} step={0.01}
+              value={zoom}
+              onChange={e => setZoom(Number(e.target.value))}
+              className="w-full accent-white"
+            />
+            <div className="flex gap-3">
+              <button
+                onClick={() => setCropSrc(null)}
+                className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border border-white/20 text-white text-sm"
+              >
+                <X size={16} /> Annuler
+              </button>
+              <button
+                onClick={handleCropConfirm}
+                className="flex-1 py-3 rounded-xl bg-white text-black font-semibold text-sm"
+              >
+                Valider
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {/* Profile header */}
       <div className="text-center mb-6">
         <div className="relative inline-block">
