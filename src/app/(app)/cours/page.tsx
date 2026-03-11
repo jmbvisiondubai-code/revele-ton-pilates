@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { Search, Clock, Star, Filter, Play, Monitor, Video, ExternalLink } from 'lucide-react'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/client'
@@ -101,6 +102,7 @@ function formatLiveDate(dateStr: string) {
 }
 
 export default function CoursPage() {
+  const router = useRouter()
   const [courses, setCourses] = useState<Course[]>([])
   const [nextLive, setNextLive] = useState<LiveSession | null>(null)
   const [search, setSearch] = useState('')
@@ -331,7 +333,7 @@ export default function CoursPage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.05 }}
             >
-              <Card hover className="flex gap-4">
+              <Card hover className="flex gap-4 cursor-pointer" onClick={() => router.push(`/cours/${course.id}`)}>
                 {/* Thumbnail */}
                 <div className="relative w-24 h-24 flex-shrink-0 rounded-[var(--radius-md)] bg-bg-elevated overflow-hidden">
                   {course.thumbnail_url ? (
