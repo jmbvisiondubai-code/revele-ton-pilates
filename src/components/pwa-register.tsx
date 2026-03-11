@@ -13,25 +13,14 @@ export function PWARegister() {
   const [showBanner, setShowBanner] = useState(false)
 
   useEffect(() => {
-    // Enregistrer le service worker
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js').catch(() => {
-        // SW non supporté, pas critique
-      })
-    }
-
-    // Écouter l'événement d'installation PWA
     const handler = (e: Event) => {
       e.preventDefault()
       setInstallPrompt(e as BeforeInstallPromptEvent)
-
-      // Afficher le bandeau si pas déjà installé et pas déjà refusé
       const dismissed = sessionStorage.getItem('pwa-dismissed')
       if (!dismissed) {
         setTimeout(() => setShowBanner(true), 3000)
       }
     }
-
     window.addEventListener('beforeinstallprompt', handler)
     return () => window.removeEventListener('beforeinstallprompt', handler)
   }, [])
