@@ -75,8 +75,18 @@ export default function CommunautePage() {
   const [commentMenu, setCommentMenu] = useState<string | null>(null)
 
   const { profile } = useAuthStore()
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const supabase = createClient()
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null)
+
+  // Charger l'ID utilisateur directement (fiable même sans passer par le dashboard)
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user) setCurrentUserId(user.id)
+    })
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const myId = profile?.id ?? currentUserId
 
   async function loadPosts() {
     if (!isSupabaseConfigured()) { setPosts(DEMO_POSTS); return }
@@ -300,7 +310,7 @@ export default function CommunautePage() {
         ) : (
           <AnimatePresence initial={false}>
             {posts.map((post, i) => {
-              const isOwner = profile?.id === post.user_id
+              const isOwner = !!myId && myId === post.user_id
               const isEditingThisPost = editingPost === post.id
               const isDeletingThisPost = deletingPost === post.id
 
@@ -438,7 +448,7 @@ export default function CommunautePage() {
                           className="mt-3 pt-3 border-t border-border-light space-y-3"
                         >
                           {(post.comments ?? []).map(comment => {
-                            const isMyComment = profile?.id === comment.user_id
+                            const isMyComment = !!myId && myId === comment.user_id
                             const isEditingThisComment = editingComment === comment.id
 
                             return (
