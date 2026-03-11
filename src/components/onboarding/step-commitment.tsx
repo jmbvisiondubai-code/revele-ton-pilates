@@ -100,9 +100,10 @@ export function StepCommitment() {
         preferred_time: preferredTime,
         onboarding_completed: true,
         commitment_signed_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
       })
 
-      if (profileError) throw profileError
+      if (profileError) throw new Error(profileError.message || JSON.stringify(profileError))
 
       router.push('/dashboard')
       router.refresh()
