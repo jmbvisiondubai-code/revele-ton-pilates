@@ -17,11 +17,11 @@ const focusFilters: { value: CourseFocus | 'all'; label: string }[] = [
   { value: 'programme', label: 'Programme' },
   { value: 'full_body', label: 'Full Body' },
   { value: 'reformer', label: 'Reformer' },
-  { value: 'perfect_time', label: 'Perfect Time (16-30 min)' },
-  { value: 'quick', label: 'Quick Pilates (15 min max)' },
-  { value: 'session_longue', label: 'Sessions Longues (35 min-1h)' },
+  { value: 'perfect_time', label: 'Perfect Time' },
+  { value: 'quick', label: 'Quick ≤ 15 min' },
+  { value: 'session_longue', label: 'Sessions Longues' },
   { value: 'souplesse', label: 'Souplesse' },
-  { value: 'accessoires', label: 'Accessoires / Petit matériel' },
+  { value: 'accessoires', label: 'Accessoires' },
 ]
 
 const durationFilters = [
@@ -328,7 +328,7 @@ export default function CoursPage() {
           </div>
 
           {/* Focus chips */}
-          <div className="flex gap-2 overflow-x-auto pb-2 -mx-5 px-5 mb-3 scrollbar-hide">
+          <div className="flex flex-wrap gap-2 mb-3">
             {focusFilters.map((f) => (
               <Chip key={f.value} label={f.label} selected={focusFilter === f.value} onClick={() => setFocusFilter(f.value)} />
             ))}
@@ -347,66 +347,90 @@ export default function CoursPage() {
           )}
 
           {/* Course list */}
-          <div className="space-y-3">
+          <div className="space-y-4">
             {filteredCourses.length === 0 ? (
               <div className="text-center py-12 text-text-secondary">
                 {courses.length === 0 ? 'Les cours arrivent bientôt...' : 'Aucun cours ne correspond à ta recherche'}
               </div>
             ) : (
               filteredCourses.map((course, i) => (
-                <motion.div key={course.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}>
-                  <Card hover className="flex gap-3">
+                <motion.div
+                  key={course.id}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  whileHover={{ y: -2, boxShadow: '0 8px 30px rgba(0,0,0,0.08)' }}
+                  transition={{ delay: i * 0.04, type: 'spring', stiffness: 300, damping: 25 }}
+                  className="bg-bg-card rounded-[var(--radius-lg)] border border-border-light shadow-[0_2px_12px_rgba(0,0,0,0.04)] overflow-hidden"
+                >
                     {/* Thumbnail */}
-                    <div className="relative w-20 h-20 flex-shrink-0 rounded-[var(--radius-md)] bg-[#F2E8DF] overflow-hidden">
+                    <div className="relative w-full aspect-video bg-[#F2E8DF] overflow-hidden">
                       {course.thumbnail_url ? (
                         <img src={course.thumbnail_url} alt={course.title} className="w-full h-full object-cover" />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center">
-                          <Play size={20} className="text-[#C6684F]" />
+                          <div className="w-12 h-12 rounded-full bg-white/80 flex items-center justify-center shadow">
+                            <Play size={22} className="text-[#C6684F] ml-1" />
+                          </div>
                         </div>
                       )}
-                      <div className="absolute bottom-1 right-1 bg-black/60 text-white text-[10px] px-1.5 py-0.5 rounded">
+                      {/* Duration badge */}
+                      <div className="absolute bottom-2 right-2 bg-black/60 text-white text-xs font-medium px-2 py-0.5 rounded-md flex items-center gap-1">
+                        <Clock size={10} />
                         {course.duration_minutes} min
+                      </div>
+                      {/* Level badge */}
+                      <div className="absolute top-2 left-2">
+                        <span className="bg-white/90 text-[#C6684F] text-[11px] font-semibold px-2 py-0.5 rounded-md">
+                          {LEVEL_LABELS[course.level] || course.level}
+                        </span>
                       </div>
                     </div>
 
                     {/* Info */}
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-medium text-text text-sm leading-tight line-clamp-2">{course.title}</h3>
-                      <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
-                        <BadgePill size="sm">{LEVEL_LABELS[course.level] || course.level}</BadgePill>
-                        {course.focus[0] && (
-                          <BadgePill size="sm" variant="accent">{FOCUS_LABELS[course.focus[0]] || course.focus[0]}</BadgePill>
-                        )}
+                    <div className="p-3">
+                      <h3 className="font-semibold text-text text-sm leading-snug line-clamp-2 mb-2">{course.title}</h3>
+
+                      {/* Focus tags */}
+                      <div className="flex flex-wrap gap-1.5 mb-3">
+                        {course.focus.map((f) => (
+                          <span key={f} className="bg-[#F2E8DF] text-[#6B6359] text-[11px] font-medium px-2 py-0.5 rounded-full">
+                            {FOCUS_LABELS[f] || f}
+                          </span>
+                        ))}
                       </div>
-                      <div className="flex items-center gap-3 mt-1.5 text-xs text-text-muted">
-                        <span className="flex items-center gap-1">
-                          <Star size={11} className="fill-alert text-alert" />
-                          {course.avg_rating > 0 ? course.avg_rating.toFixed(1) : '—'}
-                        </span>
-                        <span>{course.views_count} vues</span>
-                      </div>
-                      <div className="flex gap-3 mt-2">
-                        <a
-                          href={course.uscreen_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-1 text-xs font-medium text-[#C6684F] hover:text-[#A8543D] transition-colors"
-                        >
-                          <ExternalLink size={11} />
-                          Regarder sur Uscreen
-                        </a>
-                        <button
-                          type="button"
-                          onClick={() => copyLink(course.uscreen_url, course.id)}
-                          className="flex items-center gap-1 text-xs text-text-muted hover:text-text transition-colors cursor-pointer"
-                        >
-                          <Monitor size={11} />
-                          {linkCopied === course.id ? 'Copié !' : 'Ordi'}
-                        </button>
+
+                      {/* Rating + actions */}
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3 text-xs text-text-muted">
+                          {course.avg_rating > 0 && (
+                            <span className="flex items-center gap-1">
+                              <Star size={11} className="fill-alert text-alert" />
+                              {course.avg_rating.toFixed(1)}
+                            </span>
+                          )}
+                          {course.views_count > 0 && <span>{course.views_count} vues</span>}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => copyLink(course.uscreen_url, course.id)}
+                            className="flex items-center gap-1 text-xs text-text-muted hover:text-text transition-colors cursor-pointer"
+                          >
+                            <Monitor size={12} />
+                            {linkCopied === course.id ? 'Copié !' : 'Ordi'}
+                          </button>
+                          <a
+                            href={course.uscreen_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-1.5 text-xs font-semibold text-white bg-[#C6684F] hover:bg-[#A8543D] transition-colors px-3 py-1.5 rounded-lg"
+                          >
+                            <Play size={11} />
+                            Regarder
+                          </a>
+                        </div>
                       </div>
                     </div>
-                  </Card>
                 </motion.div>
               ))
             )}
