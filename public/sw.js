@@ -1,5 +1,5 @@
 // Service Worker — Révèle Ton Pilates
-const CACHE = 'rtp-v2';
+const CACHE = 'rtp-v3';
 
 self.addEventListener('install', () => self.skipWaiting());
 self.addEventListener('activate', (event) => {
