@@ -9,9 +9,12 @@ import {
   Award,
   Target,
   TrendingUp,
-  ChevronRight,
   Calendar,
   MapPin,
+  Clock,
+  Flame,
+  Trophy,
+  CheckCircle2,
 } from 'lucide-react'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/client'
 import { useAuthStore } from '@/stores/auth-store'
@@ -24,9 +27,18 @@ import {
 } from '@/components/ui'
 import { GOAL_LABELS, LEVEL_LABELS, formatDuration } from '@/lib/utils'
 import { DEMO_PROFILE } from '@/lib/demo-data'
-import type { Profile, UserBadge } from '@/types/database'
+import type { Profile, UserBadge, Badge } from '@/types/database'
 
 type Tab = 'profil' | 'parcours' | 'objectifs' | 'badges'
+
+type Completion = {
+  id: string
+  completed_at: string
+  duration_watched_minutes: number | null
+  courses: { title: string; duration_minutes: number } | null
+}
+
+type AllBadge = Badge & { earned: boolean; earned_at?: string }
 
 const tabs: { value: Tab; label: string; icon: React.ReactNode }[] = [
   { value: 'profil', label: 'Profil', icon: <Settings size={16} /> },
@@ -39,7 +51,9 @@ export default function ProfilPage() {
   const router = useRouter()
   const { profile, setProfile } = useAuthStore()
   const [activeTab, setActiveTab] = useState<Tab>('profil')
-  const [badges, setBadges] = useState<UserBadge[]>([])
+  const [badges, setBadges] = useState<AllBadge[]>([])
+  const [recentCompletions, setRecentCompletions] = useState<Completion[]>([])
+  const [sessionsThisWeek, setSessionsThisWeek] = useState(0)
   const supabase = createClient()
 
   useEffect(() => {
@@ -49,31 +63,49 @@ export default function ProfilPage() {
         return
       }
 
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
+      const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
 
-      if (!profile) {
-        const { data } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', user.id)
-          .single()
-        if (data) setProfile(data as Profile)
-      }
+      // Reload profile to get fresh stats
+      const { data: profileData } = await supabase
+        .from('profiles').select('*').eq('id', user.id).single()
+      if (profileData) setProfile(profileData as Profile)
 
-      // Load badges
-      const { data: badgeData } = await supabase
-        .from('user_badges')
-        .select('*, badge:badges(*)')
+      // Load recent completions with course titles
+      const { data: completions } = await supabase
+        .from('course_completions')
+        .select('id, completed_at, duration_watched_minutes, courses(title, duration_minutes)')
         .eq('user_id', user.id)
-        .order('earned_at', { ascending: false })
+        .order('completed_at', { ascending: false })
+        .limit(10)
+      if (completions) setRecentCompletions(completions as Completion[])
 
-      if (badgeData) setBadges(badgeData as UserBadge[])
+      // Sessions this week
+      const startOfWeek = new Date()
+      startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay())
+      startOfWeek.setHours(0, 0, 0, 0)
+      const { count } = await supabase
+        .from('course_completions')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .gte('completed_at', startOfWeek.toISOString())
+      setSessionsThisWeek(count ?? 0)
+
+      // All badges (earned + locked)
+      const { data: allBadges } = await supabase.from('badges').select('*')
+      const { data: userBadges } = await supabase
+        .from('user_badges').select('badge_id, earned_at').eq('user_id', user.id)
+
+      if (allBadges) {
+        const enriched: AllBadge[] = allBadges.map(b => {
+          const ub = userBadges?.find(ub => ub.badge_id === b.id)
+          return { ...b, earned: !!ub, earned_at: ub?.earned_at }
+        })
+        setBadges(enriched.sort((a, b) => (b.earned ? 1 : 0) - (a.earned ? 1 : 0)))
+      }
     }
     loadData()
-  }, [supabase, profile, setProfile])
+  }, [supabase, setProfile])
 
   async function handleLogout() {
     await supabase.auth.signOut()
@@ -209,61 +241,98 @@ export default function ProfilPage() {
 
         {activeTab === 'parcours' && (
           <div className="space-y-4">
+            {/* Stats grid */}
             <div className="grid grid-cols-2 gap-3">
-              <Card padding="sm" className="text-center">
-                <p className="text-3xl font-bold text-text">
-                  {profile.total_sessions}
-                </p>
-                <p className="text-xs text-text-muted mt-1">
-                  sessions totales
-                </p>
-              </Card>
-              <Card padding="sm" className="text-center">
-                <p className="text-3xl font-bold text-text">
-                  {formatDuration(profile.total_practice_minutes)}
-                </p>
-                <p className="text-xs text-text-muted mt-1">de pratique</p>
-              </Card>
-              <Card padding="sm" className="text-center">
-                <p className="text-3xl font-bold text-text">
-                  {profile.current_streak}
-                </p>
-                <p className="text-xs text-text-muted mt-1">série actuelle</p>
-              </Card>
-              <Card padding="sm" className="text-center">
-                <p className="text-3xl font-bold text-text">
-                  {profile.longest_streak}
-                </p>
-                <p className="text-xs text-text-muted mt-1">meilleure série</p>
-              </Card>
+              {[
+                { icon: <Trophy size={16} />, value: profile.total_sessions, label: 'sessions totales' },
+                { icon: <Clock size={16} />, value: formatDuration(profile.total_practice_minutes), label: 'de pratique' },
+                { icon: <Flame size={16} />, value: profile.current_streak, label: 'série actuelle' },
+                { icon: <TrendingUp size={16} />, value: profile.longest_streak, label: 'meilleure série' },
+              ].map(({ icon, value, label }) => (
+                <Card key={label} padding="sm" className="text-center">
+                  <div className="flex justify-center text-primary mb-1">{icon}</div>
+                  <p className="text-2xl font-bold text-text">{value}</p>
+                  <p className="text-xs text-text-muted mt-0.5">{label}</p>
+                </Card>
+              ))}
             </div>
 
+            {/* This week progress */}
             <Card>
-              <p className="text-sm text-text-secondary text-center py-4">
-                Le graphique d&apos;évolution arrive bientôt...
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="font-medium text-sm text-text">Cette semaine</h3>
+                <span className="text-sm font-bold text-primary">{sessionsThisWeek}/{profile.weekly_rhythm}</span>
+              </div>
+              <ProgressBar
+                value={Math.min(100, (sessionsThisWeek / profile.weekly_rhythm) * 100)}
+                size="md"
+                color={sessionsThisWeek >= profile.weekly_rhythm ? 'success' : 'default'}
+              />
+              <p className="text-xs text-text-muted mt-2">
+                {sessionsThisWeek >= profile.weekly_rhythm
+                  ? '🎉 Objectif hebdomadaire atteint !'
+                  : `${profile.weekly_rhythm - sessionsThisWeek} séance${profile.weekly_rhythm - sessionsThisWeek > 1 ? 's' : ''} restante${profile.weekly_rhythm - sessionsThisWeek > 1 ? 's' : ''} cette semaine`}
               </p>
+            </Card>
+
+            {/* Recent sessions */}
+            <Card>
+              <h3 className="font-medium text-sm text-text mb-3">Dernières séances</h3>
+              {recentCompletions.length === 0 ? (
+                <p className="text-sm text-text-muted text-center py-3">Aucune séance encore. Lance-toi !</p>
+              ) : (
+                <div className="space-y-2">
+                  {recentCompletions.slice(0, 5).map(c => (
+                    <div key={c.id} className="flex items-center gap-3">
+                      <div className="w-7 h-7 bg-success/10 rounded-full flex items-center justify-center flex-shrink-0">
+                        <CheckCircle2 size={14} className="text-success" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm text-text truncate">{c.courses?.title ?? 'Cours'}</p>
+                        <p className="text-xs text-text-muted">
+                          {new Date(c.completed_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
+                          {' · '}{c.duration_watched_minutes ?? c.courses?.duration_minutes ?? '?'} min
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </Card>
           </div>
         )}
 
         {activeTab === 'objectifs' && (
           <div className="space-y-3">
-            {profile.goals.map((goal) => (
-              <Card key={goal}>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="font-medium text-sm text-text">
-                    {GOAL_LABELS[goal] || goal}
-                  </span>
-                  <ChevronRight size={16} className="text-text-muted" />
+            <Card>
+              <h3 className="font-medium text-sm text-text-secondary mb-3">Mes objectifs de pratique</h3>
+              {[
+                { label: 'Première séance', target: 1, current: profile.total_sessions },
+                { label: '10 séances', target: 10, current: profile.total_sessions },
+                { label: '50 séances', target: 50, current: profile.total_sessions },
+                { label: '100 séances', target: 100, current: profile.total_sessions },
+              ].map(({ label, target, current }) => (
+                <div key={label} className="mb-4 last:mb-0">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-sm text-text">{label}</span>
+                    <span className="text-xs text-text-muted">{Math.min(current, target)}/{target}</span>
+                  </div>
+                  <ProgressBar value={Math.min(100, (current / target) * 100)} size="sm" color={current >= target ? 'success' : 'default'} />
                 </div>
-                <ProgressBar
-                  value={Math.random() * 60 + 10} // placeholder
-                  size="sm"
-                  color="success"
-                  showValue
-                />
-              </Card>
-            ))}
+              ))}
+            </Card>
+
+            <Card>
+              <h3 className="font-medium text-sm text-text-secondary mb-3">Mes intentions</h3>
+              <div className="flex flex-wrap gap-2">
+                {profile.goals.map(goal => (
+                  <BadgePill key={goal} variant="accent">{GOAL_LABELS[goal] || goal}</BadgePill>
+                ))}
+              </div>
+              <p className="text-xs text-text-muted mt-3">
+                Les cours sont filtrés et recommandés selon tes objectifs.
+              </p>
+            </Card>
           </div>
         )}
 
@@ -272,25 +341,23 @@ export default function ProfilPage() {
             {badges.length === 0 ? (
               <div className="text-center py-12">
                 <Award size={40} className="mx-auto text-text-muted mb-3" />
-                <p className="text-text-secondary">
-                  Tes premiers badges arrivent vite !
-                </p>
-                <p className="text-xs text-text-muted mt-1">
-                  Continue ta pratique pour débloquer des récompenses
-                </p>
+                <p className="text-text-secondary">Tes premiers badges arrivent vite !</p>
+                <p className="text-xs text-text-muted mt-1">Continue ta pratique pour débloquer des récompenses</p>
               </div>
             ) : (
               <div className="grid grid-cols-3 gap-3">
-                {badges.map((ub) => (
-                  <Card
-                    key={ub.id}
-                    padding="sm"
-                    className="text-center"
-                  >
-                    <div className="text-3xl mb-1">{ub.badge?.icon}</div>
-                    <p className="text-xs font-medium text-text">
-                      {ub.badge?.name}
-                    </p>
+                {badges.map(badge => (
+                  <Card key={badge.id} padding="sm" className={`text-center transition-opacity ${badge.earned ? '' : 'opacity-40'}`}>
+                    <div className={`text-3xl mb-1 ${badge.earned ? '' : 'grayscale'}`}>{badge.icon}</div>
+                    <p className="text-xs font-medium text-text leading-tight">{badge.name}</p>
+                    {badge.earned && badge.earned_at && (
+                      <p className="text-[10px] text-text-muted mt-1">
+                        {new Date(badge.earned_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
+                      </p>
+                    )}
+                    {!badge.earned && (
+                      <p className="text-[10px] text-text-muted mt-1">🔒 À débloquer</p>
+                    )}
                   </Card>
                 ))}
               </div>
