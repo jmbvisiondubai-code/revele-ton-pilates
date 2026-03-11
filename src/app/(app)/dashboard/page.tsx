@@ -10,6 +10,7 @@ import {
   Sparkles,
   Users,
   Video,
+  Radio,
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/client'
@@ -19,13 +20,15 @@ import { getGreeting, formatDuration } from '@/lib/utils'
 import type { Profile, DailyInspiration, LiveSession } from '@/types/database'
 import { DEMO_PROFILE } from '@/lib/demo-data'
 import Link from 'next/link'
+import { format } from 'date-fns'
+import { fr } from 'date-fns/locale'
 
 const fadeInUp = {
   hidden: { opacity: 0, y: 16 },
   visible: (i: number) => ({
     opacity: 1,
     y: 0,
-    transition: { delay: i * 0.1, duration: 0.4, ease: 'easeOut' as const },
+    transition: { delay: i * 0.08, duration: 0.4, ease: 'easeOut' as const },
   }),
 }
 
@@ -45,33 +48,27 @@ export default function DashboardPage() {
       }
 
       const { data: { user } } = await supabase.auth.getUser()
-      if (!user) {
-        router.replace('/login')
-        return
-      }
+      if (!user) { router.replace('/login'); return }
 
-      // Load profile
       const { data: profileData } = await supabase
         .from('profiles').select('*').eq('id', user.id).single()
 
       if (profileData) {
         setProfile(profileData as Profile)
       } else {
-        // No profile yet → go to onboarding
         router.replace('/onboarding')
         return
       }
 
-      // Load today's inspiration
       const today = new Date().toISOString().split('T')[0]
       const { data: inspirationData } = await supabase
         .from('daily_inspirations').select('*').eq('display_date', today).single()
       if (inspirationData) setInspiration(inspirationData as DailyInspiration)
 
-      // Load next live session
       const { data: liveData } = await supabase
         .from('live_sessions').select('*')
         .eq('is_cancelled', false)
+        .eq('is_collective', true)
         .gte('scheduled_at', new Date().toISOString())
         .order('scheduled_at', { ascending: true })
         .limit(1).single()
@@ -84,38 +81,25 @@ export default function DashboardPage() {
   if (!profile) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="animate-pulse-soft text-text-secondary">
-          Chargement de ton espace...
-        </div>
+        <div className="animate-pulse-soft text-text-secondary">Chargement de ton espace...</div>
       </div>
     )
   }
 
-  const weeklyProgress = Math.min(
-    100,
-    (profile.total_sessions / Math.max(1, profile.weekly_rhythm)) * 100
-  )
+  const weeklyProgress = Math.min(100, (profile.total_sessions / Math.max(1, profile.weekly_rhythm)) * 100)
 
   return (
-    <div className="px-5 pt-6 pb-4 max-w-lg mx-auto space-y-6">
-      {/* Greeting */}
-      <motion.div
-        initial="hidden"
-        animate="visible"
-        custom={0}
-        variants={fadeInUp}
-      >
-        <h1 className="font-[family-name:var(--font-heading)] text-2xl text-text leading-snug">
+    <div className="px-5 pt-6 pb-4 lg:px-8 lg:pt-8 max-w-5xl mx-auto">
+
+      {/* Header */}
+      <motion.div initial="hidden" animate="visible" custom={0} variants={fadeInUp} className="mb-6">
+        <h1 className="font-[family-name:var(--font-heading)] text-2xl lg:text-3xl text-text leading-snug">
           {getGreeting(profile.first_name)}
         </h1>
-        <div className="flex items-center gap-4 mt-3">
+        <div className="flex items-center gap-4 mt-3 max-w-sm">
           <StreakBadge count={profile.current_streak} />
           <div className="flex-1">
-            <ProgressBar
-              value={weeklyProgress}
-              size="sm"
-              color="success"
-            />
+            <ProgressBar value={weeklyProgress} size="sm" color="success" />
             <p className="text-xs text-text-muted mt-1">
               Cette semaine : {Math.min(profile.total_sessions, profile.weekly_rhythm)}/{profile.weekly_rhythm} sessions
             </p>
@@ -123,170 +107,148 @@ export default function DashboardPage() {
         </div>
       </motion.div>
 
-      {/* Next session */}
-      <motion.div
-        initial="hidden"
-        animate="visible"
-        custom={1}
-        variants={fadeInUp}
-      >
-        <Card hover className="relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-24 h-24 bg-primary/5 rounded-full -translate-y-1/2 translate-x-1/2" />
-          <div className="flex items-start justify-between relative">
-            <div>
-              <BadgePill variant="accent">
-                <Calendar size={12} />
-                Prochaine session
-              </BadgePill>
-              <h3 className="font-[family-name:var(--font-heading)] text-xl mt-2 text-text">
-                Pilates Fondamentaux
-              </h3>
-              <p className="text-sm text-text-secondary mt-1">
-                Renforcement doux &bull; 30 min
-              </p>
-            </div>
-            <Link
-              href="/cours"
-              className="mt-2 w-10 h-10 bg-primary rounded-full flex items-center justify-center shadow-sm"
-            >
-              <ChevronRight size={20} className="text-white" />
-            </Link>
-          </div>
-        </Card>
-      </motion.div>
+      {/* Desktop: 2-col grid / Mobile: single col */}
+      <div className="lg:grid lg:grid-cols-3 lg:gap-6 space-y-4 lg:space-y-0">
 
-      {/* Next Live */}
-      {nextLive && (
-        <motion.div
-          initial="hidden"
-          animate="visible"
-          custom={1.5}
-          variants={fadeInUp}
-        >
-          <Link href="/cours">
-            <Card hover className="bg-primary/5 border-primary/20">
-              <div className="flex items-center gap-2 mb-2">
-                <Video size={16} className="text-primary" />
-                <BadgePill variant="accent">Live à venir</BadgePill>
-              </div>
-              <h3 className="font-[family-name:var(--font-heading)] text-lg text-text">
-                {nextLive.title}
-              </h3>
-              <p className="text-sm text-text-secondary mt-1">
-                {new Date(nextLive.scheduled_at).toLocaleDateString('fr-FR', {
-                  weekday: 'long',
-                  day: 'numeric',
-                  month: 'long',
-                  hour: '2-digit',
-                  minute: '2-digit',
-                })} &bull; {nextLive.duration_minutes} min
+        {/* ── LEFT COLUMN (2/3) ── */}
+        <div className="lg:col-span-2 space-y-4">
+
+          {/* Next session */}
+          <motion.div initial="hidden" animate="visible" custom={1} variants={fadeInUp}>
+            <Link href="/cours">
+              <Card hover className="relative overflow-hidden group lg:p-6">
+                <div className="absolute top-0 right-0 w-40 h-40 bg-primary/5 rounded-full -translate-y-1/2 translate-x-1/2" />
+                <div className="flex items-start justify-between relative">
+                  <div>
+                    <BadgePill variant="accent">
+                      <Calendar size={12} />
+                      Prochaine session
+                    </BadgePill>
+                    <h3 className="font-[family-name:var(--font-heading)] text-xl lg:text-2xl mt-2 text-text">
+                      Pilates Fondamentaux
+                    </h3>
+                    <p className="text-sm text-text-secondary mt-1">
+                      Renforcement doux &bull; 30 min
+                    </p>
+                    <p className="text-xs text-text-muted mt-2 hidden lg:block">
+                      Accède à tous tes cours VOD, lives et replays directement depuis l'app.
+                    </p>
+                  </div>
+                  <div className="mt-2 w-11 h-11 bg-primary rounded-full flex items-center justify-center shadow-sm group-hover:bg-primary-dark transition-colors flex-shrink-0">
+                    <ChevronRight size={20} className="text-white" />
+                  </div>
+                </div>
+              </Card>
+            </Link>
+          </motion.div>
+
+          {/* Next live */}
+          {nextLive && (
+            <motion.div initial="hidden" animate="visible" custom={2} variants={fadeInUp}>
+              <Link href="/cours">
+                <Card hover className="bg-primary/5 border-primary/20 lg:p-6">
+                  <div className="flex items-start gap-4">
+                    <div className="w-12 h-12 bg-[#C6684F]/10 rounded-xl flex items-center justify-center flex-shrink-0">
+                      <Radio size={20} className="text-[#C6684F]" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <BadgePill variant="accent">Prochain live collectif</BadgePill>
+                      </div>
+                      <h3 className="font-[family-name:var(--font-heading)] text-lg lg:text-xl text-text">
+                        {nextLive.title}
+                      </h3>
+                      <p className="text-sm text-text-secondary mt-1 capitalize">
+                        {format(new Date(nextLive.scheduled_at), "EEEE d MMMM 'à' HH'h'mm", { locale: fr })}
+                        &nbsp;&bull;&nbsp;{nextLive.duration_minutes} min
+                      </p>
+                      {nextLive.equipment && (
+                        <p className="text-xs text-text-muted mt-1">Matériel : {nextLive.equipment}</p>
+                      )}
+                    </div>
+                    <ChevronRight size={16} className="text-text-muted flex-shrink-0 mt-1" />
+                  </div>
+                </Card>
+              </Link>
+            </motion.div>
+          )}
+
+          {/* Community */}
+          <motion.div initial="hidden" animate="visible" custom={3} variants={fadeInUp}>
+            <div className="flex items-center justify-between mb-2">
+              <h2 className="font-[family-name:var(--font-heading)] text-lg text-text">Communauté</h2>
+              <Link href="/communaute" className="text-sm text-primary font-medium flex items-center gap-1">
+                Voir tout <ChevronRight size={14} />
+              </Link>
+            </div>
+            <Link href="/communaute">
+              <Card hover className="lg:p-5">
+                <div className="flex items-center gap-3">
+                  <div className="w-11 h-11 bg-success-light rounded-full flex items-center justify-center flex-shrink-0">
+                    <Users size={20} className="text-success" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-text text-sm">Rejoins la communauté</p>
+                    <p className="text-xs text-text-secondary">Partage ton expérience et inspire les autres</p>
+                  </div>
+                  <ChevronRight size={16} className="ml-auto text-text-muted" />
+                </div>
+              </Card>
+            </Link>
+          </motion.div>
+        </div>
+
+        {/* ── RIGHT COLUMN (1/3) ── */}
+        <div className="space-y-4">
+
+          {/* Stats */}
+          <motion.div initial="hidden" animate="visible" custom={1.5} variants={fadeInUp}>
+            <h2 className="font-[family-name:var(--font-heading)] text-lg text-text mb-3">Ton parcours</h2>
+            <div className="grid grid-cols-3 lg:grid-cols-1 gap-3">
+              <Card padding="sm" className="lg:flex lg:items-center lg:gap-4 text-center lg:text-left">
+                <Trophy size={22} className="mx-auto lg:mx-0 text-alert mb-1 lg:mb-0 flex-shrink-0" />
+                <div>
+                  <p className="text-2xl font-bold text-text">{profile.total_sessions}</p>
+                  <p className="text-xs text-text-muted">sessions</p>
+                </div>
+              </Card>
+              <Card padding="sm" className="lg:flex lg:items-center lg:gap-4 text-center lg:text-left">
+                <Clock size={22} className="mx-auto lg:mx-0 text-primary mb-1 lg:mb-0 flex-shrink-0" />
+                <div>
+                  <p className="text-2xl font-bold text-text">{formatDuration(profile.total_practice_minutes)}</p>
+                  <p className="text-xs text-text-muted">de pratique</p>
+                </div>
+              </Card>
+              <Card padding="sm" className="lg:flex lg:items-center lg:gap-4 text-center lg:text-left">
+                <Sparkles size={22} className="mx-auto lg:mx-0 text-success mb-1 lg:mb-0 flex-shrink-0" />
+                <div>
+                  <p className="text-2xl font-bold text-text">{profile.longest_streak}</p>
+                  <p className="text-xs text-text-muted">meilleure série</p>
+                </div>
+              </Card>
+            </div>
+          </motion.div>
+
+          {/* Inspiration */}
+          <motion.div initial="hidden" animate="visible" custom={2.5} variants={fadeInUp}>
+            <Card className="bg-primary/5 border-primary/10 lg:p-5">
+              <p className="font-[family-name:var(--font-heading)] text-base lg:text-lg italic text-text leading-relaxed">
+                {inspiration?.quote || '"Chaque mouvement conscient est une déclaration d\'amour envers toi-même."'}
               </p>
-              {nextLive.max_participants && (
-                <p className="text-xs text-text-muted mt-1">
-                  {nextLive.registered_count}/{nextLive.max_participants} places réservées
-                </p>
+              <p className="text-sm text-text-secondary mt-2">— Marjorie, MJ Pilates</p>
+              {inspiration?.tip && (
+                <div className="mt-3 pt-3 border-t border-primary/10">
+                  <p className="text-sm text-text-secondary">
+                    <span className="font-medium text-primary">Conseil : </span>
+                    {inspiration.tip}
+                  </p>
+                </div>
               )}
             </Card>
-          </Link>
-        </motion.div>
-      )}
+          </motion.div>
 
-      {/* Stats summary */}
-      <motion.div
-        initial="hidden"
-        animate="visible"
-        custom={2}
-        variants={fadeInUp}
-      >
-        <h2 className="font-[family-name:var(--font-heading)] text-lg text-text mb-3">
-          Ton parcours
-        </h2>
-        <div className="grid grid-cols-3 gap-3">
-          <Card padding="sm" className="text-center">
-            <Trophy size={20} className="mx-auto text-alert mb-1" />
-            <p className="text-2xl font-bold text-text">
-              {profile.total_sessions}
-            </p>
-            <p className="text-xs text-text-muted">sessions</p>
-          </Card>
-          <Card padding="sm" className="text-center">
-            <Clock size={20} className="mx-auto text-primary mb-1" />
-            <p className="text-2xl font-bold text-text">
-              {formatDuration(profile.total_practice_minutes)}
-            </p>
-            <p className="text-xs text-text-muted">de pratique</p>
-          </Card>
-          <Card padding="sm" className="text-center">
-            <Sparkles size={20} className="mx-auto text-success mb-1" />
-            <p className="text-2xl font-bold text-text">
-              {profile.longest_streak}
-            </p>
-            <p className="text-xs text-text-muted">meilleure série</p>
-          </Card>
         </div>
-      </motion.div>
-
-      {/* Inspiration */}
-      <motion.div
-        initial="hidden"
-        animate="visible"
-        custom={3}
-        variants={fadeInUp}
-      >
-        <Card className="bg-primary/5 border-primary/10">
-          <p className="font-[family-name:var(--font-heading)] text-lg italic text-text leading-relaxed">
-            {inspiration?.quote ||
-              '"Chaque mouvement conscient est une déclaration d\'amour envers toi-même."'}
-          </p>
-          <p className="text-sm text-text-secondary mt-2">
-            — Marjorie, MJ Pilates
-          </p>
-          {(inspiration?.tip) && (
-            <div className="mt-3 pt-3 border-t border-primary/10">
-              <p className="text-sm text-text-secondary">
-                <span className="font-medium text-primary">Conseil : </span>
-                {inspiration.tip}
-              </p>
-            </div>
-          )}
-        </Card>
-      </motion.div>
-
-      {/* Community preview */}
-      <motion.div
-        initial="hidden"
-        animate="visible"
-        custom={4}
-        variants={fadeInUp}
-      >
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="font-[family-name:var(--font-heading)] text-lg text-text">
-            Communauté
-          </h2>
-          <Link
-            href="/communaute"
-            className="text-sm text-primary font-medium flex items-center gap-1"
-          >
-            Voir tout <ChevronRight size={14} />
-          </Link>
-        </div>
-        <Card hover>
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-success-light rounded-full flex items-center justify-center">
-              <Users size={18} className="text-success" />
-            </div>
-            <div>
-              <p className="font-medium text-text text-sm">
-                Rejoins la communauté
-              </p>
-              <p className="text-xs text-text-secondary">
-                Partage ton expérience et inspire les autres
-              </p>
-            </div>
-            <ChevronRight size={16} className="ml-auto text-text-muted" />
-          </div>
-        </Card>
-      </motion.div>
+      </div>
     </div>
   )
 }
