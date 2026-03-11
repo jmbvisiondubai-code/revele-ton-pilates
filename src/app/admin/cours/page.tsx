@@ -38,16 +38,20 @@ export default function AdminCoursPage() {
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
+  const [uploadError, setUploadError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const supabase = createClient()
 
   async function uploadThumbnail(file: File) {
     setUploading(true)
+    setUploadError(null)
     const ext = file.name.split('.').pop()
     const path = `thumbnails/${Date.now()}.${ext}`
     const { error } = await supabase.storage.from('courses').upload(path, file, { upsert: true })
-    if (!error) {
+    if (error) {
+      setUploadError(error.message)
+    } else {
       const { data } = supabase.storage.from('courses').getPublicUrl(path)
       setForm(p => ({ ...p, thumbnail_url: data.publicUrl }))
     }
@@ -227,6 +231,9 @@ export default function AdminCoursPage() {
                       </>
                     )}
                   </button>
+                )}
+                {uploadError && (
+                  <p className="mt-2 text-xs text-red-500">{uploadError}</p>
                 )}
               </div>
 
