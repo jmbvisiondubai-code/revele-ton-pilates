@@ -57,13 +57,9 @@ export default function DashboardPage() {
       if (profileData) {
         setProfile(profileData as Profile)
       } else {
-        // Profile doesn't exist yet — use first_name from auth metadata
-        const fallback = {
-          ...DEMO_PROFILE,
-          id: user.id,
-          first_name: user.user_metadata?.first_name ?? 'Toi',
-        }
-        setProfile(fallback)
+        // No profile yet → go to onboarding
+        router.replace('/onboarding')
+        return
       }
 
       // Load today's inspiration
