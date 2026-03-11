@@ -1,0 +1,22 @@
+{
+  "name": "Révèle Ton Pilates",
+  "short_name": "RTP",
+  "description": "Ton espace de transformation personnelle — MJ Pilates",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#faf8f5",
+  "theme_color": "#93877e",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
