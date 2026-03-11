@@ -56,6 +56,7 @@ export default function ProfilPage() {
   const [recentCompletions, setRecentCompletions] = useState<Completion[]>([])
   const [sessionsThisWeek, setSessionsThisWeek] = useState(0)
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
+  const [avatarError, setAvatarError] = useState('')
   const supabase = createClient()
 
   useEffect(() => {
@@ -113,16 +114,23 @@ export default function ProfilPage() {
     const file = e.target.files?.[0]
     if (!file || !profile) return
     setUploadingAvatar(true)
+    setAvatarError('')
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) { setUploadingAvatar(false); return }
     const fileExt = file.name.split('.').pop()
     const filePath = `${user.id}/avatar.${fileExt}`
     const { error: uploadError } = await supabase.storage
       .from('avatars').upload(filePath, file, { upsert: true })
-    if (!uploadError) {
+    if (uploadError) {
+      setAvatarError(uploadError.message)
+    } else {
       const { data } = supabase.storage.from('avatars').getPublicUrl(filePath)
-      await supabase.from('profiles').update({ avatar_url: data.publicUrl }).eq('id', user.id)
-      setProfile({ ...profile, avatar_url: data.publicUrl })
+      const { error: updateError } = await supabase.from('profiles').update({ avatar_url: data.publicUrl }).eq('id', user.id)
+      if (updateError) {
+        setAvatarError(updateError.message)
+      } else {
+        setProfile({ ...profile, avatar_url: data.publicUrl })
+      }
     }
     setUploadingAvatar(false)
   }
@@ -160,6 +168,7 @@ export default function ProfilPage() {
             <input type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} disabled={uploadingAvatar} />
           </label>
         </div>
+        {avatarError && <p className="text-xs text-red-500 mt-2">{avatarError}</p>}
         <h1 className="font-[family-name:var(--font-heading)] text-2xl text-text mt-3">
           {profile.first_name}
         </h1>
