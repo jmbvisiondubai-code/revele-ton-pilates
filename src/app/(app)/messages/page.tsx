@@ -713,7 +713,7 @@ export default function MessagesPage() {
           </div>
 
         ) : showCommunaute && !activeId ? (
-          <iframe src="/communaute" className="w-full min-h-0 border-0" style={{ flex: 1 }} title="Communauté" />
+          <iframe src="/communaute" className="w-full h-0 flex-1 border-0" title="Communauté" />
 
         ) : (
           <>
