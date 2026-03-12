@@ -108,7 +108,7 @@ export default function CommunautePage() {
   const [editCommentContent, setEditCommentContent] = useState('')
   const [commentMenu, setCommentMenu] = useState<string | null>(null)
   const [openReactions, setOpenReactions] = useState<string | null>(null)
-  const [bubblePickerOpen, setBubblePickerOpen] = useState<string | null>(null)
+  const [contextMenu, setContextMenu] = useState<{ postId: string; isOwn: boolean; content: string; authorName: string } | null>(null)
   const [swipingPost, setSwipingPost] = useState<{ postId: string; deltaX: number } | null>(null)
   const [replyingTo, setReplyingTo] = useState<{ id: string; content: string; authorName: string } | null>(null)
 
@@ -304,10 +304,10 @@ export default function CommunautePage() {
   }
 
   // ── Gesture handlers (long press = picker, swipe right = reply) ──────────
-  function startBubbleGesture(postId: string, x: number, y: number) {
+  function startBubbleGesture(postId: string, isOwn: boolean, content: string, authorName: string, x: number, y: number) {
     touchStartRef.current = { x, y }
     if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current)
-    longPressTimerRef.current = setTimeout(() => setBubblePickerOpen(postId), 500)
+    longPressTimerRef.current = setTimeout(() => setContextMenu({ postId, isOwn, content, authorName }), 500)
   }
   function moveBubbleGesture(postId: string, x: number, y: number) {
     if (!touchStartRef.current) return
@@ -330,11 +330,12 @@ export default function CommunautePage() {
 
   const pinnedPosts = posts.filter(p => p.is_pinned && p.is_from_marjorie)
   const feedPosts = posts.filter(p => !p.is_pinned || !p.is_from_marjorie).slice().reverse()
+  const contextPost = contextMenu ? posts.find(p => p.id === contextMenu.postId) ?? null : null
 
   return (
     <div className="px-4 pt-6 pb-[220px] lg:pb-8 lg:px-8 lg:pt-8 max-w-5xl mx-auto">
-      {(postMenu || commentMenu || bubblePickerOpen) && (
-        <div className="fixed inset-0 z-10" onClick={() => { setPostMenu(null); setCommentMenu(null); setBubblePickerOpen(null) }} />
+      {(postMenu || commentMenu) && (
+        <div className="fixed inset-0 z-10" onClick={() => { setPostMenu(null); setCommentMenu(null) }} />
       )}
 
       <div className="mb-5">
@@ -661,8 +662,9 @@ export default function CommunautePage() {
                             </div>
                           ) : (
                             <div
-                              className="relative"
-                              onTouchStart={e => startBubbleGesture(post.id, e.touches[0].clientX, e.touches[0].clientY)}
+                              className="relative select-none"
+                              onContextMenu={e => e.preventDefault()}
+                              onTouchStart={e => startBubbleGesture(post.id, isOwn, post.content, authorName, e.touches[0].clientX, e.touches[0].clientY)}
                               onTouchMove={e => moveBubbleGesture(post.id, e.touches[0].clientX, e.touches[0].clientY)}
                               onTouchEnd={() => endBubbleGesture(post.id, post.content, authorName)}
                               style={{
@@ -670,29 +672,6 @@ export default function CommunautePage() {
                                 transition: swipingPost?.postId === post.id ? 'none' : 'transform 0.3s cubic-bezier(0.34,1.56,0.64,1)',
                               }}
                             >
-                              {/* Floating reaction picker on long press */}
-                              <AnimatePresence>
-                                {bubblePickerOpen === post.id && (
-                                  <motion.div
-                                    initial={{ opacity: 0, scale: 0.7, y: 8 }}
-                                    animate={{ opacity: 1, scale: 1, y: 0 }}
-                                    exit={{ opacity: 0, scale: 0.7, y: 8 }}
-                                    transition={{ type: 'spring', stiffness: 400, damping: 25 }}
-                                    className={`absolute -top-14 ${isOwn ? 'right-0' : 'left-0'} bg-white rounded-full shadow-xl border border-[#DCCFBF] px-3 py-2 flex gap-2 z-40 whitespace-nowrap`}
-                                  >
-                                    {REACTIONS.map(({ type, emoji, label }) => (
-                                      <button key={type} onClick={() => { toggleReaction(post.id, type); setBubblePickerOpen(null) }}
-                                        title={label}
-                                        className={`relative text-2xl transition-transform hover:scale-125 active:scale-110 ${post.user_reactions.includes(type) ? 'scale-110 -translate-y-1' : ''}`}>
-                                        {emoji}
-                                        {post.user_reactions.includes(type) && (
-                                          <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 bg-[#C6684F] rounded-full" />
-                                        )}
-                                      </button>
-                                    ))}
-                                  </motion.div>
-                                )}
-                              </AnimatePresence>
                               {/* Swipe-to-reply indicator */}
                               {swipingPost?.postId === post.id && swipingPost.deltaX > 10 && (
                                 <div className="absolute -left-7 top-1/2 -translate-y-1/2"
@@ -732,28 +711,18 @@ export default function CommunautePage() {
                             </div>
                           )}
 
-                          {/* Reaction + Comment actions (minimal, under bubble) */}
-                          <div className={`flex items-center gap-3 mt-0.5 ${isOwn ? 'flex-row-reverse' : 'flex-row'}`}>
-                            <QuickLikeButton post={post} onReact={toggleReaction} />
-                            {Object.values(post.reaction_counts).reduce((a,b)=>a+b,0) > 0 && (
-                              <button onClick={() => setOpenReactions(openReactions === post.id ? null : post.id)}
-                                className="flex items-center gap-0.5">
-                                {REACTIONS.filter(r => post.reaction_counts[r.type] > 0).slice(0,3).map(r => (
-                                  <span key={r.type} className="text-xs leading-none">{r.emoji}</span>
-                                ))}
-                                <span className="text-[10px] text-[#6B6359] ml-0.5 font-medium">
-                                  {Object.values(post.reaction_counts).reduce((a,b)=>a+b,0)}
-                                </span>
-                              </button>
-                            )}
-                            <button onClick={() => loadComments(post.id)}
-                              className={`text-sm transition-all select-none ${openComments === post.id ? 'text-[#C6684F]' : 'text-[#DCCFBF] hover:text-[#C6684F]/60'}`}>
-                              <MessageCircle size={14} />
+                          {/* Reaction count badges */}
+                          {Object.values(post.reaction_counts).reduce((a,b)=>a+b,0) > 0 && (
+                            <button onClick={() => setOpenReactions(openReactions === post.id ? null : post.id)}
+                              className={`flex items-center gap-0.5 mt-0.5 ${isOwn ? 'self-end' : 'self-start'}`}>
+                              {REACTIONS.filter(r => post.reaction_counts[r.type] > 0).slice(0,3).map(r => (
+                                <span key={r.type} className="text-xs leading-none">{r.emoji}</span>
+                              ))}
+                              <span className="text-[10px] text-[#6B6359] ml-0.5 font-medium">
+                                {Object.values(post.reaction_counts).reduce((a,b)=>a+b,0)}
+                              </span>
                             </button>
-                            {post.comment_count > 0 && (
-                              <span className="text-[10px] text-[#6B6359]">{post.comment_count}</span>
-                            )}
-                          </div>
+                          )}
                           {/* Who reacted */}
                           <AnimatePresence>
                             {openReactions === post.id && post.reaction_users.length > 0 && (
@@ -856,6 +825,88 @@ export default function CommunautePage() {
           <div ref={messagesEndRef} className="h-1" />
         </div>
       </div>
+
+      {/* ── WhatsApp-style context menu ── */}
+      <AnimatePresence>
+        {contextMenu && contextPost && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex flex-col items-center justify-center px-6"
+            onClick={() => setContextMenu(null)}
+          >
+            {/* Emoji reactions row */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.8, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.8 }}
+              transition={{ type: 'spring', stiffness: 400, damping: 28 }}
+              className="bg-white rounded-full shadow-2xl px-4 py-2.5 flex gap-3 mb-3 w-full max-w-sm justify-around"
+              onClick={e => e.stopPropagation()}
+            >
+              {REACTIONS.map(({ type, emoji, label }) => (
+                <button key={type}
+                  onClick={() => { toggleReaction(contextMenu.postId, type); setContextMenu(null) }}
+                  title={label}
+                  className={`relative text-[26px] transition-transform active:scale-110 ${contextPost.user_reactions.includes(type) ? '-translate-y-1.5 drop-shadow-md' : ''}`}>
+                  {emoji}
+                  {contextPost.user_reactions.includes(type) && (
+                    <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 bg-[#C6684F] rounded-full" />
+                  )}
+                </button>
+              ))}
+            </motion.div>
+
+            {/* Actions list */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 8 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              transition={{ type: 'spring', stiffness: 400, damping: 28, delay: 0.04 }}
+              className="w-full max-w-sm bg-white rounded-2xl shadow-2xl overflow-hidden"
+              onClick={e => e.stopPropagation()}
+            >
+              <button
+                onClick={() => { setReplyingTo({ id: contextMenu.postId, content: contextMenu.content, authorName: contextMenu.authorName }); setContextMenu(null) }}
+                className="w-full flex items-center justify-between px-5 py-3.5 text-sm text-[#2C2C2C] border-b border-[#F5F0EB] active:bg-[#FAF6F1]">
+                <span>Répondre</span>
+                <CornerUpLeft size={16} className="text-[#6B6359]" />
+              </button>
+              <button
+                onClick={() => { navigator.clipboard.writeText(contextMenu.content).catch(() => {}); setContextMenu(null) }}
+                className="w-full flex items-center justify-between px-5 py-3.5 text-sm text-[#2C2C2C] active:bg-[#FAF6F1]">
+                <span>Copier</span>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-[#6B6359]"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+              </button>
+              {contextMenu.isOwn && (
+                <button
+                  onClick={() => { setEditingPost(contextMenu.postId); setEditPostContent(contextMenu.content); setContextMenu(null) }}
+                  className="w-full flex items-center justify-between px-5 py-3.5 text-sm text-[#2C2C2C] border-t border-[#F5F0EB] active:bg-[#FAF6F1]">
+                  <span>Modifier</span>
+                  <Pencil size={15} className="text-[#6B6359]" />
+                </button>
+              )}
+              {(contextMenu.isOwn || isAdmin) && (
+                <button
+                  onClick={() => { setDeletingPost(contextMenu.postId); setContextMenu(null) }}
+                  className="w-full flex items-center justify-between px-5 py-3.5 text-sm text-red-500 border-t border-[#F5F0EB] active:bg-red-50">
+                  <span>Supprimer</span>
+                  <Trash2 size={15} className="text-red-400" />
+                </button>
+              )}
+              {isAdmin && (
+                <button
+                  onClick={() => { togglePin(contextMenu.postId, contextPost.is_pinned); setContextMenu(null) }}
+                  className="w-full flex items-center justify-between px-5 py-3.5 text-sm text-[#2C2C2C] border-t border-[#F5F0EB] active:bg-[#FAF6F1]">
+                  <span>{contextPost.is_pinned ? 'Désépingler' : 'Épingler'}</span>
+                  {contextPost.is_pinned ? <PinOff size={15} className="text-[#6B6359]" /> : <Pin size={15} className="text-[#6B6359]" />}
+                </button>
+              )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* ── Mobile fixed compose bar ── */}
       {profile && (
