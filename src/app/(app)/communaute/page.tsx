@@ -378,8 +378,8 @@ export default function CommunautePage() {
         </div>
 
         {/* Feed column */}
-        <div className="relative lg:col-span-2 lg:order-1">
-          {/* Background pattern — reduced opacity, only behind messages */}
+        <div className="relative lg:col-span-2 lg:order-1 min-h-dvh">
+          {/* Background pattern — fills full viewport height */}
           <div aria-hidden="true" className="absolute inset-y-0 -left-3 -right-3 lg:-left-5 lg:-right-5 bg-[url('/fond-mobile.png')] md:bg-[url('/fond-desktop.png')] bg-cover bg-center bg-scroll opacity-[0.28] pointer-events-none" />
 
           {/* ── Pinned messages from Marjorie — sticky at top ── */}
