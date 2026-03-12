@@ -257,14 +257,22 @@ export default function CommunautePage() {
     if (docInputRef.current) docInputRef.current.value = ''
   }
 
+  function normalizeUrl(url: string): string {
+    const trimmed = url.trim()
+    if (!trimmed) return ''
+    if (/^https?:\/\//i.test(trimmed)) return trimmed
+    return `https://${trimmed}`
+  }
+
   async function handlePost() {
-    if (!newPost.trim() || !profile) return
+    if (!newPost.trim() && !postImageUrl && !postLinkUrl) return
+    if (!profile) return
     setIsPosting(true)
     if (!isSupabaseConfigured()) {
       const op: PostWithMeta = {
         id: `temp-${Date.now()}`, user_id: profile.id, content: newPost.trim(),
         image_url: postImageUrl.trim() || null, is_pinned: false, is_from_marjorie: isAdmin,
-        link_url: postLinkUrl.trim() || null, link_label: postLinkLabel.trim() || null,
+        link_url: normalizeUrl(postLinkUrl) || null, link_label: postLinkLabel.trim() || null,
         reply_to_id: replyingTo?.id ?? null, reply_to_preview: replyingTo ? replyingTo.content.slice(0, 120) : null, reply_to_author: replyingTo?.authorName ?? null,
         edited_at: null,
         created_at: new Date().toISOString(),
