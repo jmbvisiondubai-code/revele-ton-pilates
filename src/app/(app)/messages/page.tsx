@@ -691,11 +691,11 @@ export default function MessagesPage() {
                               <AnimatePresence>
                                 {convMenuId === conv.partner.id && (
                                   <motion.div
-                                    initial={{ opacity: 0, scale: 0.9, y: 4 }}
+                                    initial={{ opacity: 0, scale: 0.9, y: -4 }}
                                     animate={{ opacity: 1, scale: 1, y: 0 }}
-                                    exit={{ opacity: 0, scale: 0.9, y: 4 }}
+                                    exit={{ opacity: 0, scale: 0.9, y: -4 }}
                                     transition={{ type: 'spring', stiffness: 400, damping: 25 }}
-                                    className="absolute right-0 top-full mt-1 z-50 bg-white rounded-xl shadow-lg border border-[#EDE5DA] overflow-hidden min-w-[175px]"
+                                    className="absolute right-0 bottom-full mb-1 z-50 bg-white rounded-xl shadow-lg border border-[#EDE5DA] overflow-hidden min-w-[175px]"
                                   >
                                     <button
                                       onClick={() => unarchiveConversation(conv.partner.id)}
