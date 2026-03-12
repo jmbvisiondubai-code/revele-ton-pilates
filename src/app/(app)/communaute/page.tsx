@@ -111,6 +111,7 @@ export default function CommunautePage() {
   const [contextMenu, setContextMenu] = useState<{ postId: string; isOwn: boolean; content: string; authorName: string } | null>(null)
   const [swipingPost, setSwipingPost] = useState<{ postId: string; deltaX: number } | null>(null)
   const [replyingTo, setReplyingTo] = useState<{ id: string; content: string; authorName: string } | null>(null)
+  const [doubleTapHeart, setDoubleTapHeart] = useState<string | null>(null)
 
   const { profile } = useAuthStore()
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
@@ -120,6 +121,7 @@ export default function CommunautePage() {
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const isInitialLoad = useRef(true)
+  const lastTapRef = useRef<{ postId: string; time: number } | null>(null)
 
   const isAdmin = profile?.is_admin === true
   const myId = profile?.id ?? currentUserId
@@ -321,6 +323,19 @@ export default function CommunautePage() {
   }
   function endBubbleGesture(postId: string, content: string, authorName: string) {
     if (longPressTimerRef.current) { clearTimeout(longPressTimerRef.current); longPressTimerRef.current = null }
+    // Double-tap detection (only if not swiping)
+    if (!swipingPost) {
+      const now = Date.now()
+      if (lastTapRef.current?.postId === postId && now - lastTapRef.current.time < 350) {
+        const alreadyLiked = posts.find(p => p.id === postId)?.user_reactions.includes('coeur')
+        if (!alreadyLiked) toggleReaction(postId, 'coeur')
+        setDoubleTapHeart(postId)
+        setTimeout(() => setDoubleTapHeart(null), 700)
+        lastTapRef.current = null
+        return
+      }
+      lastTapRef.current = { postId, time: Date.now() }
+    }
     if (swipingPost?.postId === postId && swipingPost.deltaX >= 60) {
       setReplyingTo({ id: postId, content, authorName })
     }
@@ -672,6 +687,20 @@ export default function CommunautePage() {
                                 transition: swipingPost?.postId === post.id ? 'none' : 'transform 0.3s cubic-bezier(0.34,1.56,0.64,1)',
                               }}
                             >
+                              {/* Double-tap heart animation */}
+                              <AnimatePresence>
+                                {doubleTapHeart === post.id && (
+                                  <motion.div
+                                    initial={{ opacity: 0, scale: 0.4 }}
+                                    animate={{ opacity: 1, scale: 1.4 }}
+                                    exit={{ opacity: 0, scale: 1.8 }}
+                                    transition={{ duration: 0.25, exit: { duration: 0.3 } }}
+                                    className="absolute inset-0 flex items-center justify-center pointer-events-none z-30"
+                                  >
+                                    <span className="text-5xl drop-shadow-xl">❤️</span>
+                                  </motion.div>
+                                )}
+                              </AnimatePresence>
                               {/* Swipe-to-reply indicator */}
                               {swipingPost?.postId === post.id && swipingPost.deltaX > 10 && (
                                 <div className="absolute -left-7 top-1/2 -translate-y-1/2"
