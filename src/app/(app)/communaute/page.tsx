@@ -10,10 +10,13 @@ import { formatRelativeDate } from '@/lib/utils'
 import type { CommunityPost, ReactionType } from '@/types/database'
 
 const REACTIONS: { type: ReactionType; emoji: string; label: string }[] = [
+  { type: 'pouce',          emoji: '👍🏻', label: 'Super' },
   { type: 'coeur',          emoji: '❤️',  label: 'Adore' },
-  { type: 'applaudissement', emoji: '👏', label: 'Bravo' },
-  { type: 'muscle',         emoji: '💪',  label: 'Force' },
-  { type: 'etoile',         emoji: '⭐',  label: 'Super' },
+  { type: 'applaudissement', emoji: '👏🏻', label: 'Bravo' },
+  { type: 'priere',         emoji: '🙏🏻', label: 'Merci' },
+  { type: 'muscle',         emoji: '💪🏻', label: 'Force' },
+  { type: 'fete',           emoji: '🎉',  label: 'Youpi' },
+  { type: 'feu',            emoji: '🔥',  label: 'Feu'   },
 ]
 
 type Comment = {
@@ -40,7 +43,7 @@ const DEMO_POSTS: PostWithMeta[] = [
     link_url: null, link_label: null, edited_at: null,
     created_at: new Date(Date.now() - 5 * 3600000).toISOString(),
     profiles: { first_name: 'Marjorie', avatar_url: null },
-    reaction_counts: { coeur: 12, applaudissement: 8, muscle: 4, etoile: 6 },
+    reaction_counts: { pouce: 5, coeur: 12, applaudissement: 8, priere: 3, muscle: 4, fete: 6, feu: 7 },
     user_reactions: [], comment_count: 4,
   },
   {
@@ -50,7 +53,7 @@ const DEMO_POSTS: PostWithMeta[] = [
     link_url: null, link_label: null, edited_at: null,
     created_at: new Date(Date.now() - 2 * 3600000).toISOString(),
     profiles: { first_name: 'Sophie', avatar_url: null },
-    reaction_counts: { coeur: 5, applaudissement: 3, muscle: 0, etoile: 0 },
+    reaction_counts: { pouce: 3, coeur: 5, applaudissement: 3, priere: 0, muscle: 0, fete: 0, feu: 0 },
     user_reactions: [], comment_count: 2,
   },
 ]
@@ -217,7 +220,7 @@ export default function CommunautePage() {
     const { data: comments } = await supabase.from('post_comments').select('post_id, id').in('post_id', postIds)
     const enriched: PostWithMeta[] = postsData.map((post: CommunityPost) => {
       const pr = reactions?.filter((r: { post_id: string }) => r.post_id === post.id) ?? []
-      const reaction_counts: Record<ReactionType, number> = { coeur: 0, applaudissement: 0, muscle: 0, etoile: 0 }
+      const reaction_counts: Record<ReactionType, number> = { pouce: 0, coeur: 0, applaudissement: 0, priere: 0, muscle: 0, fete: 0, feu: 0 }
       pr.forEach((r: { reaction_type: string }) => { reaction_counts[r.reaction_type as ReactionType]++ })
       const user_reactions = pr.filter((r: { user_id: string }) => r.user_id === profile?.id).map((r: { reaction_type: string }) => r.reaction_type as ReactionType)
       const comment_count = comments?.filter((c: { post_id: string }) => c.post_id === post.id).length ?? 0
@@ -233,7 +236,7 @@ export default function CommunautePage() {
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'community_posts' }, async (payload) => {
         const { data } = await supabase.from('community_posts').select('*, profiles(first_name, avatar_url)').eq('id', payload.new.id).single()
         if (data) {
-          const post: PostWithMeta = { ...data, reaction_counts: { coeur: 0, applaudissement: 0, muscle: 0, etoile: 0 }, user_reactions: [], comment_count: 0 }
+          const post: PostWithMeta = { ...data, reaction_counts: { pouce: 0, coeur: 0, applaudissement: 0, priere: 0, muscle: 0, fete: 0, feu: 0 }, user_reactions: [], comment_count: 0 }
           setPosts(prev => prev.find(p => p.id === post.id) ? prev : [post, ...prev])
         }
       })
@@ -256,7 +259,7 @@ export default function CommunautePage() {
         link_url: postLinkUrl.trim() || null, link_label: postLinkLabel.trim() || null, edited_at: null,
         created_at: new Date().toISOString(),
         profiles: { first_name: profile.first_name, avatar_url: profile.avatar_url },
-        reaction_counts: { coeur: 0, applaudissement: 0, muscle: 0, etoile: 0 }, user_reactions: [], comment_count: 0,
+        reaction_counts: { pouce: 0, coeur: 0, applaudissement: 0, priere: 0, muscle: 0, fete: 0, feu: 0 }, user_reactions: [], comment_count: 0,
       }
       setPosts(prev => [op, ...prev]); resetPostForm(); setIsPosting(false); return
     }
@@ -265,7 +268,7 @@ export default function CommunautePage() {
       is_from_marjorie: isAdmin, link_url: postLinkUrl.trim() || null, link_label: postLinkLabel.trim() || null,
     }).select('*, profiles(first_name, avatar_url)').single()
     if (!error && data) {
-      setPosts(prev => [{ ...data, reaction_counts: { coeur: 0, applaudissement: 0, muscle: 0, etoile: 0 }, user_reactions: [], comment_count: 0 }, ...prev])
+      setPosts(prev => [{ ...data, reaction_counts: { pouce: 0, coeur: 0, applaudissement: 0, priere: 0, muscle: 0, fete: 0, feu: 0 }, user_reactions: [], comment_count: 0 }, ...prev])
       resetPostForm()
     }
     setIsPosting(false)
