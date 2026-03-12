@@ -806,7 +806,7 @@ export default function MessagesPage() {
                         onTouchMove={e => moveGesture(msg.id, e.touches[0].clientX, e.touches[0].clientY)}
                         onTouchEnd={() => endGesture(msg.id, msg.content, isMe)}
                         onMouseEnter={() => setHoverMsg(msg.id)}
-                        onMouseLeave={() => { setHoverMsg(null); if (showReactionFor === msg.id) setShowReactionFor(null) }}
+                        onMouseLeave={() => setHoverMsg(null)}
                         style={{
                           transform: isSwiping ? `translateX(${swipingMsg.deltaX}px)` : undefined,
                           transition: isSwiping ? 'none' : 'transform 0.3s cubic-bezier(0.34,1.56,0.64,1)',
@@ -1007,7 +1007,7 @@ export default function MessagesPage() {
                     animate={{ opacity: 1, scale: 1 }}
                     exit={{ opacity: 0, scale: 0.9 }}
                     style={{ top: msgMenu.y, left: msgMenu.x }}
-                    className="fixed z-50 bg-white rounded-2xl shadow-xl border border-[#EDE5DA] overflow-hidden min-w-[200px]"
+                    className="fixed z-50 bg-white rounded-2xl shadow-xl border border-[#EDE5DA] overflow-hidden min-w-[280px]"
                   >
                     {/* Reaction strip */}
                     <div className="flex items-center gap-0.5 px-2 py-2 border-b border-[#EDE5DA]">
