@@ -924,8 +924,8 @@ export default function CommunautePage() {
 
       {/* ── Fixed compose bar (all screens) ── */}
       {profile && (
-        <div className="fixed bottom-0 left-0 right-0 z-40 bg-[#FAF6F1]/97 backdrop-blur-md border-t border-[#DCCFBF]">
-          <div className="max-w-5xl mx-auto px-3 lg:px-8 pt-2 pb-[68px] lg:pb-4">
+        <div className="fixed bottom-16 lg:bottom-0 left-0 lg:left-60 right-0 z-[55] bg-[#FAF6F1]/97 backdrop-blur-md border-t border-[#DCCFBF]">
+          <div className="max-w-5xl mx-auto px-3 lg:px-8 pt-2 pb-3">
             {replyingTo && (
               <div className="flex items-start gap-2 border-l-2 border-[#C6684F] pl-2 py-1 mb-1.5 bg-[#C6684F]/5 rounded-r-lg">
                 <div className="flex-1 min-w-0">
