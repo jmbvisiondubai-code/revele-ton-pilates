@@ -681,32 +681,13 @@ export default function MessagesPage() {
                               <p className="text-sm font-medium text-[#2C2C2C] truncate">{conv.partner.first_name}</p>
                               <p className="text-xs text-[#A09488] truncate">{conv.lastMessage ?? 'Aucun message'}</p>
                             </div>
-                            <div className="relative flex-shrink-0" onClick={e => e.stopPropagation()}>
-                              <button
-                                onClick={() => setConvMenuId(convMenuId === conv.partner.id ? null : conv.partner.id)}
-                                className="w-7 h-7 rounded-full flex items-center justify-center text-[#A09488] hover:bg-[#EDE5DA] hover:text-[#6B6359] transition-colors"
-                              >
-                                <MoreHorizontal size={15} />
-                              </button>
-                              <AnimatePresence>
-                                {convMenuId === conv.partner.id && (
-                                  <motion.div
-                                    initial={{ opacity: 0, scale: 0.9, y: -4 }}
-                                    animate={{ opacity: 1, scale: 1, y: 0 }}
-                                    exit={{ opacity: 0, scale: 0.9, y: -4 }}
-                                    transition={{ type: 'spring', stiffness: 400, damping: 25 }}
-                                    className="absolute right-0 bottom-full mb-1 z-50 bg-white rounded-xl shadow-lg border border-[#EDE5DA] overflow-hidden min-w-[175px]"
-                                  >
-                                    <button
-                                      onClick={() => unarchiveConversation(conv.partner.id)}
-                                      className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-[#2C2C2C] hover:bg-[#FAF6F1] transition-colors"
-                                    >
-                                      <ArchiveRestore size={14} className="text-[#6B6359]" /> Désarchiver
-                                    </button>
-                                  </motion.div>
-                                )}
-                              </AnimatePresence>
-                            </div>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); unarchiveConversation(conv.partner.id) }}
+                              className="flex-shrink-0 flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-medium text-[#C6684F] bg-[#F2E8DF] hover:bg-[#EBD9CC] transition-colors"
+                            >
+                              <ArchiveRestore size={12} />
+                              Désarchiver
+                            </button>
                           </div>
                         ))}
                       </motion.div>
