@@ -728,6 +728,35 @@ export default function MessagesPage() {
                             </div>
                           )}
                         </div>
+
+                        {/* Mobile 3-dot button — visible on mobile only, to the side of the bubble */}
+                        {(isMe || isAdmin) && (
+                          <button
+                            className={`md:hidden flex-shrink-0 self-end mb-1 w-6 h-6 flex items-center justify-center text-[#C8BFB6] ${isMe ? 'order-first mr-1' : 'order-last ml-1'}`}
+                            onTouchStart={e => e.stopPropagation()}
+                            onTouchEnd={(e) => {
+                              e.stopPropagation()
+                              const rect = e.currentTarget.getBoundingClientRect()
+                              setMsgMenu({
+                                msgId: msg.id, isOwn: isMe, content: msg.content, isPinned: msg.is_pinned ?? false,
+                                x: Math.min(Math.max(rect.left, 8), window.innerWidth - 220),
+                                y: Math.max(rect.top - 290, 20),
+                              })
+                            }}
+                          >
+                            <MoreHorizontal size={14} />
+                          </button>
+                        )}
+
+                        {/* Own avatar (sent messages — right side) */}
+                        {isMe && (
+                          <div className="flex-shrink-0 self-end">
+                            {isLastInGroup && profile
+                              ? <ProfileAvatar p={{ id: myId!, first_name: profile.first_name, avatar_url: profile.avatar_url ?? null }} size={28} />
+                              : <div className="w-7 h-7" />
+                            }
+                          </div>
+                        )}
                       </div>
                     </div>
                   )
