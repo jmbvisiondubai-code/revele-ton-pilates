@@ -104,6 +104,7 @@ export default function MessagesPage() {
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const touchStartRef = useRef<{ x: number; y: number } | null>(null)
   const convTouchRef = useRef<{ startX: number; startY: number } | null>(null)
+  const lastTapRef = useRef<{ msgId: string; time: number } | null>(null)
 
   // ── Load conversations ───────────────────────────────────────────────────
   const loadConversations = useCallback(async () => {
@@ -276,10 +277,19 @@ export default function MessagesPage() {
     }
   }
   function endGesture(msgId: string, content: string, isOwn: boolean) {
+    const wasQuickTap = longPressTimer.current !== null
     if (longPressTimer.current) { clearTimeout(longPressTimer.current); longPressTimer.current = null }
     if (swipingMsg?.msgId === msgId && swipingMsg.deltaX >= 60) {
       const author = isOwn ? (profile?.first_name ?? 'Toi') : (activeProfile?.first_name ?? '')
       setReplyingTo({ id: msgId, preview: content.substring(0, 80), author })
+    } else if (wasQuickTap) {
+      const now = Date.now()
+      if (lastTapRef.current?.msgId === msgId && now - lastTapRef.current.time < 300) {
+        lastTapRef.current = null
+        toggleReaction(msgId, 'coeur')
+      } else {
+        lastTapRef.current = { msgId, time: now }
+      }
     }
     setSwipingMsg(null)
     touchStartRef.current = null
@@ -801,6 +811,7 @@ export default function MessagesPage() {
                       <div
                         className={`flex items-end gap-1.5 ${isMe ? 'justify-end' : 'justify-start'} mb-0.5 relative select-none group`}
                         onContextMenu={e => e.preventDefault()}
+                        onDoubleClick={() => toggleReaction(msg.id, 'coeur')}
                         onTouchStart={e => startGesture(msg.id, isMe, msg.content, msg.is_pinned ?? false, e.touches[0].clientX, e.touches[0].clientY)}
                         onTouchMove={e => moveGesture(msg.id, e.touches[0].clientX, e.touches[0].clientY)}
                         onTouchEnd={() => endGesture(msg.id, msg.content, isMe)}
