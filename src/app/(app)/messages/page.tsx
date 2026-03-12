@@ -37,14 +37,14 @@ type MsgMenu = { msgId: string; isOwn: boolean; content: string; isPinned: boole
 type PendingFile = { file: File; preview: string | null; isImage: boolean }
 
 // ── Reaction picker ───────────────────────────────────────────────────────────
-function ReactionPicker({ onReact }: { onReact: (type: ReactionType) => void }) {
+function ReactionPicker({ onReact, align }: { onReact: (type: ReactionType) => void; align: 'left' | 'right' }) {
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.85, y: 4 }}
       animate={{ opacity: 1, scale: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.85, y: 4 }}
       transition={{ type: 'spring', stiffness: 400, damping: 25 }}
-      className="absolute bottom-full mb-1 left-1/2 -translate-x-1/2 flex items-center gap-0.5 bg-white rounded-full shadow-lg border border-[#EDE5DA] px-2 py-1 z-50"
+      className={`absolute bottom-full mb-1 flex items-center gap-0.5 bg-white rounded-full shadow-lg border border-[#EDE5DA] px-2 py-1 z-50 ${align === 'right' ? 'right-0' : 'left-0'}`}
     >
       {REACTIONS.map(r => (
         <button
@@ -262,7 +262,7 @@ export default function MessagesPage() {
     touchStartRef.current = { x, y }
     longPressTimer.current = setTimeout(() => {
       longPressTimer.current = null
-      setMsgMenu({ msgId, isOwn, content, isPinned, x: Math.min(x, window.innerWidth - 220), y: Math.min(y, window.innerHeight - 300) })
+      setMsgMenu({ msgId, isOwn, content, isPinned, x: Math.min(x, window.innerWidth - 295), y: Math.min(y, window.innerHeight - 300) })
     }, 500)
   }
   function moveGesture(msgId: string, x: number, y: number) {
@@ -830,7 +830,7 @@ export default function MessagesPage() {
                               <Smile size={13} className="text-[#6B6359]" />
                             </button>
                             <AnimatePresence>
-                              {showReactionFor === msg.id && <ReactionPicker onReact={(t) => toggleReaction(msg.id, t)} />}
+                              {showReactionFor === msg.id && <ReactionPicker onReact={(t) => toggleReaction(msg.id, t)} align={isMe ? 'right' : 'left'} />}
                             </AnimatePresence>
                           </div>
                           {/* Reply */}
@@ -980,7 +980,7 @@ export default function MessagesPage() {
                               const rect = e.currentTarget.getBoundingClientRect()
                               setMsgMenu({
                                 msgId: msg.id, isOwn: isMe, content: msg.content, isPinned: msg.is_pinned ?? false,
-                                x: Math.min(Math.max(rect.left, 8), window.innerWidth - 220),
+                                x: Math.min(Math.max(rect.left, 8), window.innerWidth - 295),
                                 y: Math.max(rect.top - 290, 20),
                               })
                             }}
