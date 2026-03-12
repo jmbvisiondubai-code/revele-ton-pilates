@@ -107,25 +107,39 @@ export default function MessagesPage() {
 
   // ── Load conversations ───────────────────────────────────────────────────
   const loadConversations = useCallback(async () => {
-    if (!myId || !isSupabaseConfigured()) return
+    if (!isSupabaseConfigured()) return
     const supabase = createClient()
+
+    // If profile not yet in store, fetch it first
+    let resolvedId = myId
+    let resolvedIsAdmin = isAdmin
+    if (!resolvedId) {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) { setLoadingConvs(false); return }
+      const { data: p } = await supabase.from('profiles').select('*').eq('id', user.id).single()
+      if (!p) { setLoadingConvs(false); return }
+      setProfile(p)
+      resolvedId = p.id
+      resolvedIsAdmin = p.is_admin ?? false
+    }
+    if (!resolvedId) { setLoadingConvs(false); return }
     const { data: dms } = await supabase
       .from('direct_messages')
       .select('sender_id, receiver_id, content, created_at, read_at')
-      .or(`sender_id.eq.${myId},receiver_id.eq.${myId}`)
+      .or(`sender_id.eq.${resolvedId},receiver_id.eq.${resolvedId}`)
       .order('created_at', { ascending: false })
 
     const partnerMap = new Map<string, { lastMessage: string; lastAt: string; unreadCount: number }>()
     for (const dm of (dms ?? [])) {
-      const partnerId = dm.sender_id === myId ? dm.receiver_id : dm.sender_id
+      const partnerId = dm.sender_id === resolvedId ? dm.receiver_id : dm.sender_id
       if (!partnerMap.has(partnerId)) {
         partnerMap.set(partnerId, { lastMessage: dm.content, lastAt: dm.created_at, unreadCount: 0 })
       }
-      if (dm.receiver_id === myId && !dm.read_at) partnerMap.get(partnerId)!.unreadCount++
+      if (dm.receiver_id === resolvedId && !dm.read_at) partnerMap.get(partnerId)!.unreadCount++
     }
 
     let profiles: ConvProfile[] = []
-    if (isAdmin) {
+    if (resolvedIsAdmin) {
       const { data } = await supabase.from('profiles').select('id, first_name, avatar_url').eq('is_admin', false).order('first_name')
       profiles = data ?? []
     } else {
@@ -135,11 +149,11 @@ export default function MessagesPage() {
 
     // Fetch archived conversations (admin only)
     const archivedSet = new Set<string>()
-    if (isAdmin) {
+    if (resolvedIsAdmin) {
       const { data: archived } = await supabase
         .from('dm_archived_conversations')
         .select('client_id')
-        .eq('admin_id', myId)
+        .eq('admin_id', resolvedId)
       ;(archived ?? []).forEach(a => archivedSet.add(a.client_id))
     }
 
@@ -159,7 +173,7 @@ export default function MessagesPage() {
     })
     setConvs(result)
     setLoadingConvs(false)
-  }, [myId, isAdmin])
+  }, [myId, isAdmin]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { loadConversations() }, [loadConversations])
 
@@ -176,18 +190,6 @@ export default function MessagesPage() {
       else { setActiveId(null); setShowList(true); sessionStorage.removeItem('dm_active_conv') }
     }
   }, [convs]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  // ── Self-load profile if Zustand store is empty (page refresh) ──────────
-  useEffect(() => {
-    if (profile || !isSupabaseConfigured()) return
-    const supabase = createClient()
-    supabase.auth.getUser().then(async ({ data: { user } }) => {
-      if (!user) { setLoadingConvs(false); return }
-      const { data } = await supabase.from('profiles').select('*').eq('id', user.id).single()
-      if (data) setProfile(data)
-      else setLoadingConvs(false)
-    })
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Load messages ────────────────────────────────────────────────────────
   const loadMessages = useCallback(async (partnerId: string) => {
