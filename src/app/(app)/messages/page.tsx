@@ -37,20 +37,21 @@ type MsgMenu = { msgId: string; isOwn: boolean; content: string; isPinned: boole
 type PendingFile = { file: File; preview: string | null; isImage: boolean }
 
 // ── Reaction picker ───────────────────────────────────────────────────────────
-function ReactionPicker({ onReact, align }: { onReact: (type: ReactionType) => void; align: 'left' | 'right' }) {
+function ReactionPicker({ onReact, align, userReactions }: { onReact: (type: ReactionType) => void; align: 'left' | 'right'; userReactions: ReactionType[] }) {
   return (
     <motion.div
-      initial={{ opacity: 0, scale: 0.85, y: 4 }}
+      initial={{ opacity: 0, scale: 0.8, y: -4 }}
       animate={{ opacity: 1, scale: 1, y: 0 }}
-      exit={{ opacity: 0, scale: 0.85, y: 4 }}
-      transition={{ type: 'spring', stiffness: 400, damping: 25 }}
-      className={`absolute bottom-full mb-1 flex items-center gap-0.5 bg-white rounded-full shadow-lg border border-[#EDE5DA] px-2 py-1 z-50 ${align === 'right' ? 'right-0' : 'left-0'}`}
+      exit={{ opacity: 0, scale: 0.8, y: -4 }}
+      transition={{ type: 'spring', stiffness: 400, damping: 28 }}
+      className={`absolute top-9 z-50 bg-white rounded-2xl shadow-xl border border-[#DCCFBF] px-2 py-2 flex gap-1 ${align === 'right' ? 'right-0' : 'left-0'}`}
     >
       {REACTIONS.map(r => (
         <button
           key={r.type}
           onClick={() => onReact(r.type)}
-          className="text-xl w-9 h-9 flex items-center justify-center rounded-full hover:bg-[#F2E8DF] transition-colors active:scale-110"
+          className={`text-xl hover:scale-125 transition-transform p-0.5 rounded ${userReactions.includes(r.type) ? 'ring-2 ring-[#C6684F]/40' : ''}`}
+          title={r.type}
         >
           {r.emoji}
         </button>
@@ -321,17 +322,11 @@ export default function MessagesPage() {
     setShowReactionFor(null)
     setMsgMenu(null)
     const supabase = createClient()
-    await supabase.from('direct_message_reactions').delete().eq('message_id', messageId).eq('user_id', myId)
+    if (prevType) {
+      await supabase.from('direct_message_reactions').delete().eq('message_id', messageId).eq('user_id', myId)
+    }
     if (!isSame) {
       await supabase.from('direct_message_reactions').insert({ message_id: messageId, user_id: myId, reaction_type: type })
-    }
-    // Reconcile counts from DB to prevent any drift
-    const { data: freshRxns } = await supabase.from('direct_message_reactions').select('user_id, reaction_type').eq('message_id', messageId)
-    if (freshRxns) {
-      const counts = { ...EMPTY_REACTIONS }
-      freshRxns.forEach(r => { if (r.reaction_type in counts) counts[r.reaction_type as ReactionType]++ })
-      const myReactions = freshRxns.filter(r => r.user_id === myId).map(r => r.reaction_type as ReactionType)
-      setMessages(prev => prev.map(m => m.id === messageId ? { ...m, reaction_counts: counts, user_reactions: myReactions } : m))
     }
   }
 
@@ -858,7 +853,7 @@ export default function MessagesPage() {
                               <Smile size={13} className="text-[#6B6359]" />
                             </button>
                             <AnimatePresence>
-                              {showReactionFor === msg.id && <ReactionPicker onReact={(t) => toggleReaction(msg.id, t)} align={isMe ? 'right' : 'left'} />}
+                              {showReactionFor === msg.id && <ReactionPicker onReact={(t) => { toggleReaction(msg.id, t); setShowReactionFor(null) }} align={isMe ? 'right' : 'left'} userReactions={msg.user_reactions} />}
                             </AnimatePresence>
                           </div>
                           {/* Reply */}
@@ -981,27 +976,17 @@ export default function MessagesPage() {
                             </div>
                           )}
 
-                          {/* Reaction counts */}
+                          {/* Reaction badges — community style */}
                           {totalReactions > 0 && (
-                            <div className={`flex flex-wrap gap-1 mt-1 ${isMe ? 'justify-end' : 'justify-start'}`}>
-                              {REACTIONS.filter(r => (msg.reaction_counts[r.type] ?? 0) > 0).map(r => {
-                                const isMine = msg.user_reactions.includes(r.type)
-                                return (
-                                  <button
-                                    key={r.type}
-                                    onClick={() => toggleReaction(msg.id, r.type)}
-                                    className={`flex items-center gap-0.5 text-[11px] px-1.5 py-0.5 rounded-full border transition-colors ${
-                                      isMine
-                                        ? 'bg-[#C6684F]/10 border-[#C6684F]/30 text-[#C6684F]'
-                                        : 'bg-white border-[#EDE5DA] text-[#6B6359] hover:bg-[#F2E8DF]'
-                                    }`}
-                                  >
-                                    <span>{r.emoji}</span>
-                                    <span className="font-medium">{msg.reaction_counts[r.type]}</span>
-                                  </button>
-                                )
-                              })}
-                            </div>
+                            <button
+                              onClick={() => toggleReaction(msg.id, msg.user_reactions[0] ?? REACTIONS.find(r => msg.reaction_counts[r.type] > 0)!.type)}
+                              className={`flex items-center gap-0.5 mt-1 ${isMe ? 'self-end' : 'self-start'}`}
+                            >
+                              {REACTIONS.filter(r => (msg.reaction_counts[r.type] ?? 0) > 0).slice(0, 3).map(r => (
+                                <span key={r.type} className="text-xs leading-none">{r.emoji}</span>
+                              ))}
+                              <span className="text-[10px] text-[#6B6359] ml-0.5 font-medium">{totalReactions}</span>
+                            </button>
                           )}
                         </div>
 
@@ -1046,14 +1031,21 @@ export default function MessagesPage() {
                     style={{ top: msgMenu.y, left: msgMenu.x }}
                     className="fixed z-50 bg-white rounded-2xl shadow-xl border border-[#EDE5DA] overflow-hidden min-w-[280px]"
                   >
-                    {/* Reaction strip */}
-                    <div className="flex items-center gap-0.5 px-2 py-2 border-b border-[#EDE5DA]">
-                      {REACTIONS.map(r => (
-                        <button key={r.type} onClick={() => toggleReaction(msgMenu.msgId, r.type)}
-                          className="text-xl w-9 h-9 flex items-center justify-center rounded-full hover:bg-[#F2E8DF] active:scale-110 transition-all">
-                          {r.emoji}
-                        </button>
-                      ))}
+                    {/* Reaction strip — community style */}
+                    <div className="flex items-center justify-around gap-1 px-3 py-3 border-b border-[#EDE5DA]">
+                      {REACTIONS.map(r => {
+                        const msgObj = messages.find(m => m.id === msgMenu.msgId)
+                        const selected = msgObj?.user_reactions.includes(r.type) ?? false
+                        return (
+                          <button key={r.type}
+                            onClick={() => { toggleReaction(msgMenu.msgId, r.type); setMsgMenu(null) }}
+                            className={`relative text-[26px] transition-transform active:scale-110 ${selected ? '-translate-y-1.5 drop-shadow-md' : ''}`}
+                          >
+                            {r.emoji}
+                            {selected && <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 bg-[#C6684F] rounded-full" />}
+                          </button>
+                        )
+                      })}
                     </div>
                     {/* Actions */}
                     <div className="py-1">
