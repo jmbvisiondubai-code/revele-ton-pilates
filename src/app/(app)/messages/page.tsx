@@ -727,14 +727,16 @@ export default function MessagesPage() {
                             {m.content || (m.image_url ? '📷 Photo' : m.file_name ? `📎 ${m.file_name}` : '')}
                           </p>
                         </button>
-                        {/* PinOff button */}
-                        <button
-                          onClick={() => togglePin(m.id, true)}
-                          title="Désépingler"
-                          className="flex-shrink-0 p-1.5 rounded-full text-[#C6684F]/40 hover:text-[#C6684F] hover:bg-[#C6684F]/10 transition-colors"
-                        >
-                          <PinOff size={14} />
-                        </button>
+                        {/* PinOff button — admin only */}
+                        {isAdmin && (
+                          <button
+                            onClick={() => togglePin(m.id, true)}
+                            title="Désépingler"
+                            className="flex-shrink-0 p-1.5 rounded-full text-[#C6684F]/40 hover:text-[#C6684F] hover:bg-[#C6684F]/10 transition-colors"
+                          >
+                            <PinOff size={14} />
+                          </button>
+                        )}
                       </div>
                     </div>
                   )
