@@ -107,12 +107,12 @@ h1, h2, h3, h4 {
 
 /* Safe area padding for mobile */
 .safe-bottom {
-  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 8px);
 }
 
 /* Bottom padding to clear the fixed compose bar + bottom nav on mobile, including iOS safe area */
 .pb-compose {
-  padding-bottom: calc(8rem + env(safe-area-inset-bottom, 0px));
+  padding-bottom: calc(8rem + env(safe-area-inset-bottom, 0px) + 8px);
 }
 @media (min-width: 1024px) {
   .pb-compose {

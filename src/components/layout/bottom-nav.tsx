@@ -94,7 +94,7 @@ export function BottomNav() {
 
   return (
     <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-bg-card/90 backdrop-blur-lg border-t border-border-light safe-bottom">
-      <div className="max-w-lg mx-auto flex items-center justify-around px-1 py-2">
+      <div className="max-w-lg mx-auto flex items-center justify-around px-1 py-3">
         {navItems.map((item) => {
           const isActive = pathname === item.href || pathname.startsWith(item.href + '/')
           const Icon = item.icon
