@@ -110,9 +110,14 @@ h1, h2, h3, h4 {
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
-/* Bottom padding to clear the fixed compose bar, including iOS safe area */
+/* Bottom padding to clear the fixed compose bar + bottom nav on mobile, including iOS safe area */
 .pb-compose {
-  padding-bottom: calc(4rem + env(safe-area-inset-bottom, 0px));
+  padding-bottom: calc(8rem + env(safe-area-inset-bottom, 0px));
+}
+@media (min-width: 1024px) {
+  .pb-compose {
+    padding-bottom: calc(4rem + env(safe-area-inset-bottom, 0px));
+  }
 }
 
 /* Animations */
