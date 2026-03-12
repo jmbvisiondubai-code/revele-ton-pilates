@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { MessageCircle, Send, Pin, PinOff, MoreHorizontal, Pencil, Trash2, Check, X, Link as LinkIcon, Image as ImageIcon, ExternalLink } from 'lucide-react'
+import { Heart, MessageCircle, Send, Pin, PinOff, MoreHorizontal, Pencil, Trash2, Check, X, Link as LinkIcon, Image as ImageIcon, ExternalLink } from 'lucide-react'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/client'
 import { useAuthStore } from '@/stores/auth-store'
 import { Card, Avatar, Button } from '@/components/ui'
@@ -153,7 +153,7 @@ function ReactionButton({ post, myId, onReact, isOwn }: {
         )}
       </AnimatePresence>
 
-      {/* Minimal reaction trigger — just an emoji, no border when idle */}
+      {/* Heart button — tap = coeur, hold = picker */}
       <button
         onMouseDown={handlePressStart}
         onMouseUp={handlePressEnd}
@@ -161,10 +161,10 @@ function ReactionButton({ post, myId, onReact, isOwn }: {
         onTouchStart={handlePressStart}
         onTouchEnd={handlePressEnd}
         onMouseEnter={() => { timerRef.current = setTimeout(() => setOpen(true), 600) }}
-        className={`text-sm select-none transition-transform active:scale-125 ${myReaction ? 'opacity-100' : 'opacity-50 hover:opacity-80'}`}
+        className={`select-none transition-all active:scale-125 ${post.user_reactions.includes('coeur') ? 'text-[#C6684F]' : 'text-[#DCCFBF] hover:text-[#C6684F]/60'}`}
         title="Réagir (maintenir pour choisir)"
       >
-        {myReaction ? REACTIONS.find(r => r.type === myReaction)?.emoji : '🤍'}
+        <Heart size={14} className={post.user_reactions.includes('coeur') ? 'fill-[#C6684F]' : ''} />
       </button>
     </div>
   )
