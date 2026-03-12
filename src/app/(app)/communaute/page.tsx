@@ -28,9 +28,12 @@ type Comment = {
   profiles?: { first_name: string; avatar_url: string | null }
 }
 
+type ReactionUser = { user_id: string; reaction_type: ReactionType; first_name: string }
+
 type PostWithMeta = CommunityPost & {
   reaction_counts: Record<ReactionType, number>
   user_reactions: ReactionType[]
+  reaction_users: ReactionUser[]
   comment_count: number
   comments?: Comment[]
 }
@@ -44,7 +47,7 @@ const DEMO_POSTS: PostWithMeta[] = [
     created_at: new Date(Date.now() - 5 * 3600000).toISOString(),
     profiles: { first_name: 'Marjorie', avatar_url: null },
     reaction_counts: { pouce: 5, coeur: 12, applaudissement: 8, priere: 3, muscle: 4, fete: 6, feu: 7 },
-    user_reactions: [], comment_count: 4,
+    user_reactions: [], reaction_users: [], comment_count: 4,
   },
   {
     id: 'demo-1', user_id: 'demo',
@@ -54,7 +57,7 @@ const DEMO_POSTS: PostWithMeta[] = [
     created_at: new Date(Date.now() - 2 * 3600000).toISOString(),
     profiles: { first_name: 'Sophie', avatar_url: null },
     reaction_counts: { pouce: 3, coeur: 5, applaudissement: 3, priere: 0, muscle: 0, fete: 0, feu: 0 },
-    user_reactions: [], comment_count: 2,
+    user_reactions: [], reaction_users: [], comment_count: 2,
   },
 ]
 
@@ -193,7 +196,7 @@ export default function CommunautePage() {
   const [editingComment, setEditingComment] = useState<string | null>(null)
   const [editCommentContent, setEditCommentContent] = useState('')
   const [commentMenu, setCommentMenu] = useState<string | null>(null)
-  // pinnedExpanded removed — pinned messages are always visible
+  const [openReactions, setOpenReactions] = useState<string | null>(null)
 
   const { profile } = useAuthStore()
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
@@ -216,15 +219,18 @@ export default function CommunautePage() {
       .limit(50)
     if (!postsData) return
     const postIds = postsData.map((p: CommunityPost) => p.id)
-    const { data: reactions } = await supabase.from('post_reactions').select('post_id, reaction_type, user_id').in('post_id', postIds)
+    const { data: reactions } = await supabase.from('post_reactions').select('post_id, reaction_type, user_id, profiles(first_name)').in('post_id', postIds)
     const { data: comments } = await supabase.from('post_comments').select('post_id, id').in('post_id', postIds)
     const enriched: PostWithMeta[] = postsData.map((post: CommunityPost) => {
       const pr = reactions?.filter((r: { post_id: string }) => r.post_id === post.id) ?? []
       const reaction_counts: Record<ReactionType, number> = { pouce: 0, coeur: 0, applaudissement: 0, priere: 0, muscle: 0, fete: 0, feu: 0 }
       pr.forEach((r: { reaction_type: string }) => { reaction_counts[r.reaction_type as ReactionType]++ })
       const user_reactions = pr.filter((r: { user_id: string }) => r.user_id === profile?.id).map((r: { reaction_type: string }) => r.reaction_type as ReactionType)
+      const reaction_users: ReactionUser[] = pr.map((r: { reaction_type: string; user_id: string; profiles?: { first_name: string } | null }) => ({
+        user_id: r.user_id, reaction_type: r.reaction_type as ReactionType, first_name: r.profiles?.first_name ?? 'Membre',
+      }))
       const comment_count = comments?.filter((c: { post_id: string }) => c.post_id === post.id).length ?? 0
-      return { ...post, reaction_counts, user_reactions, comment_count }
+      return { ...post, reaction_counts, user_reactions, reaction_users, comment_count }
     })
     setPosts(enriched)
   }
@@ -236,7 +242,7 @@ export default function CommunautePage() {
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'community_posts' }, async (payload) => {
         const { data } = await supabase.from('community_posts').select('*, profiles(first_name, avatar_url)').eq('id', payload.new.id).single()
         if (data) {
-          const post: PostWithMeta = { ...data, reaction_counts: { pouce: 0, coeur: 0, applaudissement: 0, priere: 0, muscle: 0, fete: 0, feu: 0 }, user_reactions: [], comment_count: 0 }
+          const post: PostWithMeta = { ...data, reaction_counts: { pouce: 0, coeur: 0, applaudissement: 0, priere: 0, muscle: 0, fete: 0, feu: 0 }, user_reactions: [], reaction_users: [], comment_count: 0 }
           setPosts(prev => prev.find(p => p.id === post.id) ? prev : [post, ...prev])
         }
       })
@@ -259,7 +265,7 @@ export default function CommunautePage() {
         link_url: postLinkUrl.trim() || null, link_label: postLinkLabel.trim() || null, edited_at: null,
         created_at: new Date().toISOString(),
         profiles: { first_name: profile.first_name, avatar_url: profile.avatar_url },
-        reaction_counts: { pouce: 0, coeur: 0, applaudissement: 0, priere: 0, muscle: 0, fete: 0, feu: 0 }, user_reactions: [], comment_count: 0,
+        reaction_counts: { pouce: 0, coeur: 0, applaudissement: 0, priere: 0, muscle: 0, fete: 0, feu: 0 }, user_reactions: [], reaction_users: [], comment_count: 0,
       }
       setPosts(prev => [op, ...prev]); resetPostForm(); setIsPosting(false); return
     }
@@ -268,7 +274,7 @@ export default function CommunautePage() {
       is_from_marjorie: isAdmin, link_url: postLinkUrl.trim() || null, link_label: postLinkLabel.trim() || null,
     }).select('*, profiles(first_name, avatar_url)').single()
     if (!error && data) {
-      setPosts(prev => [{ ...data, reaction_counts: { pouce: 0, coeur: 0, applaudissement: 0, priere: 0, muscle: 0, fete: 0, feu: 0 }, user_reactions: [], comment_count: 0 }, ...prev])
+      setPosts(prev => [{ ...data, reaction_counts: { pouce: 0, coeur: 0, applaudissement: 0, priere: 0, muscle: 0, fete: 0, feu: 0 }, user_reactions: [], reaction_users: [], comment_count: 0 }, ...prev])
       resetPostForm()
     }
     setIsPosting(false)
@@ -305,16 +311,24 @@ export default function CommunautePage() {
     if (!profile || !isSupabaseConfigured()) return
     const post = posts.find(p => p.id === postId)
     if (!post) return
-    const hasReacted = post.user_reactions.includes(type)
+    const existing = post.user_reactions[0] as ReactionType | undefined
+    const isSame = existing === type
+    // Optimistic update
     setPosts(prev => prev.map(p => {
       if (p.id !== postId) return p
       const newCounts = { ...p.reaction_counts }
-      newCounts[type] = hasReacted ? Math.max(0, newCounts[type] - 1) : newCounts[type] + 1
-      return { ...p, reaction_counts: newCounts, user_reactions: hasReacted ? p.user_reactions.filter(r => r !== type) : [...p.user_reactions, type] }
+      if (existing) newCounts[existing] = Math.max(0, newCounts[existing] - 1)
+      if (!isSame) newCounts[type] = newCounts[type] + 1
+      const newReactionUsers = p.reaction_users.filter(u => u.user_id !== profile.id)
+      if (!isSame) newReactionUsers.push({ user_id: profile.id, reaction_type: type, first_name: profile.first_name })
+      return { ...p, reaction_counts: newCounts, user_reactions: isSame ? [] : [type], reaction_users: newReactionUsers }
     }))
-    if (hasReacted) {
-      await supabase.from('post_reactions').delete().eq('user_id', profile.id).eq('post_id', postId).eq('reaction_type', type)
-    } else {
+    // DB: remove any existing reaction first
+    if (existing) {
+      await supabase.from('post_reactions').delete().eq('user_id', profile.id).eq('post_id', postId)
+    }
+    // DB: add new if not toggling off
+    if (!isSame) {
       await supabase.from('post_reactions').insert({ user_id: profile.id, post_id: postId, reaction_type: type })
     }
   }, [posts, profile, supabase]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -484,17 +498,39 @@ export default function CommunautePage() {
                       {/* Reactions on pinned */}
                       <div className="flex items-center gap-3 mt-2">
                         <ReactionButton post={post} myId={myId} onReact={toggleReaction} isOwn={false} />
+                        {Object.values(post.reaction_counts).reduce((a,b)=>a+b,0) > 0 && (
+                          <button onClick={() => setOpenReactions(openReactions === post.id ? null : post.id)}
+                            className="flex items-center gap-0.5">
+                            {REACTIONS.filter(r => post.reaction_counts[r.type] > 0).slice(0,3).map(r => (
+                              <span key={r.type} className="text-xs leading-none">{r.emoji}</span>
+                            ))}
+                            <span className="text-[10px] text-[#6B6359] ml-0.5 font-medium">
+                              {Object.values(post.reaction_counts).reduce((a,b)=>a+b,0)}
+                            </span>
+                          </button>
+                        )}
                         <button onClick={() => loadComments(post.id)}
-                          className={`text-sm transition-all select-none ${openComments === post.id ? 'opacity-100' : 'opacity-50 hover:opacity-80'}`}>
+                          className={`text-sm transition-all select-none ${openComments === post.id ? 'text-[#C6684F]' : 'text-[#DCCFBF] hover:text-[#C6684F]/60'}`}>
                           <MessageCircle size={14} />
                         </button>
                         {post.comment_count > 0 && (
                           <span className="text-[10px] text-[#6B6359]">{post.comment_count}</span>
                         )}
-                        <div className="ml-auto">
-                          <ReactionBadge post={post} />
-                        </div>
                       </div>
+                      {openReactions === post.id && post.reaction_users.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5 mt-2">
+                          {REACTIONS.filter(r => post.reaction_counts[r.type] > 0).map(r => {
+                            const names = post.reaction_users.filter(u => u.reaction_type === r.type)
+                              .map(u => u.user_id === myId ? 'Toi' : u.first_name)
+                            if (!names.length) return null
+                            return (
+                              <div key={r.type} className="flex items-center gap-1 bg-white/80 border border-[#DCCFBF] rounded-full px-2 py-0.5 text-[10px] text-[#6B6359]">
+                                <span>{r.emoji}</span><span>{names.join(', ')}</span>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      )}
                     </div>
                     {isAdmin && (
                       <button onClick={() => togglePin(post.id, true)}
@@ -680,24 +716,49 @@ export default function CommunautePage() {
                                   </button>
                                 )}
                               </div>
-                              {/* Floating reaction badge (Facebook Messenger style) */}
-                              <div className={`absolute -bottom-2.5 ${isOwn ? 'left-2' : 'right-2'}`}>
-                                <ReactionBadge post={post} />
-                              </div>
                             </div>
                           )}
 
                           {/* Reaction + Comment actions (minimal, under bubble) */}
                           <div className={`flex items-center gap-3 mt-0.5 ${isOwn ? 'flex-row-reverse' : 'flex-row'}`}>
                             <ReactionButton post={post} myId={myId} onReact={toggleReaction} isOwn={isOwn} />
+                            {Object.values(post.reaction_counts).reduce((a,b)=>a+b,0) > 0 && (
+                              <button onClick={() => setOpenReactions(openReactions === post.id ? null : post.id)}
+                                className="flex items-center gap-0.5">
+                                {REACTIONS.filter(r => post.reaction_counts[r.type] > 0).slice(0,3).map(r => (
+                                  <span key={r.type} className="text-xs leading-none">{r.emoji}</span>
+                                ))}
+                                <span className="text-[10px] text-[#6B6359] ml-0.5 font-medium">
+                                  {Object.values(post.reaction_counts).reduce((a,b)=>a+b,0)}
+                                </span>
+                              </button>
+                            )}
                             <button onClick={() => loadComments(post.id)}
-                              className={`text-sm transition-all select-none ${openComments === post.id ? 'opacity-100' : 'opacity-50 hover:opacity-80'}`}>
+                              className={`text-sm transition-all select-none ${openComments === post.id ? 'text-[#C6684F]' : 'text-[#DCCFBF] hover:text-[#C6684F]/60'}`}>
                               <MessageCircle size={14} />
                             </button>
                             {post.comment_count > 0 && (
                               <span className="text-[10px] text-[#6B6359]">{post.comment_count}</span>
                             )}
                           </div>
+                          {/* Who reacted */}
+                          <AnimatePresence>
+                            {openReactions === post.id && post.reaction_users.length > 0 && (
+                              <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
+                                className="flex flex-wrap gap-1.5 mt-1">
+                                {REACTIONS.filter(r => post.reaction_counts[r.type] > 0).map(r => {
+                                  const names = post.reaction_users.filter(u => u.reaction_type === r.type)
+                                    .map(u => u.user_id === myId ? 'Toi' : u.first_name)
+                                  if (!names.length) return null
+                                  return (
+                                    <div key={r.type} className="flex items-center gap-1 bg-white border border-[#DCCFBF] rounded-full px-2 py-0.5 text-[10px] text-[#6B6359]">
+                                      <span>{r.emoji}</span><span>{names.join(', ')}</span>
+                                    </div>
+                                  )
+                                })}
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
                         </div>
                       </div>
 
