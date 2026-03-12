@@ -91,6 +91,7 @@ export default function MessagesPage() {
 
   // Refs
   const messagesEndRef  = useRef<HTMLDivElement>(null)
+  const msgListRef      = useRef<HTMLDivElement>(null)
   const textareaRef     = useRef<HTMLTextAreaElement>(null)
   const fileInputRef    = useRef<HTMLInputElement>(null)
   const longPressTimer  = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -247,6 +248,20 @@ export default function MessagesPage() {
 
   // Auto-scroll
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages])
+
+  // Non-passive touchmove on messages list to allow preventDefault on horizontal swipe (iOS fix)
+  useEffect(() => {
+    const el = msgListRef.current
+    if (!el) return
+    function onTouchMove(e: TouchEvent) {
+      if (!touchStartRef.current) return
+      const dx = Math.abs(e.touches[0].clientX - touchStartRef.current.x)
+      const dy = Math.abs(e.touches[0].clientY - touchStartRef.current.y)
+      if (dx > dy && dx > 8) e.preventDefault()
+    }
+    el.addEventListener('touchmove', onTouchMove, { passive: false })
+    return () => el.removeEventListener('touchmove', onTouchMove)
+  }, [])
 
   // ── Scroll to message (reply navigation) ────────────────────────────────
   function scrollToMsg(msgId: string) {
@@ -701,7 +716,7 @@ export default function MessagesPage() {
             )}
 
             {/* Messages list */}
-            <div className="flex-1 overflow-y-auto px-4 py-4 space-y-1" style={{ background: 'linear-gradient(to bottom, #FAF6F1, #F5EFE8)' }}>
+            <div ref={msgListRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-1" style={{ background: 'linear-gradient(to bottom, #FAF6F1, #F5EFE8)' }}>
               {loadingMsgs ? (
                 <div className="flex items-center justify-center py-10">
                   <div className="w-5 h-5 border-2 border-[#C6684F] border-t-transparent rounded-full animate-spin" />
