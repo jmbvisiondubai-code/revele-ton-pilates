@@ -5,7 +5,29 @@ import { createClient, isSupabaseConfigured } from '@/lib/supabase/client'
 import { Card } from '@/components/ui'
 import { Users, Clock, Trophy, Star, X, Plus, ExternalLink, ChevronRight } from 'lucide-react'
 import { formatDuration, LEVEL_LABELS } from '@/lib/utils'
-import type { Course, Recommendation } from '@/types/database'
+import type { Recommendation } from '@/types/database'
+
+const VOD_CATEGORIES = [
+  { label: 'Programmes', url: 'https://vod.marjoriejamin.com/categories/programmespilates' },
+  { label: 'Nouveaux cours', url: 'https://vod.marjoriejamin.com/categories/nouveauxcours' },
+  { label: 'Full Body', url: 'https://vod.marjoriejamin.com/categories/fullbody' },
+  { label: 'Reformer', url: 'https://vod.marjoriejamin.com/categories/reformer' },
+  { label: 'Pilates Perfect Time (16 à 30 min)', url: 'https://vod.marjoriejamin.com/categories/pilatesperfecttime' },
+  { label: 'Quick Pilates (15 min max)', url: 'https://vod.marjoriejamin.com/categories/quickpilates' },
+  { label: 'Pilates Sessions Longues (35 min à 1h)', url: 'https://vod.marjoriejamin.com/categories/pilatessessionslongues' },
+  { label: 'Energy (re)boost & Vitality', url: 'https://vod.marjoriejamin.com/categories/energy-reboost-vitality-pilates' },
+  { label: 'Intense & Dynamic', url: 'https://vod.marjoriejamin.com/categories/intense-dynamic-pilates' },
+  { label: 'Détente & Stretching', url: 'https://vod.marjoriejamin.com/categories/detente-stretching' },
+  { label: 'Basic Pilates — Débutant', url: 'https://vod.marjoriejamin.com/categories/basicpilates' },
+  { label: 'Avec Accessoires / Petit matériel Pilates', url: 'https://vod.marjoriejamin.com/categories/pilatesaccessoires' },
+  { label: 'Souplesse', url: 'https://vod.marjoriejamin.com/categories/souplesse' },
+  { label: 'Prénatal', url: 'https://vod.marjoriejamin.com/categories/prenatal' },
+  { label: 'Postnatal', url: 'https://vod.marjoriejamin.com/categories/postnatal' },
+  { label: 'Abdos', url: 'https://vod.marjoriejamin.com/categories/abdos' },
+  { label: 'Bas du corps', url: 'https://vod.marjoriejamin.com/categories/basducorps' },
+  { label: 'Haut du corps', url: 'https://vod.marjoriejamin.com/categories/hautducorps' },
+  { label: 'Circuit-Training', url: 'https://vod.marjoriejamin.com/categories/circuit-training' },
+]
 
 type ClientSummary = {
   id: string
@@ -28,10 +50,9 @@ type ClientDetail = ClientSummary & {
 export default function ClientesPage() {
   const [clients, setClients] = useState<ClientSummary[]>([])
   const [selected, setSelected] = useState<ClientDetail | null>(null)
-  const [courses, setCourses] = useState<Pick<Course, 'id' | 'title'>[]>([])
   const [loading, setLoading] = useState(true)
   const [loadingDetail, setLoadingDetail] = useState(false)
-  const [form, setForm] = useState({ title: '', message: '', course_id: '' })
+  const [form, setForm] = useState({ title: '', message: '', category: '' })
   const [saving, setSaving] = useState(false)
 
   const supabase = createClient()
@@ -45,13 +66,6 @@ export default function ClientesPage() {
         .eq('is_admin', false)
         .order('total_sessions', { ascending: false })
       setClients((data as ClientSummary[]) ?? [])
-
-      const { data: coursesData } = await supabase
-        .from('courses')
-        .select('id, title')
-        .eq('is_published', true)
-        .order('title')
-      setCourses(coursesData ?? [])
       setLoading(false)
     }
     load()
@@ -74,7 +88,7 @@ export default function ClientesPage() {
         .eq('user_id', client.id),
       supabase
         .from('recommendations')
-        .select('*, courses(id, title, thumbnail_url, uscreen_url)')
+        .select('*')
         .eq('user_id', client.id)
         .order('created_at', { ascending: false }),
     ])
@@ -89,7 +103,7 @@ export default function ClientesPage() {
       ...client,
       completions: formattedCompletions,
       lives_attended: (registrations ?? []).filter((r: any) => r.attended).length,
-      recommendations: (recs as unknown as Recommendation[]) ?? [],
+      recommendations: (recs as Recommendation[]) ?? [],
     })
     setLoadingDetail(false)
   }
@@ -98,6 +112,7 @@ export default function ClientesPage() {
     if (!selected || !form.title.trim()) return
     setSaving(true)
     const { data: me } = await supabase.auth.getUser()
+    const selectedCategory = VOD_CATEGORIES.find(c => c.url === form.category)
     const { data, error } = await supabase
       .from('recommendations')
       .insert({
@@ -105,17 +120,18 @@ export default function ClientesPage() {
         created_by: me.user?.id,
         title: form.title.trim(),
         message: form.message.trim() || null,
-        course_id: form.course_id || null,
+        link_url: selectedCategory?.url ?? null,
+        link_label: selectedCategory?.label ?? null,
       })
-      .select('*, courses(id, title, thumbnail_url, uscreen_url)')
+      .select('*')
       .single()
 
     if (!error && data) {
       setSelected(prev => prev ? {
         ...prev,
-        recommendations: [data as unknown as Recommendation, ...prev.recommendations],
+        recommendations: [data as Recommendation, ...prev.recommendations],
       } : prev)
-      setForm({ title: '', message: '', course_id: '' })
+      setForm({ title: '', message: '', category: '' })
     }
     setSaving(false)
   }
@@ -179,7 +195,7 @@ export default function ClientesPage() {
         </div>
       )}
 
-      {/* Detail modal */}
+      {/* Detail panel */}
       {selected && (
         <div className="fixed inset-0 z-50 flex items-stretch justify-end bg-black/30" onClick={() => setSelected(null)}>
           <div
@@ -264,11 +280,15 @@ export default function ClientesPage() {
                             <div className="flex-1 min-w-0">
                               <p className="text-sm font-medium text-[#2C2C2C]">{rec.title}</p>
                               {rec.message && <p className="text-xs text-[#6B6359] mt-0.5">{rec.message}</p>}
-                              {rec.courses && (
-                                <div className="flex items-center gap-1 mt-1">
-                                  <ExternalLink size={11} className="text-[#C6684F]" />
-                                  <span className="text-xs text-[#C6684F]">{rec.courses.title}</span>
-                                </div>
+                              {rec.link_url && rec.link_label && (
+                                <a
+                                  href={rec.link_url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="flex items-center gap-1 mt-1 text-xs text-[#C6684F] hover:underline"
+                                >
+                                  <ExternalLink size={11} /> {rec.link_label}
+                                </a>
                               )}
                               <p className="text-[10px] text-[#6B6359] mt-1">
                                 {new Date(rec.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}
@@ -289,7 +309,7 @@ export default function ClientesPage() {
 
                   {/* Add form */}
                   <div className="bg-white border border-[#DCCFBF] rounded-xl p-4 space-y-3">
-                    <p className="text-xs font-semibold text-[#6B6359]">Ajouter une recommandation</p>
+                    <p className="text-xs font-semibold text-[#6B6359]">Nouvelle recommandation</p>
                     <input
                       type="text"
                       placeholder="Titre *"
@@ -298,20 +318,20 @@ export default function ClientesPage() {
                       className="w-full text-sm border border-[#DCCFBF] rounded-lg px-3 py-2 focus:outline-none focus:border-[#C6684F] bg-[#FAF6F1]"
                     />
                     <textarea
-                      placeholder="Message personnalisé (optionnel)"
+                      placeholder="Message personnalisé (ex : idéal pour ton dos, commence par cette catégorie…)"
                       value={form.message}
                       onChange={e => setForm(f => ({ ...f, message: e.target.value }))}
                       rows={3}
                       className="w-full text-sm border border-[#DCCFBF] rounded-lg px-3 py-2 focus:outline-none focus:border-[#C6684F] bg-[#FAF6F1] resize-none"
                     />
                     <select
-                      value={form.course_id}
-                      onChange={e => setForm(f => ({ ...f, course_id: e.target.value }))}
+                      value={form.category}
+                      onChange={e => setForm(f => ({ ...f, category: e.target.value }))}
                       className="w-full text-sm border border-[#DCCFBF] rounded-lg px-3 py-2 focus:outline-none focus:border-[#C6684F] bg-[#FAF6F1] text-[#6B6359]"
                     >
-                      <option value="">Lier un cours (optionnel)</option>
-                      {courses.map(c => (
-                        <option key={c.id} value={c.id}>{c.title}</option>
+                      <option value="">Lier une catégorie VOD (optionnel)</option>
+                      {VOD_CATEGORIES.map(c => (
+                        <option key={c.url} value={c.url}>{c.label}</option>
                       ))}
                     </select>
                     <button

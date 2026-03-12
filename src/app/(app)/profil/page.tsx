@@ -149,7 +149,7 @@ export default function ProfilPage() {
       // Recommendations from Marjorie
       const { data: recs } = await supabase
         .from('recommendations')
-        .select('*, courses(id, title, thumbnail_url, uscreen_url)')
+        .select('*')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
       if (recs) {
@@ -567,13 +567,13 @@ export default function ProfilPage() {
                       {rec.message && (
                         <p className="text-sm text-text-secondary mt-1">{rec.message}</p>
                       )}
-                      {rec.courses && (
+                      {rec.link_url && rec.link_label && (
                         <button
-                          onClick={e => { e.stopPropagation(); window.open(rec.courses!.uscreen_url, '_blank', 'noopener,noreferrer') }}
+                          onClick={e => { e.stopPropagation(); window.open(rec.link_url!, '_blank', 'noopener,noreferrer') }}
                           className="flex items-center gap-1.5 mt-2 text-xs text-primary font-medium hover:underline"
                         >
                           <ExternalLink size={11} />
-                          {rec.courses.title}
+                          {rec.link_label}
                         </button>
                       )}
                       <p className="text-[11px] text-text-muted mt-2">
