@@ -358,7 +358,7 @@ export default function CommunautePage() {
   const contextPost = contextMenu ? posts.find(p => p.id === contextMenu.postId) ?? null : null
 
   return (
-    <div className="px-4 pt-6 pb-[220px] lg:pb-28 lg:px-8 lg:pt-8 max-w-5xl mx-auto">
+    <div className="px-4 pt-6 pb-28 lg:pb-20 lg:px-8 lg:pt-8 max-w-5xl mx-auto">
       {(postMenu || commentMenu) && (
         <div className="fixed inset-0 z-10" onClick={() => { setPostMenu(null); setCommentMenu(null) }} />
       )}
@@ -387,8 +387,9 @@ export default function CommunautePage() {
             <div className="sticky top-0 z-20 space-y-3 -mx-4 lg:mx-0 px-4 lg:px-0 pt-2 pb-5 mb-4 bg-gradient-to-b from-[#FAF6F1]/95 via-[#FAF6F1]/80 to-transparent backdrop-blur-sm">
               {pinnedPosts.map((post) => {
                 const pinnedAuthor = 'Marjorie'
+                const isPinnedOwn = !!myId && myId === post.user_id
                 return (
-                  <div key={post.id} className="relative select-none"
+                  <div key={post.id} className="relative select-none group"
                     onContextMenu={e => e.preventDefault()}
                     onTouchStart={e => startBubbleGesture(post.id, false, post.content, pinnedAuthor, e.touches[0].clientX, e.touches[0].clientY)}
                     onTouchMove={e => moveBubbleGesture(post.id, e.touches[0].clientX, e.touches[0].clientY)}
@@ -450,6 +451,60 @@ export default function CommunautePage() {
                               <ExternalLink size={11} className="text-[#C6684F] flex-shrink-0" />
                             </button>
                           )}
+                          {/* Reaction count badges */}
+                          {Object.values(post.reaction_counts).reduce((a,b)=>a+b,0) > 0 && (
+                            <button onClick={() => setOpenReactions(openReactions === post.id ? null : post.id)}
+                              className="flex items-center gap-0.5 mt-1.5">
+                              {REACTIONS.filter(r => post.reaction_counts[r.type] > 0).slice(0,3).map(r => (
+                                <span key={r.type} className="text-xs leading-none">{r.emoji}</span>
+                              ))}
+                              <span className="text-[10px] text-[#6B6359] ml-0.5 font-medium">
+                                {Object.values(post.reaction_counts).reduce((a,b)=>a+b,0)}
+                              </span>
+                            </button>
+                          )}
+                          <AnimatePresence>
+                            {openReactions === post.id && post.reaction_users.length > 0 && (
+                              <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
+                                className="flex flex-wrap gap-1.5 mt-1">
+                                {REACTIONS.filter(r => post.reaction_counts[r.type] > 0).map(r => {
+                                  const names = post.reaction_users.filter(u => u.reaction_type === r.type)
+                                    .map(u => u.user_id === myId ? 'Toi' : u.first_name)
+                                  if (!names.length) return null
+                                  return (
+                                    <div key={r.type} className="flex items-center gap-1 bg-white border border-[#DCCFBF] rounded-full px-2 py-0.5 text-[10px] text-[#6B6359]">
+                                      <span>{r.emoji}</span><span>{names.join(', ')}</span>
+                                    </div>
+                                  )
+                                })}
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+                        </div>
+                        {/* Desktop hover actions */}
+                        <div className={`hidden md:flex flex-row items-center gap-0.5 self-start mt-1 transition-opacity duration-150 ${hoverReactionPost === post.id ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
+                          <div className="relative">
+                            <button onClick={() => setHoverReactionPost(prev => prev === post.id ? null : post.id)}
+                              className="w-7 h-7 flex items-center justify-center rounded-full text-[#C6684F]/50 hover:text-[#C6684F] hover:bg-[#C6684F]/10 transition-colors" title="Réagir">
+                              <Smile size={15} />
+                            </button>
+                            {hoverReactionPost === post.id && (
+                              <div className="absolute top-9 left-0 z-30 bg-white rounded-2xl shadow-xl border border-[#DCCFBF] px-2 py-2 flex gap-1">
+                                {REACTIONS.map(r => (
+                                  <button key={r.type}
+                                    onClick={() => { toggleReaction(post.id, r.type); setHoverReactionPost(null) }}
+                                    className={`text-xl hover:scale-125 transition-transform p-0.5 rounded ${post.user_reactions.includes(r.type) ? 'ring-2 ring-[#C6684F]/40' : ''}`}
+                                    title={r.label}>
+                                    {r.emoji}
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                          <button onClick={() => setContextMenu({ postId: post.id, isOwn: isPinnedOwn, content: post.content, authorName: pinnedAuthor })}
+                            className="w-7 h-7 flex items-center justify-center rounded-full text-[#C6684F]/50 hover:text-[#C6684F] hover:bg-[#C6684F]/10 transition-colors" title="Plus d'options">
+                            <ChevronDown size={15} />
+                          </button>
                         </div>
                         {isAdmin && (
                           <button onClick={() => togglePin(post.id, true)}
