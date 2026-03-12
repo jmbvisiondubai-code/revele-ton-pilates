@@ -3,6 +3,9 @@ import type { Profile } from '@/types/database'
 export const DEMO_PROFILE: Profile = {
   id: 'demo',
   first_name: 'Marie',
+  last_name: 'Dupont',
+  username: 'marie_pilates',
+  email: null,
   avatar_url: null,
   birth_date: '1992-05-15',
   city: 'Saint-Tropez',

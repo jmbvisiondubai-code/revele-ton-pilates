@@ -17,6 +17,8 @@ import {
   CheckCircle2,
   Camera,
   X,
+  Pencil,
+  Check,
 } from 'lucide-react'
 import Cropper from 'react-easy-crop'
 import type { Area } from 'react-easy-crop'
@@ -28,6 +30,7 @@ import {
   Button,
   BadgePill,
   ProgressBar,
+  Input,
 } from '@/components/ui'
 import { GOAL_LABELS, LEVEL_LABELS, formatDuration } from '@/lib/utils'
 import { DEMO_PROFILE } from '@/lib/demo-data'
@@ -83,6 +86,12 @@ export default function ProfilPage() {
   const [sessionsThisWeek, setSessionsThisWeek] = useState(0)
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
   const [avatarError, setAvatarError] = useState('')
+  const [editingInfo, setEditingInfo] = useState(false)
+  const [editUsername, setEditUsername] = useState('')
+  const [editFirstName, setEditFirstName] = useState('')
+  const [editLastName, setEditLastName] = useState('')
+  const [infoError, setInfoError] = useState('')
+  const [savingInfo, setSavingInfo] = useState(false)
   const [cropSrc, setCropSrc] = useState<string | null>(null)
   const [crop, setCrop] = useState({ x: 0, y: 0 })
   const [zoom, setZoom] = useState(1)
@@ -194,6 +203,51 @@ export default function ProfilPage() {
     router.refresh()
   }
 
+  function startEditingInfo() {
+    if (!profile) return
+    setEditUsername(profile.username)
+    setEditFirstName(profile.first_name)
+    setEditLastName(profile.last_name)
+    setInfoError('')
+    setEditingInfo(true)
+  }
+
+  async function handleSaveInfo() {
+    if (!profile) return
+    setInfoError('')
+    const trimmedUsername = editUsername.trim().toLowerCase()
+    const trimmedFirst = editFirstName.trim()
+    const trimmedLast = editLastName.trim()
+
+    if (!/^[a-zA-Z0-9_-]{3,20}$/.test(trimmedUsername)) {
+      setInfoError('Nom d\'utilisateur : 3–20 caractères, lettres, chiffres, _ ou -')
+      return
+    }
+    if (!trimmedFirst) { setInfoError('Le prénom est requis'); return }
+    if (!trimmedLast) { setInfoError('Le nom est requis'); return }
+
+    setSavingInfo(true)
+    try {
+      if (trimmedUsername !== profile.username) {
+        const { data: existing } = await supabase
+          .from('profiles').select('id').eq('username', trimmedUsername).maybeSingle()
+        if (existing) { setInfoError('Ce nom d\'utilisateur est déjà pris'); setSavingInfo(false); return }
+      }
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+      const { error } = await supabase.from('profiles')
+        .update({ username: trimmedUsername, first_name: trimmedFirst, last_name: trimmedLast })
+        .eq('id', user.id)
+      if (error) throw error
+      setProfile({ ...profile, username: trimmedUsername, first_name: trimmedFirst, last_name: trimmedLast })
+      setEditingInfo(false)
+    } catch (err) {
+      setInfoError(err instanceof Error ? err.message : 'Erreur lors de la sauvegarde')
+    } finally {
+      setSavingInfo(false)
+    }
+  }
+
   if (!profile) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -254,7 +308,7 @@ export default function ProfilPage() {
         <div className="relative inline-block">
           <Avatar
             src={profile.avatar_url}
-            fallback={profile.first_name}
+            fallback={profile.username}
             size="xl"
           />
           <label className="absolute bottom-0 right-0 w-7 h-7 bg-primary rounded-full flex items-center justify-center cursor-pointer shadow-md">
@@ -266,8 +320,13 @@ export default function ProfilPage() {
         </div>
         {avatarError && <p className="text-xs text-red-500 mt-2">{avatarError}</p>}
         <h1 className="font-[family-name:var(--font-heading)] text-2xl text-text mt-3">
-          {profile.first_name}
+          @{profile.username}
         </h1>
+        {(profile.first_name || profile.last_name) && (
+          <p className="text-sm text-text-secondary mt-0.5">
+            {profile.first_name} {profile.last_name}
+          </p>
+        )}
         <div className="flex items-center justify-center gap-2 mt-1">
           {profile.city && (
             <span className="text-sm text-text-secondary flex items-center gap-1">
@@ -318,6 +377,59 @@ export default function ProfilPage() {
       >
         {activeTab === 'profil' && (
           <div className="space-y-4">
+            {/* ── Informations personnelles ── */}
+            <Card>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="font-medium text-sm text-text-secondary">Mes informations</h3>
+                {!editingInfo && (
+                  <button onClick={startEditingInfo} className="flex items-center gap-1 text-xs text-primary hover:text-accent transition-colors">
+                    <Pencil size={12} /> Modifier
+                  </button>
+                )}
+              </div>
+              {editingInfo ? (
+                <div className="space-y-3">
+                  <div className="grid grid-cols-2 gap-3">
+                    <Input label="Prénom" type="text" value={editFirstName} onChange={e => setEditFirstName(e.target.value)} />
+                    <Input label="Nom" type="text" value={editLastName} onChange={e => setEditLastName(e.target.value)} />
+                  </div>
+                  <div>
+                    <Input
+                      label="Nom d'utilisateur"
+                      type="text"
+                      value={editUsername}
+                      onChange={e => setEditUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ''))}
+                    />
+                    <p className="text-xs text-text-muted mt-1 ml-1">Visible publiquement</p>
+                  </div>
+                  {infoError && <p className="text-xs text-error bg-error-light px-3 py-2 rounded-lg">{infoError}</p>}
+                  <div className="flex gap-2 pt-1">
+                    <button onClick={() => setEditingInfo(false)} className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg border border-border text-sm text-text-secondary hover:bg-bg-elevated transition-colors">
+                      <X size={14} /> Annuler
+                    </button>
+                    <button onClick={handleSaveInfo} disabled={savingInfo} className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg bg-primary text-white text-sm disabled:opacity-50 hover:bg-primary-dark transition-colors">
+                      {savingInfo ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <><Check size={14} /> Enregistrer</>}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-text-muted">Nom d&apos;utilisateur</span>
+                    <span className="text-text font-medium">@{profile.username}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-text-muted">Prénom</span>
+                    <span className="text-text">{profile.first_name || '—'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-text-muted">Nom</span>
+                    <span className="text-text">{profile.last_name || '—'}</span>
+                  </div>
+                </div>
+              )}
+            </Card>
+
             <Card>
               <h3 className="font-medium text-sm text-text-secondary mb-3">
                 Mes objectifs

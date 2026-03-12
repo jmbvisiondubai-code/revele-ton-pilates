@@ -22,6 +22,9 @@ export type Goal =
 export interface Profile {
   id: string
   first_name: string
+  last_name: string
+  username: string
+  email: string | null
   avatar_url: string | null
   birth_date: string | null
   city: string | null
@@ -127,7 +130,7 @@ export interface ArticleComment {
   user_id: string
   content: string
   created_at: string
-  profiles?: Pick<Profile, 'first_name' | 'avatar_url'>
+  profiles?: Pick<Profile, 'username' | 'avatar_url'>
 }
 
 export interface CommunityPost {
@@ -144,7 +147,7 @@ export interface CommunityPost {
   reply_to_author: string | null
   edited_at: string | null
   created_at: string
-  profiles?: Pick<Profile, 'first_name' | 'avatar_url'>
+  profiles?: Pick<Profile, 'username' | 'avatar_url'>
 }
 
 export interface DailyInspiration {

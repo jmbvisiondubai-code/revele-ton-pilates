@@ -8,6 +8,8 @@ import { Heart, Lock } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { Button, Input } from '@/components/ui'
 
+const USERNAME_REGEX = /^[a-zA-Z0-9_-]{3,20}$/
+
 export default function SignupPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -15,6 +17,9 @@ export default function SignupPage() {
 
   const [tokenStatus, setTokenStatus] = useState<'checking' | 'valid' | 'invalid'>('checking')
   const [email, setEmail] = useState('')
+  const [firstName, setFirstName] = useState('')
+  const [lastName, setLastName] = useState('')
+  const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [isLoading, setIsLoading] = useState(false)
@@ -22,13 +27,9 @@ export default function SignupPage() {
 
   const supabase = createClient()
 
-  // Vérifier la validité du token d'invitation
   useEffect(() => {
     async function checkToken() {
-      if (!token) {
-        setTokenStatus('invalid')
-        return
-      }
+      if (!token) { setTokenStatus('invalid'); return }
       const { data } = await supabase
         .from('invitations')
         .select('id, email, expires_at, used_at')
@@ -39,8 +40,6 @@ export default function SignupPage() {
         setTokenStatus('invalid')
         return
       }
-
-      // Pré-remplir l'email si l'invitation est nominative
       if (data.email) setEmail(data.email)
       setTokenStatus('valid')
     }
@@ -51,25 +50,38 @@ export default function SignupPage() {
     e.preventDefault()
     setError('')
 
-    if (password !== confirmPassword) {
-      setError('Les mots de passe ne correspondent pas')
-      return
+    if (!firstName.trim()) { setError('Le prénom est requis'); return }
+    if (!lastName.trim()) { setError('Le nom est requis'); return }
+    if (!USERNAME_REGEX.test(username)) {
+      setError('Le nom d\'utilisateur doit contenir 3 à 20 caractères (lettres, chiffres, _ ou -)'); return
     }
-    if (password.length < 6) {
-      setError('Le mot de passe doit contenir au moins 6 caractères')
-      return
-    }
+    if (password !== confirmPassword) { setError('Les mots de passe ne correspondent pas'); return }
+    if (password.length < 6) { setError('Le mot de passe doit contenir au moins 6 caractères'); return }
 
     setIsLoading(true)
     try {
+      // Check username uniqueness
+      const { data: existing } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('username', username.toLowerCase())
+        .maybeSingle()
+      if (existing) { setError('Ce nom d\'utilisateur est déjà pris'); setIsLoading(false); return }
+
       const { data: signupData, error: signupError } = await supabase.auth.signUp({
         email,
         password,
-        options: { emailRedirectTo: `${window.location.origin}/callback` },
+        options: {
+          emailRedirectTo: `${window.location.origin}/callback`,
+          data: {
+            first_name: firstName.trim(),
+            last_name: lastName.trim(),
+            username: username.toLowerCase(),
+          },
+        },
       })
       if (signupError) throw signupError
 
-      // Marquer le token comme utilisé
       if (signupData.user) {
         await supabase
           .from('invitations')
@@ -86,7 +98,6 @@ export default function SignupPage() {
     }
   }
 
-  // Token manquant ou invalide
   if (tokenStatus === 'checking') {
     return (
       <div className="w-full max-w-sm flex items-center justify-center py-20">
@@ -112,10 +123,7 @@ export default function SignupPage() {
           Cet espace est réservé aux clientes de Marjorie.<br />
           Pour rejoindre la communauté, contacte Marjorie pour recevoir ton lien d&apos;invitation personnalisé.
         </p>
-        <Link
-          href="/login"
-          className="inline-block text-sm font-medium text-primary hover:text-accent transition-colors"
-        >
+        <Link href="/login" className="inline-block text-sm font-medium text-primary hover:text-accent transition-colors">
           Déjà un compte ? Se connecter
         </Link>
       </motion.div>
@@ -129,7 +137,7 @@ export default function SignupPage() {
       transition={{ duration: 0.5 }}
       className="w-full max-w-sm"
     >
-      <div className="text-center mb-10">
+      <div className="text-center mb-8">
         <motion.div
           initial={{ scale: 0.8, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
@@ -147,6 +155,39 @@ export default function SignupPage() {
       </div>
 
       <form onSubmit={handleSignup} className="space-y-4">
+        <div className="grid grid-cols-2 gap-3">
+          <Input
+            label="Prénom"
+            type="text"
+            placeholder="Marie"
+            value={firstName}
+            onChange={(e) => setFirstName(e.target.value)}
+            required
+          />
+          <Input
+            label="Nom"
+            type="text"
+            placeholder="Dupont"
+            value={lastName}
+            onChange={(e) => setLastName(e.target.value)}
+            required
+          />
+        </div>
+
+        <div>
+          <Input
+            label="Nom d'utilisateur"
+            type="text"
+            placeholder="marie_pilates"
+            value={username}
+            onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ''))}
+            required
+          />
+          <p className="text-xs text-text-muted mt-1 ml-1">
+            Visible publiquement · 3–20 caractères, lettres, chiffres, _ ou -
+          </p>
+        </div>
+
         <Input
           label="Email"
           type="email"

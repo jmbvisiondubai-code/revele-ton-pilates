@@ -26,10 +26,10 @@ type Comment = {
   content: string
   created_at: string
   edited_at?: string | null
-  profiles?: { first_name: string; avatar_url: string | null }
+  profiles?: { username: string; avatar_url: string | null }
 }
 
-type ReactionUser = { user_id: string; reaction_type: ReactionType; first_name: string }
+type ReactionUser = { user_id: string; reaction_type: ReactionType; username: string }
 
 type PostWithMeta = CommunityPost & {
   reaction_counts: Record<ReactionType, number>
@@ -46,7 +46,7 @@ const DEMO_POSTS: PostWithMeta[] = [
     image_url: null, is_pinned: true, is_from_marjorie: true,
     link_url: null, link_label: null, reply_to_id: null, reply_to_preview: null, reply_to_author: null, edited_at: null,
     created_at: new Date(Date.now() - 5 * 3600000).toISOString(),
-    profiles: { first_name: 'Marjorie', avatar_url: null },
+    profiles: { username: 'Marjorie', avatar_url: null },
     reaction_counts: { pouce: 5, coeur: 12, applaudissement: 8, priere: 3, muscle: 4, fete: 6, feu: 7 },
     user_reactions: [], reaction_users: [], comment_count: 4,
   },
@@ -56,7 +56,7 @@ const DEMO_POSTS: PostWithMeta[] = [
     image_url: null, is_pinned: false, is_from_marjorie: false,
     link_url: null, link_label: null, reply_to_id: null, reply_to_preview: null, reply_to_author: null, edited_at: null,
     created_at: new Date(Date.now() - 2 * 3600000).toISOString(),
-    profiles: { first_name: 'Sophie', avatar_url: null },
+    profiles: { username: 'Sophie', avatar_url: null },
     reaction_counts: { pouce: 3, coeur: 5, applaudissement: 3, priere: 0, muscle: 0, fete: 0, feu: 0 },
     user_reactions: [], reaction_users: [], comment_count: 2,
   },
@@ -148,13 +148,13 @@ export default function CommunautePage() {
   async function loadPosts() {
     if (!isSupabaseConfigured()) { setPosts(DEMO_POSTS); return }
     const { data: postsData } = await supabase
-      .from('community_posts').select('*, profiles(first_name, avatar_url)')
+      .from('community_posts').select('*, profiles(username, avatar_url)')
       .order('is_pinned', { ascending: false })
       .order('created_at', { ascending: false })
       .limit(50)
     if (!postsData) return
     const postIds = postsData.map((p: CommunityPost) => p.id)
-    const { data: reactions } = await supabase.from('post_reactions').select('post_id, reaction_type, user_id, profiles(first_name)').in('post_id', postIds)
+    const { data: reactions } = await supabase.from('post_reactions').select('post_id, reaction_type, user_id, profiles(username)').in('post_id', postIds)
     const { data: comments } = await supabase.from('post_comments').select('post_id, id').in('post_id', postIds)
     const enriched: PostWithMeta[] = postsData.map((post: CommunityPost) => {
       const pr = reactions?.filter((r: { post_id: string }) => r.post_id === post.id) ?? []
@@ -164,7 +164,7 @@ export default function CommunautePage() {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const reaction_users: ReactionUser[] = pr.map((r: any) => ({
         user_id: r.user_id, reaction_type: r.reaction_type as ReactionType,
-        first_name: (Array.isArray(r.profiles) ? r.profiles[0]?.first_name : r.profiles?.first_name) ?? 'Membre',
+        username: (Array.isArray(r.profiles) ? r.profiles[0]?.username : r.profiles?.username) ?? 'Membre',
       }))
       const comment_count = comments?.filter((c: { post_id: string }) => c.post_id === post.id).length ?? 0
       return { ...post, reaction_counts, user_reactions, reaction_users, comment_count }
@@ -177,7 +177,7 @@ export default function CommunautePage() {
     if (!isSupabaseConfigured()) return
     channelRef.current = supabase.channel('community')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'community_posts' }, async (payload) => {
-        const { data } = await supabase.from('community_posts').select('*, profiles(first_name, avatar_url)').eq('id', payload.new.id).single()
+        const { data } = await supabase.from('community_posts').select('*, profiles(username, avatar_url)').eq('id', payload.new.id).single()
         if (data) {
           const post: PostWithMeta = { ...data, reaction_counts: { pouce: 0, coeur: 0, applaudissement: 0, priere: 0, muscle: 0, fete: 0, feu: 0 }, user_reactions: [], reaction_users: [], comment_count: 0 }
           setPosts(prev => prev.find(p => p.id === post.id) ? prev : [post, ...prev])
@@ -209,7 +209,7 @@ export default function CommunautePage() {
         reply_to_id: replyingTo?.id ?? null, reply_to_preview: replyingTo ? replyingTo.content.slice(0, 120) : null, reply_to_author: replyingTo?.authorName ?? null,
         edited_at: null,
         created_at: new Date().toISOString(),
-        profiles: { first_name: profile.first_name, avatar_url: profile.avatar_url },
+        profiles: { username: profile.username, avatar_url: profile.avatar_url },
         reaction_counts: { pouce: 0, coeur: 0, applaudissement: 0, priere: 0, muscle: 0, fete: 0, feu: 0 }, user_reactions: [], reaction_users: [], comment_count: 0,
       }
       setPosts(prev => [op, ...prev]); resetPostForm(); setIsPosting(false); return
@@ -220,7 +220,7 @@ export default function CommunautePage() {
       reply_to_id: replyingTo?.id ?? null,
       reply_to_preview: replyingTo ? replyingTo.content.slice(0, 120) : null,
       reply_to_author: replyingTo?.authorName ?? null,
-    }).select('*, profiles(first_name, avatar_url)').single()
+    }).select('*, profiles(username, avatar_url)').single()
     if (!error && data) {
       setPosts(prev => [{ ...data, reaction_counts: { pouce: 0, coeur: 0, applaudissement: 0, priere: 0, muscle: 0, fete: 0, feu: 0 }, user_reactions: [], reaction_users: [], comment_count: 0 }, ...prev])
       resetPostForm()
@@ -268,7 +268,7 @@ export default function CommunautePage() {
       if (existing) newCounts[existing] = Math.max(0, newCounts[existing] - 1)
       if (!isSame) newCounts[type] = newCounts[type] + 1
       const newReactionUsers = p.reaction_users.filter(u => u.user_id !== profile.id)
-      if (!isSame) newReactionUsers.push({ user_id: profile.id, reaction_type: type, first_name: profile.first_name })
+      if (!isSame) newReactionUsers.push({ user_id: profile.id, reaction_type: type, username: profile.username })
       return { ...p, reaction_counts: newCounts, user_reactions: isSame ? [] : [type], reaction_users: newReactionUsers }
     }))
     // DB: remove any existing reaction first
@@ -286,7 +286,7 @@ export default function CommunautePage() {
     setOpenComments(postId)
     if (!isSupabaseConfigured()) return
     const { data } = await supabase.from('post_comments')
-      .select('id, user_id, content, created_at, edited_at, profiles(first_name, avatar_url)')
+      .select('id, user_id, content, created_at, edited_at, profiles(username, avatar_url)')
       .eq('post_id', postId).order('created_at', { ascending: true })
     if (data) setPosts(prev => prev.map(p => p.id === postId ? { ...p, comments: data as unknown as Comment[] } : p))
   }
@@ -296,7 +296,7 @@ export default function CommunautePage() {
     setIsCommenting(true)
     const { data } = await supabase.from('post_comments')
       .insert({ user_id: profile.id, post_id: postId, content: newComment.trim() })
-      .select('id, user_id, content, created_at, edited_at, profiles(first_name, avatar_url)').single()
+      .select('id, user_id, content, created_at, edited_at, profiles(username, avatar_url)').single()
     if (data) {
       setPosts(prev => prev.map(p => p.id !== postId ? p : { ...p, comment_count: p.comment_count + 1, comments: [...(p.comments ?? []), data as unknown as Comment] }))
       setNewComment('')
@@ -443,7 +443,7 @@ export default function CommunautePage() {
                       </div>
                       <div className="flex items-start gap-3 mt-1">
                         <div className="relative flex-shrink-0 mt-0.5">
-                          <Avatar src={post.profiles?.avatar_url} fallback={post.profiles?.first_name} size="md" />
+                          <Avatar src={post.profiles?.avatar_url} fallback={post.profiles?.username} size="md" />
                           <div className="absolute -bottom-0.5 -right-0.5 w-4.5 h-4.5 bg-[#C6684F] rounded-full flex items-center justify-center">
                             <span className="text-[8px] text-white">✦</span>
                           </div>
@@ -490,7 +490,7 @@ export default function CommunautePage() {
                                 className="flex flex-wrap gap-1.5 mt-1">
                                 {REACTIONS.filter(r => post.reaction_counts[r.type] > 0).map(r => {
                                   const names = post.reaction_users.filter(u => u.reaction_type === r.type)
-                                    .map(u => u.user_id === myId ? 'Toi' : u.first_name)
+                                    .map(u => u.user_id === myId ? 'Toi' : u.username)
                                   if (!names.length) return null
                                   return (
                                     <div key={r.type} className="flex items-center gap-1 bg-white border border-[#DCCFBF] rounded-full px-2 py-0.5 text-[10px] text-[#6B6359]">
@@ -554,7 +554,7 @@ export default function CommunautePage() {
                   const isOwn = !!myId && myId === post.user_id
                   const isEditingThisPost = editingPost === post.id
                   const isDeletingThisPost = deletingPost === post.id
-                  const authorName = post.is_from_marjorie ? 'Marjorie' : (isOwn ? 'Toi' : (post.profiles?.first_name || 'Membre'))
+                  const authorName = post.is_from_marjorie ? 'Marjorie' : (isOwn ? 'Toi' : (post.profiles?.username || 'Membre'))
 
                   return (
                     <motion.div key={post.id} id={`post-${post.id}`} initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ delay: i < 5 ? i * 0.04 : 0 }}>
@@ -564,13 +564,13 @@ export default function CommunautePage() {
                         <div className="flex-shrink-0 self-end mb-1">
                           {post.is_from_marjorie ? (
                             <div className="relative">
-                              <Avatar src={post.profiles?.avatar_url} fallback={post.profiles?.first_name} size="sm" />
+                              <Avatar src={post.profiles?.avatar_url} fallback={post.profiles?.username} size="sm" />
                               <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-[#C6684F] rounded-full flex items-center justify-center">
                                 <span className="text-[8px] text-white">✦</span>
                               </div>
                             </div>
                           ) : (
-                            <Avatar src={post.profiles?.avatar_url} fallback={post.profiles?.first_name} size="sm" />
+                            <Avatar src={post.profiles?.avatar_url} fallback={post.profiles?.username} size="sm" />
                           )}
                         </div>
 
@@ -585,7 +585,7 @@ export default function CommunautePage() {
                                 <span className="text-[9px] font-semibold bg-[#C6684F] text-white px-1.5 py-0.5 rounded-full">Coach</span>
                               </div>
                             ) : (
-                              <span className="text-xs font-medium text-[#2C2C2C]">{isOwn ? 'Toi' : (post.profiles?.first_name || 'Membre')}</span>
+                              <span className="text-xs font-medium text-[#2C2C2C]">{isOwn ? 'Toi' : (post.profiles?.username || 'Membre')}</span>
                             )}
                             <span className="text-[10px] text-[#DCCFBF]">{formatRelativeDate(post.created_at)}</span>
                             {post.edited_at && <span className="text-[10px] text-[#DCCFBF]">(modifié)</span>}
@@ -738,7 +738,7 @@ export default function CommunautePage() {
                                 className="flex flex-wrap gap-1.5 mt-1">
                                 {REACTIONS.filter(r => post.reaction_counts[r.type] > 0).map(r => {
                                   const names = post.reaction_users.filter(u => u.reaction_type === r.type)
-                                    .map(u => u.user_id === myId ? 'Toi' : u.first_name)
+                                    .map(u => u.user_id === myId ? 'Toi' : u.username)
                                   if (!names.length) return null
                                   return (
                                     <div key={r.type} className="flex items-center gap-1 bg-white border border-[#DCCFBF] rounded-full px-2 py-0.5 text-[10px] text-[#6B6359]">
@@ -794,9 +794,9 @@ export default function CommunautePage() {
                               const isMyComment = !!myId && myId === comment.user_id
                               return (
                                 <div key={comment.id} className={`flex items-end gap-2 group ${isMyComment ? 'flex-row-reverse' : 'flex-row'}`}>
-                                  <Avatar src={comment.profiles?.avatar_url} fallback={comment.profiles?.first_name} size="sm" />
+                                  <Avatar src={comment.profiles?.avatar_url} fallback={comment.profiles?.username} size="sm" />
                                   <div className={`flex-1 min-w-0 flex flex-col gap-0.5 ${isMyComment ? 'items-end' : 'items-start'}`}>
-                                    <span className="text-[10px] text-[#6B6359] px-1">{isMyComment ? 'Toi' : comment.profiles?.first_name}</span>
+                                    <span className="text-[10px] text-[#6B6359] px-1">{isMyComment ? 'Toi' : comment.profiles?.username}</span>
                                     {editingComment === comment.id ? (
                                       <div className="w-full">
                                         <input value={editCommentContent} onChange={e => setEditCommentContent(e.target.value)}
@@ -842,7 +842,7 @@ export default function CommunautePage() {
                             })}
                             {profile && (
                               <div className="flex gap-2 items-center pt-1">
-                                <Avatar src={profile.avatar_url} fallback={profile.first_name} size="sm" />
+                                <Avatar src={profile.avatar_url} fallback={profile.username} size="sm" />
                                 <div className="flex-1 flex gap-2">
                                   <input value={newComment} onChange={e => setNewComment(e.target.value)}
                                     onKeyDown={e => e.key === 'Enter' && !e.shiftKey && submitComment(post.id)}
@@ -997,7 +997,7 @@ export default function CommunautePage() {
               </div>
             )}
             <div className="flex items-end gap-2">
-              <Avatar src={profile.avatar_url} fallback={profile.first_name} size="sm" />
+              <Avatar src={profile.avatar_url} fallback={profile.username} size="sm" />
               <div className="flex-1 flex items-end gap-1 bg-white border border-[#DCCFBF] rounded-2xl px-3 py-2 focus-within:border-[#C6684F] transition-colors">
                 {isAdmin && (
                   <div className="flex gap-0.5 self-end mb-0.5 mr-1">

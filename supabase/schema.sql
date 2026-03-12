@@ -4,7 +4,10 @@
 -- Profils utilisatrices
 CREATE TABLE IF NOT EXISTS profiles (
   id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-  first_name TEXT NOT NULL,
+  first_name TEXT NOT NULL DEFAULT '',
+  last_name TEXT NOT NULL DEFAULT '',
+  username TEXT UNIQUE NOT NULL DEFAULT '',
+  email TEXT,
   avatar_url TEXT,
   birth_date DATE,
   city TEXT,
@@ -20,6 +23,7 @@ CREATE TABLE IF NOT EXISTS profiles (
   longest_streak INTEGER DEFAULT 0,
   total_sessions INTEGER DEFAULT 0,
   total_practice_minutes INTEGER DEFAULT 0,
+  is_admin BOOLEAN DEFAULT FALSE,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -376,11 +380,38 @@ CREATE POLICY "Admins can view all registrations" ON live_registrations FOR SELE
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS trigger AS $$
 BEGIN
-  INSERT INTO public.profiles (id, first_name)
-  VALUES (new.id, COALESCE(new.raw_user_meta_data->>'first_name', 'Nouvelle membre'));
+  INSERT INTO public.profiles (id, first_name, last_name, username, email)
+  VALUES (
+    new.id,
+    COALESCE(new.raw_user_meta_data->>'first_name', ''),
+    COALESCE(new.raw_user_meta_data->>'last_name', ''),
+    COALESCE(new.raw_user_meta_data->>'username', 'user_' || substr(new.id::text, 1, 8)),
+    new.email
+  );
   RETURN new;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- RPC: Lookup email by username (accessible by anon for login)
+CREATE OR REPLACE FUNCTION public.get_email_by_username(p_username TEXT)
+RETURNS TEXT
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_email TEXT;
+BEGIN
+  SELECT au.email INTO v_email
+  FROM auth.users au
+  JOIN public.profiles p ON p.id = au.id
+  WHERE lower(p.username) = lower(p_username)
+  LIMIT 1;
+  RETURN v_email;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.get_email_by_username(TEXT) TO anon;
 
 CREATE OR REPLACE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users

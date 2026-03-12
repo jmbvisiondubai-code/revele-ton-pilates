@@ -151,7 +151,7 @@ export default function DashboardPage() {
       {/* Header */}
       <motion.div initial="hidden" animate="visible" custom={0} variants={fadeInUp} className="mb-6">
         <h1 className="font-[family-name:var(--font-heading)] text-2xl lg:text-3xl text-text leading-snug">
-          {getGreeting(profile.first_name)}
+          {getGreeting(profile.username)}
         </h1>
         <div className="flex items-center gap-4 mt-3 max-w-sm">
           <StreakBadge count={profile.current_streak} />

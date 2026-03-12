@@ -31,7 +31,7 @@ const EMPTY_REACTIONS: Record<ReactionType, number> = {
 }
 
 // ── Types ────────────────────────────────────────────────────────────────────
-type ConvProfile    = { id: string; first_name: string; avatar_url: string | null }
+type ConvProfile    = { id: string; username: string; avatar_url: string | null }
 type ConvPreview    = { partner: ConvProfile; lastMessage: string | null; lastAt: string | null; unreadCount: number; isArchived: boolean }
 type MsgWithMeta    = DirectMessage & { reaction_counts: Record<ReactionType, number>; user_reactions: ReactionType[] }
 type ReplyTarget    = { id: string; preview: string; author: string }
@@ -41,10 +41,10 @@ type PendingFile    = { file: File; preview: string | null; isImage: boolean }
 // ── Avatar component ─────────────────────────────────────────────────────────
 function ProfileAvatar({ p, size = 44 }: { p: ConvProfile; size?: number }) {
   if (p.avatar_url)
-    return <Image src={p.avatar_url} alt={p.first_name} width={size} height={size} className="rounded-full object-cover flex-shrink-0" style={{ width: size, height: size }} />
+    return <Image src={p.avatar_url} alt={p.username} width={size} height={size} className="rounded-full object-cover flex-shrink-0" style={{ width: size, height: size }} />
   return (
     <div className="rounded-full bg-[#E8D5C4] flex items-center justify-center text-[#C6684F] font-semibold flex-shrink-0" style={{ width: size, height: size, fontSize: size * 0.38 }}>
-      {p.first_name.charAt(0).toUpperCase()}
+      {p.username.charAt(0).toUpperCase()}
     </div>
   )
 }
@@ -137,7 +137,7 @@ export default function MessagesPage() {
     // Fetch partner profiles
     const ids = [...partnerIds]
     if (ids.length === 0) { setConvs([]); setLoadingConvs(false); return }
-    const { data: profiles } = await supabase.from('profiles').select('id, first_name, avatar_url').in('id', ids)
+    const { data: profiles } = await supabase.from('profiles').select('id, username, avatar_url').in('id', ids)
 
     // Compute per-partner stats
     type Stats = { lastMessage: string | null; lastAt: string | null; unreadCount: number }
@@ -170,7 +170,7 @@ export default function MessagesPage() {
     result.sort((a, b) => {
       if (a.isArchived !== b.isArchived) return a.isArchived ? 1 : -1
       if (a.lastAt && b.lastAt) return b.lastAt.localeCompare(a.lastAt)
-      return a.partner.first_name.localeCompare(b.partner.first_name)
+      return a.partner.username.localeCompare(b.partner.username)
     })
     setConvs(result)
     setLoadingConvs(false)
@@ -277,7 +277,7 @@ export default function MessagesPage() {
     const wasQuickTap = longPressTimer.current !== null
     if (longPressTimer.current) { clearTimeout(longPressTimer.current); longPressTimer.current = null }
     if (swipingMsg?.msgId === msgId && swipingMsg.deltaX >= 60) {
-      const author = isOwn ? (profile?.first_name ?? 'Toi') : (activeProfile?.first_name ?? '')
+      const author = isOwn ? (profile?.username ?? 'Toi') : (activeProfile?.username ?? '')
       setReplyingTo({ id: msgId, preview: content.substring(0, 80), author })
     } else if (wasQuickTap) {
       const now = Date.now()
@@ -448,7 +448,7 @@ export default function MessagesPage() {
 
   // ── Derived ──────────────────────────────────────────────────────────────
   const pinnedMessages      = messages.filter(m => m.is_pinned)
-  const activePartnerName   = activeProfile?.first_name ?? ''
+  const activePartnerName   = activeProfile?.username ?? ''
   const activeConvIsArchived = activeId ? (convs.find(c => c.partner.id === activeId)?.isArchived ?? false) : false
   const activeConvUnread    = activeId ? (convs.find(c => c.partner.id === activeId)?.unreadCount ?? 0) : 0
 
@@ -546,7 +546,7 @@ export default function MessagesPage() {
                     <ProfileAvatar p={conv.partner} size={44} />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between">
-                        <p className={`text-sm text-[#2C2C2C] truncate ${isUnread ? 'font-bold' : 'font-medium'}`}>{conv.partner.first_name}</p>
+                        <p className={`text-sm text-[#2C2C2C] truncate ${isUnread ? 'font-bold' : 'font-medium'}`}>{conv.partner.username}</p>
                         {conv.lastAt && <span className="text-[10px] text-[#A09488] flex-shrink-0 ml-1">{formatRelativeDate(conv.lastAt)}</span>}
                       </div>
                       <p className={`text-xs truncate ${isUnread ? 'text-[#2C2C2C] font-semibold' : 'text-[#A09488]'}`}>{conv.lastMessage ?? 'Nouveau contact'}</p>
@@ -599,7 +599,7 @@ export default function MessagesPage() {
                           <div key={conv.partner.id} className={`flex items-center gap-3 px-4 py-3 cursor-pointer opacity-70 hover:bg-[#FAF6F1] transition-colors ${activeId === conv.partner.id ? 'bg-[#F2E8DF]' : ''}`} onClick={() => openConversation(conv)}>
                             <ProfileAvatar p={conv.partner} size={44} />
                             <div className="flex-1 min-w-0">
-                              <p className="font-medium text-sm text-[#2C2C2C] truncate">{conv.partner.first_name}</p>
+                              <p className="font-medium text-sm text-[#2C2C2C] truncate">{conv.partner.username}</p>
                               <p className="text-xs text-[#A09488] truncate">{conv.lastMessage ?? ''}</p>
                             </div>
                             <button
@@ -711,7 +711,7 @@ export default function MessagesPage() {
                   const isMe        = msg.sender_id === myId
                   const prev        = messages[i - 1]
                   const showDate    = !prev || new Date(msg.created_at).toDateString() !== new Date(prev.created_at).toDateString()
-                  const authorName  = isMe ? (profile?.first_name ?? 'Toi') : activePartnerName
+                  const authorName  = isMe ? (profile?.username ?? 'Toi') : activePartnerName
                   const totalRxn    = Object.values(msg.reaction_counts).reduce((a, b) => a + b, 0)
                   const isEditing   = editingId === msg.id
                   const isSwiping   = swipingMsg?.msgId === msg.id
@@ -952,7 +952,7 @@ export default function MessagesPage() {
                     onClick={e => e.stopPropagation()}
                   >
                     <button
-                      onClick={() => { setReplyingTo({ id: msgMenu.msgId, preview: msgMenu.content.substring(0, 80), author: msgMenu.isOwn ? (profile?.first_name ?? 'Toi') : activePartnerName }); setMsgMenu(null) }}
+                      onClick={() => { setReplyingTo({ id: msgMenu.msgId, preview: msgMenu.content.substring(0, 80), author: msgMenu.isOwn ? (profile?.username ?? 'Toi') : activePartnerName }); setMsgMenu(null) }}
                       className="w-full flex items-center justify-between px-5 py-3.5 text-sm text-[#2C2C2C] border-b border-[#F5F0EB] active:bg-[#FAF6F1]"
                     >
                       <span>Répondre</span><CornerUpLeft size={16} className="text-[#6B6359]" />

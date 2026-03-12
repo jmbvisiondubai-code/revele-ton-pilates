@@ -86,7 +86,7 @@ export default function ConseilsPage() {
   async function loadComments(articleId: string) {
     const { data } = await supabase
       .from('article_comments')
-      .select('*, profiles(first_name, avatar_url)')
+      .select('*, profiles(username, avatar_url)')
       .eq('article_id', articleId)
       .order('created_at', { ascending: true })
     if (data) setComments(data as ArticleComment[])
@@ -117,7 +117,7 @@ export default function ConseilsPage() {
     const { data } = await supabase
       .from('article_comments')
       .insert({ article_id: openArticle.id, user_id: currentUserId, content: commentText.trim() })
-      .select('*, profiles(first_name, avatar_url)')
+      .select('*, profiles(username, avatar_url)')
       .single()
     if (data) {
       setComments(prev => [...prev, data as ArticleComment])
@@ -215,12 +215,12 @@ export default function ConseilsPage() {
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={c.profiles.avatar_url} alt="" className="w-full h-full object-cover" />
                     ) : (
-                      c.profiles?.first_name?.[0]?.toUpperCase() ?? '?'
+                      c.profiles?.username?.[0]?.toUpperCase() ?? '?'
                     )}
                   </div>
                   <div className="flex-1 bg-white border border-[#DCCFBF] rounded-2xl rounded-tl-sm p-3">
                     <div className="flex items-center justify-between mb-1">
-                      <span className="text-xs font-semibold text-[#2C2C2C]">{c.profiles?.first_name ?? 'Anonyme'}</span>
+                      <span className="text-xs font-semibold text-[#2C2C2C]">{c.profiles?.username ?? 'Anonyme'}</span>
                       <div className="flex items-center gap-2">
                         <span className="text-[10px] text-[#DCCFBF]">
                           {new Date(c.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}

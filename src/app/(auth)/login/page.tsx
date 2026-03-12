@@ -10,7 +10,7 @@ import { Button, Input } from '@/components/ui'
 
 export default function LoginPage() {
   const router = useRouter()
-  const [email, setEmail] = useState('')
+  const [identifier, setIdentifier] = useState('') // email or username
   const [password, setPassword] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [isMagicLink, setIsMagicLink] = useState(false)
@@ -19,6 +19,13 @@ export default function LoginPage() {
 
   const supabase = createClient()
 
+  async function resolveEmail(input: string): Promise<string | null> {
+    if (input.includes('@')) return input
+    // It's a username — look up the email via RPC
+    const { data } = await supabase.rpc('get_email_by_username', { p_username: input.toLowerCase() })
+    return data ?? null
+  }
+
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault()
     setError('')
@@ -26,19 +33,18 @@ export default function LoginPage() {
 
     try {
       if (isMagicLink) {
+        const email = await resolveEmail(identifier)
+        if (!email) { setError('Email ou nom d\'utilisateur introuvable'); setIsLoading(false); return }
         const { error } = await supabase.auth.signInWithOtp({
           email,
-          options: {
-            emailRedirectTo: `${window.location.origin}/callback`,
-          },
+          options: { emailRedirectTo: `${window.location.origin}/callback` },
         })
         if (error) throw error
         setMagicLinkSent(true)
       } else {
-        const { error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        })
+        const email = await resolveEmail(identifier)
+        if (!email) { setError('Email ou nom d\'utilisateur introuvable'); setIsLoading(false); return }
+        const { error } = await supabase.auth.signInWithPassword({ email, password })
         if (error) throw error
         router.push('/dashboard')
         router.refresh()
@@ -47,7 +53,7 @@ export default function LoginPage() {
       setError(
         err instanceof Error
           ? err.message === 'Invalid login credentials'
-            ? 'Email ou mot de passe incorrect'
+            ? 'Identifiant ou mot de passe incorrect'
             : err.message
           : 'Une erreur est survenue'
       )
@@ -72,16 +78,10 @@ export default function LoginPage() {
           </h1>
           <p className="text-text-secondary">
             Un lien de connexion a été envoyé à{' '}
-            <span className="font-medium text-text">{email}</span>
+            <span className="font-medium text-text">{identifier}</span>
           </p>
         </div>
-        <Button
-          variant="ghost"
-          onClick={() => {
-            setMagicLinkSent(false)
-            setIsMagicLink(false)
-          }}
-        >
+        <Button variant="ghost" onClick={() => { setMagicLinkSent(false); setIsMagicLink(false) }}>
           Retour à la connexion
         </Button>
       </motion.div>
@@ -95,7 +95,6 @@ export default function LoginPage() {
       transition={{ duration: 0.5 }}
       className="w-full max-w-sm"
     >
-      {/* Logo / Header */}
       <div className="text-center mb-10">
         <motion.div
           initial={{ scale: 0.8, opacity: 0 }}
@@ -115,14 +114,13 @@ export default function LoginPage() {
         </p>
       </div>
 
-      {/* Form */}
       <form onSubmit={handleLogin} className="space-y-4">
         <Input
-          label="Email"
-          type="email"
-          placeholder="ton@email.com"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
+          label="Email ou nom d'utilisateur"
+          type="text"
+          placeholder="ton@email.com ou @nom_utilisateur"
+          value={identifier}
+          onChange={(e) => setIdentifier(e.target.value)}
           required
         />
 
@@ -158,14 +156,10 @@ export default function LoginPage() {
         </Button>
       </form>
 
-      {/* Toggle magic link */}
       <div className="mt-4 text-center">
         <button
           type="button"
-          onClick={() => {
-            setIsMagicLink(!isMagicLink)
-            setError('')
-          }}
+          onClick={() => { setIsMagicLink(!isMagicLink); setError('') }}
           className="text-sm text-primary hover:text-accent transition-colors cursor-pointer"
         >
           {isMagicLink ? (
@@ -182,14 +176,10 @@ export default function LoginPage() {
         </button>
       </div>
 
-      {/* Sign up link */}
       <div className="mt-8 text-center">
         <p className="text-sm text-text-secondary">
           Pas encore de compte ?{' '}
-          <Link
-            href="/signup"
-            className="text-primary font-medium hover:text-accent transition-colors"
-          >
+          <Link href="/signup" className="text-primary font-medium hover:text-accent transition-colors">
             Créer mon espace
           </Link>
         </p>

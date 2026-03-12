@@ -10,6 +10,8 @@ import type { Recommendation, VodCategory } from '@/types/database'
 type ClientSummary = {
   id: string
   first_name: string
+  last_name: string
+  username: string
   avatar_url: string | null
   practice_level: string | null
   total_sessions: number
@@ -52,7 +54,7 @@ export default function ClientesPage() {
       const [{ data: profiles }, { data: cats }] = await Promise.all([
         supabase
           .from('profiles')
-          .select('id, first_name, avatar_url, practice_level, total_sessions, total_practice_minutes, limitations, goals, created_at')
+          .select('id, first_name, last_name, username, avatar_url, practice_level, total_sessions, total_practice_minutes, limitations, goals, created_at')
           .eq('is_admin', false)
           .order('total_sessions', { ascending: false }),
         supabase
@@ -174,7 +176,8 @@ export default function ClientesPage() {
                 {client.first_name.charAt(0).toUpperCase()}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="font-medium text-[#2C2C2C]">{client.first_name}</p>
+                <p className="font-medium text-[#2C2C2C]">{client.first_name} {client.last_name}</p>
+                <p className="text-xs text-[#A09488]">@{client.username}</p>
                 <p className="text-xs text-[#6B6359]">
                   {LEVEL_LABELS[client.practice_level || ''] || 'Niveau non défini'} · Membre depuis {new Date(client.created_at).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}
                 </p>
@@ -204,7 +207,8 @@ export default function ClientesPage() {
                 {selected.first_name.charAt(0).toUpperCase()}
               </div>
               <div className="flex-1">
-                <h2 className="font-semibold text-[#2C2C2C]">{selected.first_name}</h2>
+                <h2 className="font-semibold text-[#2C2C2C]">{selected.first_name} {selected.last_name}</h2>
+                <p className="text-xs text-[#A09488]">@{selected.username}</p>
                 <p className="text-xs text-[#6B6359]">{LEVEL_LABELS[selected.practice_level || ''] || '—'}</p>
               </div>
               <button onClick={() => setSelected(null)} className="p-2 rounded-lg hover:bg-[#F2E8DF] text-[#6B6359]"><X size={18} /></button>
