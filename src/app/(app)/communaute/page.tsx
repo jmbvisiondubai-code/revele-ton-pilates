@@ -380,135 +380,89 @@ export default function CommunautePage() {
         {/* Feed column */}
         <div className="relative isolate lg:col-span-2 lg:order-1">
           {/* Background pattern — reduced opacity, only behind messages */}
-          <div aria-hidden="true" className="absolute inset-0 bg-[url('/fond-mobile.png')] md:bg-[url('/fond-desktop.png')] bg-cover bg-center bg-scroll opacity-[0.28] -z-10" />
+          <div aria-hidden="true" className="absolute inset-y-0 -left-3 -right-3 lg:-left-5 lg:-right-5 bg-[url('/fond-mobile.png')] md:bg-[url('/fond-desktop.png')] bg-cover bg-center bg-scroll opacity-[0.28] -z-10" />
 
           {/* ── Pinned messages from Marjorie — sticky at top ── */}
           {pinnedPosts.length > 0 && (
             <div className="sticky top-0 z-20 space-y-3 -mx-4 lg:mx-0 px-4 lg:px-0 pt-2 pb-5 mb-4 bg-gradient-to-b from-[#FAF6F1]/95 via-[#FAF6F1]/80 to-transparent backdrop-blur-sm">
-              {pinnedPosts.map((post) => (
-                <div key={post.id} className="relative rounded-2xl bg-gradient-to-br from-[#FDF0EB] to-[#FAF6F1] border-2 border-[#C6684F]/30 px-4 py-3 shadow-sm">
-                  {/* Pin badge */}
-                  <div className="absolute -top-2.5 left-3 flex items-center gap-1 bg-[#C6684F] text-white text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full shadow-sm">
-                    <Pin size={10} />
-                    Épinglé
-                  </div>
-
-                  <div className="flex items-start gap-3 mt-1">
-                    <div className="relative flex-shrink-0 mt-0.5">
-                      <Avatar src={post.profiles?.avatar_url} fallback={post.profiles?.first_name} size="md" />
-                      <div className="absolute -bottom-0.5 -right-0.5 w-4.5 h-4.5 bg-[#C6684F] rounded-full flex items-center justify-center">
-                        <span className="text-[8px] text-white">✦</span>
+              {pinnedPosts.map((post) => {
+                const pinnedAuthor = 'Marjorie'
+                return (
+                  <div key={post.id} className="relative select-none"
+                    onContextMenu={e => e.preventDefault()}
+                    onTouchStart={e => startBubbleGesture(post.id, false, post.content, pinnedAuthor, e.touches[0].clientX, e.touches[0].clientY)}
+                    onTouchMove={e => moveBubbleGesture(post.id, e.touches[0].clientX, e.touches[0].clientY)}
+                    onTouchEnd={() => endBubbleGesture(post.id, post.content, pinnedAuthor)}
+                    style={{
+                      transform: swipingPost?.postId === post.id ? `translateX(${swipingPost.deltaX}px)` : undefined,
+                      transition: swipingPost?.postId === post.id ? 'none' : 'transform 0.3s cubic-bezier(0.34,1.56,0.64,1)',
+                    }}
+                  >
+                    {/* Swipe-to-reply indicator */}
+                    {swipingPost?.postId === post.id && swipingPost.deltaX > 10 && (
+                      <div className="absolute -left-7 top-1/2 -translate-y-1/2" style={{ opacity: Math.min(swipingPost.deltaX / 50, 1) }}>
+                        <CornerUpLeft size={16} className="text-[#C6684F]" />
                       </div>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-1.5 mb-1">
-                        <span className="text-sm font-bold text-[#C6684F]">Marjorie</span>
-                        <span className="text-[9px] font-semibold bg-[#C6684F] text-white px-1.5 py-0.5 rounded-full">Coach</span>
-                        <span className="text-[10px] text-[#DCCFBF]">{formatRelativeDate(post.created_at)}</span>
-                        {post.edited_at && <span className="text-[10px] text-[#DCCFBF]">(modifié)</span>}
+                    )}
+                    <div className="relative rounded-2xl bg-gradient-to-br from-[#FDF0EB] to-[#FAF6F1] border-2 border-[#C6684F]/30 px-4 py-3 shadow-sm">
+                      {/* Double-tap heart */}
+                      <AnimatePresence>
+                        {doubleTapHeart === post.id && (
+                          <motion.div initial={{ opacity: 0, scale: 0.4 }} animate={{ opacity: 1, scale: 1.4 }} exit={{ opacity: 0, scale: 1.8 }} transition={{ duration: 0.25 }}
+                            className="absolute inset-0 flex items-center justify-center pointer-events-none z-30">
+                            <span className="text-5xl drop-shadow-xl">❤️</span>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                      {/* Pin badge */}
+                      <div className="absolute -top-2.5 left-3 flex items-center gap-1 bg-[#C6684F] text-white text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full shadow-sm">
+                        <Pin size={10} />
+                        Épinglé
                       </div>
-                      <p className="text-sm text-[#2C2C2C] leading-relaxed whitespace-pre-wrap">{post.content}</p>
-                      {post.image_url && (
-                        <div className="mt-2 rounded-xl overflow-hidden">
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img src={post.image_url} alt="" className="w-full object-cover max-h-60" />
-                        </div>
-                      )}
-                      {post.link_url && (
-                        <button onClick={() => openExternal(post.link_url!)}
-                          className="mt-2 flex items-center gap-2 bg-white/70 border border-[#DCCFBF] rounded-xl p-2.5 hover:border-[#C6684F]/50 transition-colors text-left">
-                          <div className="w-7 h-7 rounded-lg bg-[#C6684F]/10 flex items-center justify-center flex-shrink-0">
-                            <ExternalLink size={12} className="text-[#C6684F]" />
+                      <div className="flex items-start gap-3 mt-1">
+                        <div className="relative flex-shrink-0 mt-0.5">
+                          <Avatar src={post.profiles?.avatar_url} fallback={post.profiles?.first_name} size="md" />
+                          <div className="absolute -bottom-0.5 -right-0.5 w-4.5 h-4.5 bg-[#C6684F] rounded-full flex items-center justify-center">
+                            <span className="text-[8px] text-white">✦</span>
                           </div>
-                          <span className="text-xs font-medium text-[#2C2C2C] leading-snug">{post.link_label || 'Voir le lien'}</span>
-                          <ExternalLink size={11} className="text-[#C6684F] flex-shrink-0" />
-                        </button>
-                      )}
-                      {/* Reactions on pinned */}
-                      <div className="flex items-center gap-3 mt-2">
-                        <QuickLikeButton post={post} onReact={toggleReaction} />
-                        {Object.values(post.reaction_counts).reduce((a,b)=>a+b,0) > 0 && (
-                          <button onClick={() => setOpenReactions(openReactions === post.id ? null : post.id)}
-                            className="flex items-center gap-0.5">
-                            {REACTIONS.filter(r => post.reaction_counts[r.type] > 0).slice(0,3).map(r => (
-                              <span key={r.type} className="text-xs leading-none">{r.emoji}</span>
-                            ))}
-                            <span className="text-[10px] text-[#6B6359] ml-0.5 font-medium">
-                              {Object.values(post.reaction_counts).reduce((a,b)=>a+b,0)}
-                            </span>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1.5 mb-1">
+                            <span className="text-sm font-bold text-[#C6684F]">Marjorie</span>
+                            <span className="text-[9px] font-semibold bg-[#C6684F] text-white px-1.5 py-0.5 rounded-full">Coach</span>
+                            <span className="text-[10px] text-[#DCCFBF]">{formatRelativeDate(post.created_at)}</span>
+                            {post.edited_at && <span className="text-[10px] text-[#DCCFBF]">(modifié)</span>}
+                          </div>
+                          <p className="text-sm text-[#2C2C2C] leading-relaxed whitespace-pre-wrap">{post.content}</p>
+                          {post.image_url && (
+                            <div className="mt-2 rounded-xl overflow-hidden">
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img src={post.image_url} alt="" className="w-full object-cover max-h-60" />
+                            </div>
+                          )}
+                          {post.link_url && (
+                            <button onClick={() => openExternal(post.link_url!)}
+                              className="mt-2 flex items-center gap-2 bg-white/70 border border-[#DCCFBF] rounded-xl p-2.5 hover:border-[#C6684F]/50 transition-colors text-left">
+                              <div className="w-7 h-7 rounded-lg bg-[#C6684F]/10 flex items-center justify-center flex-shrink-0">
+                                <ExternalLink size={12} className="text-[#C6684F]" />
+                              </div>
+                              <span className="text-xs font-medium text-[#2C2C2C] leading-snug">{post.link_label || 'Voir le lien'}</span>
+                              <ExternalLink size={11} className="text-[#C6684F] flex-shrink-0" />
+                            </button>
+                          )}
+                        </div>
+                        {isAdmin && (
+                          <button onClick={() => togglePin(post.id, true)}
+                            title="Désépingler"
+                            className="flex-shrink-0 p-1.5 rounded-full text-[#C6684F]/40 hover:text-[#C6684F] hover:bg-[#C6684F]/10 transition-colors">
+                            <PinOff size={14} />
                           </button>
                         )}
-                        <button onClick={() => loadComments(post.id)}
-                          className={`text-sm transition-all select-none ${openComments === post.id ? 'text-[#C6684F]' : 'text-[#DCCFBF] hover:text-[#C6684F]/60'}`}>
-                          <MessageCircle size={14} />
-                        </button>
-                        {post.comment_count > 0 && (
-                          <span className="text-[10px] text-[#6B6359]">{post.comment_count}</span>
-                        )}
                       </div>
-                      {openReactions === post.id && post.reaction_users.length > 0 && (
-                        <div className="flex flex-wrap gap-1.5 mt-2">
-                          {REACTIONS.filter(r => post.reaction_counts[r.type] > 0).map(r => {
-                            const names = post.reaction_users.filter(u => u.reaction_type === r.type)
-                              .map(u => u.user_id === myId ? 'Toi' : u.first_name)
-                            if (!names.length) return null
-                            return (
-                              <div key={r.type} className="flex items-center gap-1 bg-white/80 border border-[#DCCFBF] rounded-full px-2 py-0.5 text-[10px] text-[#6B6359]">
-                                <span>{r.emoji}</span><span>{names.join(', ')}</span>
-                              </div>
-                            )
-                          })}
-                        </div>
-                      )}
                     </div>
-                    {isAdmin && (
-                      <button onClick={() => togglePin(post.id, true)}
-                        title="Désépingler"
-                        className="flex-shrink-0 p-1.5 rounded-full text-[#C6684F]/40 hover:text-[#C6684F] hover:bg-[#C6684F]/10 transition-colors">
-                        <PinOff size={14} />
-                      </button>
-                    )}
                   </div>
-
-                  {/* Comments for pinned */}
-                  <AnimatePresence>
-                    {openComments === post.id && (
-                      <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
-                        className="mt-3 ml-11 space-y-2 border-t border-[#DCCFBF]/30 pt-2">
-                        {(post.comments ?? []).map(comment => {
-                          const isMyComment = !!myId && myId === comment.user_id
-                          return (
-                            <div key={comment.id} className="flex items-start gap-2">
-                              <Avatar src={comment.profiles?.avatar_url} fallback={comment.profiles?.first_name} size="sm" />
-                              <div className="flex-1 min-w-0">
-                                <span className="text-[10px] text-[#6B6359] font-medium">{isMyComment ? 'Toi' : comment.profiles?.first_name}</span>
-                                <div className="rounded-xl bg-white/70 border border-[#DCCFBF]/40 px-3 py-1.5 text-xs text-[#2C2C2C]">
-                                  {comment.content}
-                                  {comment.edited_at && <span className="text-[9px] text-[#DCCFBF] ml-1">(modifié)</span>}
-                                </div>
-                              </div>
-                            </div>
-                          )
-                        })}
-                        {profile && (
-                          <div className="flex gap-2 items-center pt-1">
-                            <Avatar src={profile.avatar_url} fallback={profile.first_name} size="sm" />
-                            <div className="flex-1 flex gap-2">
-                              <input value={newComment} onChange={e => setNewComment(e.target.value)}
-                                onKeyDown={e => e.key === 'Enter' && !e.shiftKey && submitComment(post.id)}
-                                placeholder="Répondre..."
-                                className="flex-1 bg-white border border-[#DCCFBF] text-xs placeholder:text-text-muted rounded-full px-3 py-2 focus:outline-none focus:border-[#C6684F]" />
-                              <button onClick={() => submitComment(post.id)} disabled={isCommenting || !newComment.trim()} className="text-[#C6684F] disabled:opacity-40">
-                                <Send size={14} />
-                              </button>
-                            </div>
-                          </div>
-                        )}
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
-              ))}
+                )
+              })}
             </div>
           )}
 
@@ -926,7 +880,7 @@ export default function CommunautePage() {
 
       {/* ── Fixed compose bar (all screens) ── */}
       {profile && (
-        <div className="fixed bottom-16 lg:bottom-0 left-0 lg:left-60 right-0 z-[55] bg-[#FAF6F1]/97 backdrop-blur-md border-t border-[#DCCFBF]">
+        <div className="fixed bottom-0 left-0 lg:left-60 right-0 z-[55] bg-[#FAF6F1]/97 backdrop-blur-md border-t border-[#DCCFBF] safe-bottom">
           <div className="max-w-5xl mx-auto px-3 lg:px-8 pt-2 pb-3">
             {replyingTo && (
               <div className="flex items-start gap-2 border-l-2 border-[#C6684F] pl-2 py-1 mb-1.5 bg-[#C6684F]/5 rounded-r-lg">
