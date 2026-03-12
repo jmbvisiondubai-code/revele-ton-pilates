@@ -694,7 +694,7 @@ export default function CommunautePage() {
                                     initial={{ opacity: 0, scale: 0.4 }}
                                     animate={{ opacity: 1, scale: 1.4 }}
                                     exit={{ opacity: 0, scale: 1.8 }}
-                                    transition={{ duration: 0.25, exit: { duration: 0.3 } }}
+                                    transition={{ duration: 0.25 }}
                                     className="absolute inset-0 flex items-center justify-center pointer-events-none z-30"
                                   >
                                     <span className="text-5xl drop-shadow-xl">❤️</span>
