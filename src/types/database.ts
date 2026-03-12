@@ -6,7 +6,7 @@ export type Equipment = 'tapis' | 'swiss_ball' | 'elastique' | 'foam_roller'
 export type ArticleCategory = 'pratique' | 'nutrition' | 'bien_etre' | 'recuperation'
 export type ReactionType = 'pouce' | 'coeur' | 'applaudissement' | 'priere' | 'muscle' | 'fete' | 'feu'
 export type BadgeCategory = 'regularity' | 'milestone' | 'exploration' | 'community'
-export type NotificationType = 'reminder' | 'badge' | 'live' | 'streak' | 'weekly_recap'
+export type NotificationType = 'reminder' | 'badge' | 'live' | 'streak' | 'weekly_recap' | 'message'
 
 export type Goal =
   | 'posture'

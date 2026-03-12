@@ -120,6 +120,8 @@ export default function CommunautePage() {
   const [doubleTapHeart, setDoubleTapHeart] = useState<string | null>(null)
   const [highlightPost, setHighlightPost] = useState<string | null>(null)
   const [hoverReactionPost, setHoverReactionPost] = useState<string | null>(null)
+  const [newPostsSince, setNewPostsSince] = useState(0)
+  const lastVisitRef = useRef<string | null>(null)
 
   const { profile, setProfile } = useAuthStore()
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
@@ -144,6 +146,12 @@ export default function CommunautePage() {
       }
     })
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Track last visit to communauté for new posts indicator
+  useEffect(() => {
+    lastVisitRef.current = localStorage.getItem('communaute_last_visit')
+    localStorage.setItem('communaute_last_visit', new Date().toISOString())
+  }, [])
 
   async function loadPosts() {
     if (!isSupabaseConfigured()) { setPosts(DEMO_POSTS); return }
@@ -170,6 +178,13 @@ export default function CommunautePage() {
       return { ...post, reaction_counts, user_reactions, reaction_users, comment_count }
     })
     setPosts(enriched)
+
+    // Count new posts since last visit
+    if (lastVisitRef.current) {
+      const lastDate = new Date(lastVisitRef.current)
+      const newCount = enriched.filter(p => !p.is_pinned && new Date(p.created_at) > lastDate).length
+      setNewPostsSince(newCount)
+    }
   }
 
   useEffect(() => {
@@ -541,6 +556,28 @@ export default function CommunautePage() {
               })}
             </div>
           )}
+
+          {/* ── New posts since last visit ── */}
+          <AnimatePresence>
+            {newPostsSince > 0 && (
+              <motion.button
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                onClick={() => {
+                  setNewPostsSince(0)
+                  messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+                }}
+                className="w-full mb-3 flex items-center justify-center gap-2 py-2 px-4 rounded-2xl bg-[#C6684F] text-white text-sm font-medium shadow-md active:scale-95 transition-transform"
+              >
+                <span>✨</span>
+                {newPostsSince === 1
+                  ? '1 nouveau message depuis ta dernière visite'
+                  : `${newPostsSince} nouveaux messages depuis ta dernière visite`}
+                <span>↓</span>
+              </motion.button>
+            )}
+          </AnimatePresence>
 
           {/* ── Regular feed ── */}
           {feedPosts.length === 0 && posts.length === 0 ? (
