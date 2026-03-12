@@ -220,10 +220,15 @@ export default function MessagesPage() {
 
     setMessages(messagesWithMeta)
     setLoadingMsgs(false)
-    supabase.from('direct_messages')
-      .update({ read_at: new Date().toISOString() })
-      .eq('receiver_id', myId).eq('sender_id', partnerId).is('read_at', null)
-      .then(() => loadConversations())
+
+    // Mark all received messages from this partner as read
+    const unreadIds = msgs.filter(m => m.receiver_id === myId && m.sender_id === partnerId && !m.read_at).map(m => m.id)
+    if (unreadIds.length > 0) {
+      await supabase.from('direct_messages')
+        .update({ read_at: new Date().toISOString() })
+        .in('id', unreadIds)
+      loadConversations()
+    }
   }, [myId, loadConversations])
 
   useEffect(() => { if (activeId) loadMessages(activeId) }, [activeId, loadMessages])
@@ -237,9 +242,10 @@ export default function MessagesPage() {
         const msg = payload.new as DirectMessage
         if (msg.sender_id === activeId) {
           setMessages(prev => [...prev, { ...msg, reaction_counts: { ...EMPTY_REACTIONS }, user_reactions: [] }])
-          supabase.from('direct_messages').update({ read_at: new Date().toISOString() }).eq('id', msg.id).then(() => {})
+          supabase.from('direct_messages').update({ read_at: new Date().toISOString() }).eq('id', msg.id).then(() => loadConversations())
+        } else {
+          loadConversations()
         }
-        loadConversations()
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'direct_message_reactions' }, () => {
         if (activeId) loadMessages(activeId)
