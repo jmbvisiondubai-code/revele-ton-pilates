@@ -179,10 +179,11 @@ export interface UserMilestone {
 
 export interface Recommendation {
   id: string
-  user_id: string
+  user_id: string | null
   created_by: string | null
   title: string
   message: string | null
+  category: string | null
   link_url: string | null
   link_label: string | null
   link_thumbnail_url: string | null

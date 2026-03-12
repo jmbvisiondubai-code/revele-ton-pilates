@@ -31,7 +31,15 @@ export default function ClientesPage() {
   const [categories, setCategories] = useState<VodCategory[]>([])
   const [loading, setLoading] = useState(true)
   const [loadingDetail, setLoadingDetail] = useState(false)
-  const [form, setForm] = useState({ title: '', message: '', category: '', directUrl: '', thumbnailUrl: '', thumbnailMode: 'none' as 'none' | 'url' | 'upload' })
+  const REC_CATEGORIES = [
+    { key: 'mouvement', label: 'Mouvement', emoji: '🧘‍♀️' },
+    { key: 'nutrition', label: 'Nutrition', emoji: '🥗' },
+    { key: 'bien_etre', label: 'Bien-être', emoji: '🌿' },
+    { key: 'mindset', label: 'Mindset', emoji: '🧠' },
+    { key: 'cours', label: 'Cours', emoji: '🎯' },
+    { key: 'autre', label: 'Autre', emoji: '💬' },
+  ]
+  const [form, setForm] = useState({ title: '', message: '', recCategory: 'cours', vodCategory: '', directUrl: '', thumbnailUrl: '', thumbnailMode: 'none' as 'none' | 'url' | 'upload' })
   const [saving, setSaving] = useState(false)
   const [uploadingThumb, setUploadingThumb] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -111,11 +119,10 @@ export default function ClientesPage() {
     if (!selected || !form.title.trim()) return
     setSaving(true)
     const { data: me } = await supabase.auth.getUser()
-    const selectedCategory = categories.find(c => c.url === form.category)
+    const selectedVodCat = categories.find(c => c.url === form.vodCategory)
 
-    // Determine link
-    const link_url = form.directUrl.trim() || selectedCategory?.url || null
-    const link_label = form.directUrl.trim() ? form.directUrl.trim() : (selectedCategory?.label || null)
+    const link_url = form.directUrl.trim() || selectedVodCat?.url || null
+    const link_label = form.directUrl.trim() ? null : (selectedVodCat?.label || null)
     const link_thumbnail_url = form.thumbnailUrl.trim() || null
 
     const { data, error } = await supabase
@@ -125,6 +132,7 @@ export default function ClientesPage() {
         created_by: me.user?.id,
         title: form.title.trim(),
         message: form.message.trim() || null,
+        category: form.recCategory,
         link_url,
         link_label,
         link_thumbnail_url,
@@ -134,7 +142,7 @@ export default function ClientesPage() {
 
     if (!error && data) {
       setSelected(prev => prev ? { ...prev, recommendations: [data as Recommendation, ...prev.recommendations] } : prev)
-      setForm({ title: '', message: '', category: '', directUrl: '', thumbnailUrl: '', thumbnailMode: 'none' })
+      setForm({ title: '', message: '', recCategory: 'cours', vodCategory: '', directUrl: '', thumbnailUrl: '', thumbnailMode: 'none' })
     }
     setSaving(false)
   }
@@ -289,6 +297,19 @@ export default function ClientesPage() {
                   <div className="bg-white border border-[#DCCFBF] rounded-xl p-4 space-y-3">
                     <p className="text-xs font-semibold text-[#6B6359]">Nouvelle recommandation</p>
 
+                    {/* Category */}
+                    <div>
+                      <p className="text-xs font-medium text-[#6B6359] mb-1.5">Catégorie</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {REC_CATEGORIES.map(c => (
+                          <button key={c.key} type="button" onClick={() => setForm(f => ({ ...f, recCategory: c.key }))}
+                            className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium border transition ${form.recCategory === c.key ? 'border-[#C6684F] bg-[#C6684F]/10 text-[#C6684F]' : 'border-[#DCCFBF] text-[#6B6359]'}`}>
+                            {c.emoji} {c.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
                     <input type="text" placeholder="Titre *" value={form.title}
                       onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
                       className="w-full text-sm border border-[#DCCFBF] rounded-lg px-3 py-2 focus:outline-none focus:border-[#C6684F] bg-[#FAF6F1]" />
@@ -300,7 +321,7 @@ export default function ClientesPage() {
                     {/* Link section */}
                     <div className="space-y-2">
                       <p className="text-xs font-medium text-[#6B6359]">Lien (optionnel)</p>
-                      <select value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value, directUrl: '' }))}
+                      <select value={form.vodCategory} onChange={e => setForm(f => ({ ...f, vodCategory: e.target.value, directUrl: '' }))}
                         className="w-full text-sm border border-[#DCCFBF] rounded-lg px-3 py-2 focus:outline-none focus:border-[#C6684F] bg-[#FAF6F1] text-[#6B6359]">
                         <option value="">— Choisir une catégorie VOD</option>
                         {categories.map(c => <option key={c.id} value={c.url}>{c.emoji} {c.label}</option>)}
@@ -313,7 +334,7 @@ export default function ClientesPage() {
                       <div className="relative">
                         <LinkIcon size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#6B6359]" />
                         <input type="url" placeholder="URL directe d'un cours spécifique"
-                          value={form.directUrl} onChange={e => setForm(f => ({ ...f, directUrl: e.target.value, category: '' }))}
+                          value={form.directUrl} onChange={e => setForm(f => ({ ...f, directUrl: e.target.value, vodCategory: '' }))}
                           className="w-full text-sm border border-[#DCCFBF] rounded-lg pl-9 pr-3 py-2 focus:outline-none focus:border-[#C6684F] bg-[#FAF6F1]" />
                       </div>
                     </div>
