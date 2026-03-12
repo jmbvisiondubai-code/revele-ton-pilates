@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Heart, MessageCircle, Send, Pin, PinOff, MoreHorizontal, Pencil, Trash2, Check, X, Link as LinkIcon, Image as ImageIcon, ExternalLink, CornerUpLeft, Smile, ChevronDown, ArrowLeft } from 'lucide-react'
+import { Heart, MessageCircle, Send, Pin, PinOff, MoreHorizontal, Pencil, Trash2, Check, X, Link as LinkIcon, Image as ImageIcon, ExternalLink, CornerUpLeft, Smile, ChevronDown, ArrowLeft, Paperclip, Loader2 } from 'lucide-react'
 import Link from 'next/link'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/client'
 import { useAuthStore } from '@/stores/auth-store'
@@ -100,8 +100,14 @@ export default function CommunautePage() {
   const [postImageUrl, setPostImageUrl] = useState('')
   const [postLinkUrl, setPostLinkUrl] = useState('')
   const [postLinkLabel, setPostLinkLabel] = useState('')
-  const [showImageInput, setShowImageInput] = useState(false)
   const [showLinkInput, setShowLinkInput] = useState(false)
+  const [isUploadingMedia, setIsUploadingMedia] = useState(false)
+  const [imagePreview, setImagePreview] = useState<string | null>(null)
+  const [pendingDocName, setPendingDocName] = useState<string | null>(null)
+  const [liveNewCount, setLiveNewCount] = useState(0)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const docInputRef = useRef<HTMLInputElement>(null)
+  const isAtBottomRef = useRef(true)
   const [isPosting, setIsPosting] = useState(false)
   const [openComments, setOpenComments] = useState<string | null>(null)
   const [newComment, setNewComment] = useState('')
@@ -153,6 +159,37 @@ export default function CommunautePage() {
     localStorage.setItem('communaute_last_visit', new Date().toISOString())
   }, [])
 
+  // Track scroll position to show "new posts" pill when scrolled up
+  useEffect(() => {
+    function handleScroll() {
+      const distFromBottom = document.documentElement.scrollHeight - window.scrollY - window.innerHeight
+      isAtBottomRef.current = distFromBottom < 120
+      if (isAtBottomRef.current) setLiveNewCount(0)
+    }
+    window.addEventListener('scroll', handleScroll, { passive: true })
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [])
+
+  async function handleFileUpload(file: File, isImage: boolean) {
+    if (!isSupabaseConfigured() || !myId) return
+    setIsUploadingMedia(true)
+    if (isImage) setImagePreview(URL.createObjectURL(file))
+    const ext = file.name.split('.').pop()
+    const path = `community/${myId}/${Date.now()}.${ext}`
+    const { error } = await supabase.storage.from('community').upload(path, file)
+    if (!error) {
+      const { data: urlData } = supabase.storage.from('community').getPublicUrl(path)
+      if (isImage) {
+        setPostImageUrl(urlData.publicUrl)
+      } else {
+        setPostLinkUrl(urlData.publicUrl)
+        setPostLinkLabel(file.name)
+        setPendingDocName(file.name)
+      }
+    }
+    setIsUploadingMedia(false)
+  }
+
   async function loadPosts() {
     if (!isSupabaseConfigured()) { setPosts(DEMO_POSTS); return }
     const { data: postsData } = await supabase
@@ -196,6 +233,9 @@ export default function CommunautePage() {
         if (data) {
           const post: PostWithMeta = { ...data, reaction_counts: { pouce: 0, coeur: 0, applaudissement: 0, priere: 0, muscle: 0, fete: 0, feu: 0 }, user_reactions: [], reaction_users: [], comment_count: 0 }
           setPosts(prev => prev.find(p => p.id === post.id) ? prev : [post, ...prev])
+          if (!isAtBottomRef.current) {
+            setLiveNewCount(prev => prev + 1)
+          }
         }
       })
       .subscribe()
@@ -209,8 +249,12 @@ export default function CommunautePage() {
   }, [posts.length])
 
   function resetPostForm() {
-    setNewPost(''); setPostImageUrl(''); setPostLinkUrl(''); setPostLinkLabel('')
-    setShowImageInput(false); setShowLinkInput(false); setReplyingTo(null)
+    setNewPost(''); setPostLinkUrl(''); setPostLinkLabel('')
+    setShowLinkInput(false); setReplyingTo(null)
+    if (imagePreview) { URL.revokeObjectURL(imagePreview); setImagePreview(null) }
+    setPostImageUrl(''); setPendingDocName(null)
+    if (fileInputRef.current) fileInputRef.current.value = ''
+    if (docInputRef.current) docInputRef.current.value = ''
   }
 
   async function handlePost() {
@@ -393,6 +437,25 @@ export default function CommunautePage() {
       {(postMenu || commentMenu) && (
         <div className="fixed inset-0 z-10" onClick={() => { setPostMenu(null); setCommentMenu(null) }} />
       )}
+
+      {/* ── Floating "new posts" pill ── */}
+      <AnimatePresence>
+        {liveNewCount > 0 && (
+          <motion.button
+            initial={{ opacity: 0, y: 20, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 10, scale: 0.9 }}
+            onClick={() => {
+              setLiveNewCount(0)
+              messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+            }}
+            className="fixed bottom-24 left-1/2 -translate-x-1/2 z-40 flex items-center gap-2 bg-[#C6684F] text-white text-sm font-semibold px-4 py-2 rounded-full shadow-lg active:scale-95 transition-transform"
+          >
+            <ChevronDown size={14} />
+            {liveNewCount === 1 ? '1 nouveau message' : `${liveNewCount} nouveaux messages`}
+          </motion.button>
+        )}
+      </AnimatePresence>
 
       <div className="sticky top-0 z-30 px-4 lg:px-8 pt-6 lg:pt-8 pb-4 mb-1 bg-[#FAF6F1]/95 backdrop-blur-sm">
         <Link
@@ -1086,14 +1149,39 @@ export default function CommunautePage() {
                 </button>
               </div>
             )}
-            {isAdmin && (showImageInput || showLinkInput) && (
+            {/* Hidden file inputs */}
+            {isAdmin && (
+              <>
+                <input ref={fileInputRef} type="file" accept="image/*" className="hidden"
+                  onChange={e => { const f = e.target.files?.[0]; if (f) handleFileUpload(f, true) }} />
+                <input ref={docInputRef} type="file" accept=".pdf,.doc,.docx,.xlsx,.pptx,.txt,.csv"
+                  className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) handleFileUpload(f, false) }} />
+              </>
+            )}
+
+            {isAdmin && (imagePreview || pendingDocName || showLinkInput || isUploadingMedia) && (
               <div className="mb-1.5 space-y-1.5">
-                {showImageInput && (
-                  <div className="flex items-center gap-2">
-                    <ImageIcon size={12} className="text-[#6B6359] flex-shrink-0" />
-                    <input type="url" placeholder="URL de l'image..." value={postImageUrl} onChange={e => setPostImageUrl(e.target.value)}
-                      className="flex-1 text-xs border border-[#DCCFBF] rounded-lg px-2 py-1.5 focus:outline-none focus:border-[#C6684F] bg-white" />
-                    <button onClick={() => { setShowImageInput(false); setPostImageUrl('') }} className="text-[#DCCFBF]"><X size={12} /></button>
+                {isUploadingMedia && (
+                  <div className="flex items-center gap-2 text-xs text-[#6B6359]">
+                    <Loader2 size={12} className="animate-spin" />
+                    Envoi en cours...
+                  </div>
+                )}
+                {imagePreview && !isUploadingMedia && (
+                  <div className="relative inline-block">
+                    <img src={imagePreview} alt="" className="h-20 rounded-xl object-cover" />
+                    <button onClick={() => { if (imagePreview) URL.revokeObjectURL(imagePreview); setImagePreview(null); setPostImageUrl(''); if (fileInputRef.current) fileInputRef.current.value = '' }}
+                      className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-[#C6684F] rounded-full flex items-center justify-center text-white shadow">
+                      <X size={10} />
+                    </button>
+                  </div>
+                )}
+                {pendingDocName && !isUploadingMedia && (
+                  <div className="flex items-center gap-2 bg-[#F5EFE9] rounded-lg px-2.5 py-1.5">
+                    <Paperclip size={12} className="text-[#6B6359] flex-shrink-0" />
+                    <span className="text-xs text-[#2C2C2C] truncate flex-1">{pendingDocName}</span>
+                    <button onClick={() => { setPendingDocName(null); setPostLinkUrl(''); setPostLinkLabel(''); if (docInputRef.current) docInputRef.current.value = '' }}
+                      className="text-[#DCCFBF]"><X size={12} /></button>
                   </div>
                 )}
                 {showLinkInput && (
@@ -1102,9 +1190,9 @@ export default function CommunautePage() {
                       <LinkIcon size={12} className="text-[#6B6359] flex-shrink-0" />
                       <input type="url" placeholder="URL du lien..." value={postLinkUrl} onChange={e => setPostLinkUrl(e.target.value)}
                         className="flex-1 text-xs border border-[#DCCFBF] rounded-lg px-2 py-1.5 focus:outline-none focus:border-[#C6684F] bg-white" />
-                      <button onClick={() => { setShowLinkInput(false); setPostLinkUrl(''); setPostLinkLabel('') }} className="text-[#DCCFBF]"><X size={12} /></button>
+                      <button onClick={() => { setShowLinkInput(false); if (!pendingDocName) { setPostLinkUrl(''); setPostLinkLabel('') } }} className="text-[#DCCFBF]"><X size={12} /></button>
                     </div>
-                    {postLinkUrl && (
+                    {postLinkUrl && !pendingDocName && (
                       <input type="text" placeholder="Texte du bouton..." value={postLinkLabel} onChange={e => setPostLinkLabel(e.target.value)}
                         className="w-full text-xs border border-[#DCCFBF] rounded-lg px-2 py-1.5 focus:outline-none focus:border-[#C6684F] bg-white" />
                     )}
@@ -1117,12 +1205,21 @@ export default function CommunautePage() {
               <div className="flex-1 flex items-end gap-1 bg-white border border-[#DCCFBF] rounded-2xl px-3 py-2 focus-within:border-[#C6684F] transition-colors">
                 {isAdmin && (
                   <div className="flex gap-0.5 self-end mb-0.5 mr-1">
-                    <button onClick={() => setShowImageInput(v => !v)}
-                      className={`p-1 rounded transition-colors ${showImageInput ? 'text-[#C6684F]' : 'text-[#DCCFBF] hover:text-[#C6684F]/60'}`}>
+                    <button onClick={() => fileInputRef.current?.click()}
+                      disabled={isUploadingMedia}
+                      className={`p-1 rounded transition-colors ${imagePreview ? 'text-[#C6684F]' : 'text-[#DCCFBF] hover:text-[#C6684F]/60'} disabled:opacity-40`}
+                      title="Ajouter une photo">
                       <ImageIcon size={14} />
                     </button>
+                    <button onClick={() => docInputRef.current?.click()}
+                      disabled={isUploadingMedia}
+                      className={`p-1 rounded transition-colors ${pendingDocName ? 'text-[#C6684F]' : 'text-[#DCCFBF] hover:text-[#C6684F]/60'} disabled:opacity-40`}
+                      title="Ajouter un document">
+                      <Paperclip size={14} />
+                    </button>
                     <button onClick={() => setShowLinkInput(v => !v)}
-                      className={`p-1 rounded transition-colors ${showLinkInput ? 'text-[#C6684F]' : 'text-[#DCCFBF] hover:text-[#C6684F]/60'}`}>
+                      className={`p-1 rounded transition-colors ${showLinkInput ? 'text-[#C6684F]' : 'text-[#DCCFBF] hover:text-[#C6684F]/60'}`}
+                      title="Ajouter un lien">
                       <LinkIcon size={14} />
                     </button>
                   </div>
@@ -1134,9 +1231,9 @@ export default function CommunautePage() {
                   className="flex-1 resize-none bg-transparent text-sm text-text placeholder:text-text-muted focus:outline-none leading-5 max-h-28 overflow-y-auto"
                 />
               </div>
-              <button onClick={handlePost} disabled={isPosting || !newPost.trim()}
+              <button onClick={handlePost} disabled={isPosting || isUploadingMedia || (!newPost.trim() && !postImageUrl && !postLinkUrl)}
                 className="flex-shrink-0 w-9 h-9 rounded-full bg-[#C6684F] flex items-center justify-center text-white disabled:opacity-40 transition-opacity">
-                <Send size={16} />
+                {isUploadingMedia ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
               </button>
             </div>
           </div>
