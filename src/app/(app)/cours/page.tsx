@@ -6,26 +6,12 @@ import { Clock, Monitor, Video, ExternalLink, Radio, Film, X, ChevronRight, Play
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/client'
 import { Card, Button } from '@/components/ui'
 import type { LiveSession, VodCategory } from '@/types/database'
+import { COLOR_CLASSES } from '@/app/admin/cours/page'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
 
 type Tab = 'lives' | 'vod' | 'replays'
 
-const TILE_COLORS = [
-  'bg-rose-50 border-rose-200 text-rose-700',
-  'bg-amber-50 border-amber-200 text-amber-700',
-  'bg-orange-50 border-orange-200 text-orange-700',
-  'bg-purple-50 border-purple-200 text-purple-700',
-  'bg-sky-50 border-sky-200 text-sky-700',
-  'bg-yellow-50 border-yellow-200 text-yellow-700',
-  'bg-teal-50 border-teal-200 text-teal-700',
-  'bg-lime-50 border-lime-200 text-lime-700',
-  'bg-red-50 border-red-200 text-red-700',
-  'bg-pink-50 border-pink-200 text-pink-700',
-  'bg-green-50 border-green-200 text-green-700',
-  'bg-indigo-50 border-indigo-200 text-indigo-700',
-  'bg-violet-50 border-violet-200 text-violet-700',
-]
 
 const DEMO_LIVE: LiveSession = {
   id: 'demo-live',
@@ -268,7 +254,7 @@ export default function CoursPage() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.03 }}
                 onClick={() => openExternal(cat.url)}
-                className={`flex items-center gap-3 p-3.5 rounded-2xl border text-left transition-all active:scale-95 ${TILE_COLORS[i % TILE_COLORS.length]}`}
+                className={`flex items-center gap-3 p-3.5 rounded-2xl border text-left transition-all active:scale-95 ${COLOR_CLASSES[cat.color] ?? COLOR_CLASSES.rose}`}
               >
                 <span className="text-2xl flex-shrink-0">{cat.emoji}</span>
                 <div className="flex-1 min-w-0">

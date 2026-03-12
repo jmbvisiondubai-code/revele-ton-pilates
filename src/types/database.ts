@@ -195,6 +195,7 @@ export interface VodCategory {
   label: string
   emoji: string
   url: string
+  color: string
   order_index: number
   is_active: boolean
   created_at: string
