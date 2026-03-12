@@ -3,12 +3,12 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { motion } from 'framer-motion'
-import { Home, Play, MessageCircle, BookOpen, User } from 'lucide-react'
+import { Home, Play, MessageSquare, BookOpen, User } from 'lucide-react'
 
 const navItems = [
   { href: '/dashboard', label: 'Accueil', icon: Home },
   { href: '/cours', label: 'Cours', icon: Play },
-  { href: '/communaute', label: 'Communauté', icon: MessageCircle },
+  { href: '/messages', label: 'Messages', icon: MessageSquare },
   { href: '/conseils', label: 'Conseils', icon: BookOpen },
   { href: '/profil', label: 'Profil', icon: User },
 ]
