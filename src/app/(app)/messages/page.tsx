@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import {
   Send, ArrowLeft, MessageSquare, Smile, Pencil, Trash2,
   Pin, PinOff, CornerUpLeft, X, Paperclip, FileText, Check, MoreHorizontal,
+  Archive, ArchiveRestore, EyeOff, ChevronDown,
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/client'
@@ -29,7 +30,7 @@ const EMPTY_REACTIONS: Record<ReactionType, number> = {
 
 // ── Types ────────────────────────────────────────────────────────────────────
 type ConvProfile = { id: string; first_name: string; avatar_url: string | null }
-type ConversationPreview = { partner: ConvProfile; lastMessage: string | null; lastAt: string | null; unreadCount: number }
+type ConversationPreview = { partner: ConvProfile; lastMessage: string | null; lastAt: string | null; unreadCount: number; isArchived: boolean }
 type MessageWithMeta = DirectMessage & { reaction_counts: Record<ReactionType, number>; user_reactions: ReactionType[] }
 type ReplyTarget = { id: string; preview: string; author: string }
 type MsgMenu = { msgId: string; isOwn: boolean; content: string; isPinned: boolean; x: number; y: number }
@@ -92,6 +93,8 @@ export default function MessagesPage() {
   const [swipingMsg, setSwipingMsg] = useState<{ msgId: string; deltaX: number } | null>(null)
   const [showDotMenu, setShowDotMenu] = useState<string | null>(null)
   const [deletingMsgId, setDeletingMsgId] = useState<string | null>(null)
+  const [convMenuId, setConvMenuId] = useState<string | null>(null)
+  const [showArchived, setShowArchived] = useState(false)
 
   // Refs
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -128,13 +131,25 @@ export default function MessagesPage() {
       profiles = data ?? []
     }
 
+    // Fetch archived conversations (admin only)
+    const archivedSet = new Set<string>()
+    if (isAdmin) {
+      const { data: archived } = await supabase
+        .from('dm_archived_conversations')
+        .select('client_id')
+        .eq('admin_id', myId)
+      ;(archived ?? []).forEach(a => archivedSet.add(a.client_id))
+    }
+
     const result: ConversationPreview[] = profiles.map(p => ({
       partner: p,
       lastMessage: partnerMap.get(p.id)?.lastMessage ?? null,
       lastAt: partnerMap.get(p.id)?.lastAt ?? null,
       unreadCount: partnerMap.get(p.id)?.unreadCount ?? 0,
+      isArchived: archivedSet.has(p.id),
     }))
     result.sort((a, b) => {
+      if (a.isArchived !== b.isArchived) return a.isArchived ? 1 : -1
       if (a.lastAt && b.lastAt) return b.lastAt.localeCompare(a.lastAt)
       if (a.lastAt) return -1
       if (b.lastAt) return 1
@@ -287,6 +302,38 @@ export default function MessagesPage() {
     setMsgMenu(null)
   }
 
+  // ── Archive conversation ─────────────────────────────────────────────────
+  async function archiveConversation(partnerId: string) {
+    if (!myId || !isAdmin || !isSupabaseConfigured()) return
+    const supabase = createClient()
+    await supabase.from('dm_archived_conversations').upsert({ admin_id: myId, client_id: partnerId })
+    setConvMenuId(null)
+    if (activeId === partnerId) { setActiveId(null); setActiveProfile(null); setMessages([]); setShowList(true) }
+    loadConversations()
+  }
+
+  async function unarchiveConversation(partnerId: string) {
+    if (!myId || !isAdmin || !isSupabaseConfigured()) return
+    const supabase = createClient()
+    await supabase.from('dm_archived_conversations').delete().eq('admin_id', myId).eq('client_id', partnerId)
+    setConvMenuId(null)
+    loadConversations()
+  }
+
+  async function markConvAsUnread(partnerId: string) {
+    if (!myId || !isSupabaseConfigured()) return
+    const supabase = createClient()
+    const { data: lastMsg } = await supabase
+      .from('direct_messages').select('id')
+      .eq('receiver_id', myId).eq('sender_id', partnerId)
+      .order('created_at', { ascending: false }).limit(1).single()
+    if (lastMsg) {
+      await supabase.from('direct_messages').update({ read_at: null }).eq('id', lastMsg.id)
+      loadConversations()
+    }
+    setConvMenuId(null)
+  }
+
   // ── File upload ───────────────────────────────────────────────────────────
   async function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -348,6 +395,15 @@ export default function MessagesPage() {
     setMessages(prev => [...prev, optimistic])
 
     const supabase = createClient()
+
+    // Auto-unarchive if conversation was archived
+    if (isAdmin && activeId) {
+      const conv = convs.find(c => c.partner.id === activeId)
+      if (conv?.isArchived) {
+        await supabase.from('dm_archived_conversations').delete().eq('admin_id', myId).eq('client_id', activeId)
+      }
+    }
+
     const { data, error } = await supabase.from('direct_messages')
       .insert({ sender_id: myId, receiver_id: activeId, content: text, image_url, file_url, file_name, reply_to_id: reply?.id, reply_to_preview: reply?.preview, reply_to_author: reply?.author })
       .select().single()
@@ -384,6 +440,7 @@ export default function MessagesPage() {
 
   const pinnedMessages = messages.filter(m => m.is_pinned)
   const activePartnerName = activeProfile?.first_name ?? ''
+  const activeConvIsArchived = activeId ? (convs.find(c => c.partner.id === activeId)?.isArchived ?? false) : false
 
   if (!isSupabaseConfigured()) {
     return (
@@ -426,7 +483,7 @@ export default function MessagesPage() {
         </button>
 
         {/* DM list */}
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto" onClick={() => setConvMenuId(null)}>
           {loadingConvs ? (
             <div className="flex items-center justify-center py-12">
               <div className="w-6 h-6 border-2 border-[#C6684F] border-t-transparent rounded-full animate-spin" />
@@ -434,31 +491,134 @@ export default function MessagesPage() {
           ) : convs.length === 0 ? (
             <p className="text-center text-sm text-[#A09488] py-10 px-4">{isAdmin ? "Aucun membre pour l'instant." : 'Aucune conversation.'}</p>
           ) : (
-            convs.map(conv => (
-              <button
-                key={conv.partner.id}
-                onClick={() => openConversation(conv)}
-                className={`w-full flex items-center gap-3 px-4 py-3 hover:bg-[#FAF6F1] transition-colors text-left ${activeId === conv.partner.id && !showCommunaute ? 'bg-[#F2E8DF]' : ''}`}
-              >
-                <div className="relative flex-shrink-0">
-                  <ProfileAvatar p={conv.partner} size={48} />
-                  {conv.unreadCount > 0 && (
-                    <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] bg-[#C6684F] rounded-full flex items-center justify-center text-white text-[10px] font-bold px-1">
-                      {conv.unreadCount > 9 ? '9+' : conv.unreadCount}
-                    </span>
+            <>
+              {/* Active conversations */}
+              {convs.filter(c => !c.isArchived).map(conv => (
+                <div
+                  key={conv.partner.id}
+                  className={`relative flex items-center gap-3 px-4 py-3 hover:bg-[#FAF6F1] transition-colors cursor-pointer ${activeId === conv.partner.id && !showCommunaute ? 'bg-[#F2E8DF]' : ''}`}
+                  onClick={() => openConversation(conv)}
+                >
+                  <div className="relative flex-shrink-0">
+                    <ProfileAvatar p={conv.partner} size={48} />
+                    {conv.unreadCount > 0 && (
+                      <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] bg-[#C6684F] rounded-full flex items-center justify-center text-white text-[10px] font-bold px-1">
+                        {conv.unreadCount > 9 ? '9+' : conv.unreadCount}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-baseline justify-between gap-2">
+                      <p className={`text-sm truncate ${conv.unreadCount > 0 ? 'font-semibold text-[#2C2C2C]' : 'font-medium text-[#2C2C2C]'}`}>{conv.partner.first_name}</p>
+                      {conv.lastAt && <span className="text-[10px] text-[#A09488] flex-shrink-0">{formatRelativeDate(conv.lastAt)}</span>}
+                    </div>
+                    <p className={`text-xs truncate ${conv.unreadCount > 0 ? 'font-medium text-[#2C2C2C]' : 'text-[#A09488]'}`}>
+                      {conv.lastMessage ?? 'Aucun message'}
+                    </p>
+                  </div>
+                  {/* Conv menu button (admin only) */}
+                  {isAdmin && (
+                    <div className="relative flex-shrink-0" onClick={e => e.stopPropagation()}>
+                      <button
+                        onClick={() => setConvMenuId(convMenuId === conv.partner.id ? null : conv.partner.id)}
+                        className="w-7 h-7 rounded-full flex items-center justify-center text-[#A09488] hover:bg-[#EDE5DA] hover:text-[#6B6359] transition-colors"
+                      >
+                        <MoreHorizontal size={15} />
+                      </button>
+                      <AnimatePresence>
+                        {convMenuId === conv.partner.id && (
+                          <motion.div
+                            initial={{ opacity: 0, scale: 0.9, y: 4 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.9, y: 4 }}
+                            transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+                            className="absolute right-0 top-full mt-1 z-50 bg-white rounded-xl shadow-lg border border-[#EDE5DA] overflow-hidden min-w-[175px]"
+                          >
+                            <button
+                              onClick={() => markConvAsUnread(conv.partner.id)}
+                              className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-[#2C2C2C] hover:bg-[#FAF6F1] transition-colors"
+                            >
+                              <EyeOff size={14} className="text-[#6B6359]" /> Marquer non lu
+                            </button>
+                            <button
+                              onClick={() => archiveConversation(conv.partner.id)}
+                              className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-[#2C2C2C] hover:bg-[#FAF6F1] transition-colors border-t border-[#EDE5DA]"
+                            >
+                              <Archive size={14} className="text-[#6B6359]" /> Archiver
+                            </button>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
                   )}
                 </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-baseline justify-between gap-2">
-                    <p className={`text-sm truncate ${conv.unreadCount > 0 ? 'font-semibold text-[#2C2C2C]' : 'font-medium text-[#2C2C2C]'}`}>{conv.partner.first_name}</p>
-                    {conv.lastAt && <span className="text-[10px] text-[#A09488] flex-shrink-0">{formatRelativeDate(conv.lastAt)}</span>}
-                  </div>
-                  <p className={`text-xs truncate ${conv.unreadCount > 0 ? 'font-medium text-[#2C2C2C]' : 'text-[#A09488]'}`}>
-                    {conv.lastMessage ?? 'Aucun message'}
-                  </p>
-                </div>
-              </button>
-            ))
+              ))}
+
+              {/* Archived conversations section (admin only) */}
+              {isAdmin && convs.some(c => c.isArchived) && (
+                <>
+                  <button
+                    onClick={() => setShowArchived(v => !v)}
+                    className="w-full flex items-center gap-2 px-4 py-2.5 text-xs font-medium text-[#A09488] hover:text-[#6B6359] hover:bg-[#FAF6F1] transition-colors border-t border-[#EDE5DA]"
+                  >
+                    <Archive size={13} />
+                    <span>Archivées ({convs.filter(c => c.isArchived).length})</span>
+                    <ChevronDown size={13} className={`ml-auto transition-transform ${showArchived ? 'rotate-180' : ''}`} />
+                  </button>
+                  <AnimatePresence>
+                    {showArchived && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.2 }}
+                        style={{ overflow: 'hidden' }}
+                      >
+                        {convs.filter(c => c.isArchived).map(conv => (
+                          <div
+                            key={conv.partner.id}
+                            className={`relative flex items-center gap-3 px-4 py-3 hover:bg-[#FAF6F1] transition-colors cursor-pointer opacity-70 ${activeId === conv.partner.id && !showCommunaute ? 'bg-[#F2E8DF]' : ''}`}
+                            onClick={() => openConversation(conv)}
+                          >
+                            <ProfileAvatar p={conv.partner} size={44} />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-[#2C2C2C] truncate">{conv.partner.first_name}</p>
+                              <p className="text-xs text-[#A09488] truncate">{conv.lastMessage ?? 'Aucun message'}</p>
+                            </div>
+                            <div className="relative flex-shrink-0" onClick={e => e.stopPropagation()}>
+                              <button
+                                onClick={() => setConvMenuId(convMenuId === conv.partner.id ? null : conv.partner.id)}
+                                className="w-7 h-7 rounded-full flex items-center justify-center text-[#A09488] hover:bg-[#EDE5DA] hover:text-[#6B6359] transition-colors"
+                              >
+                                <MoreHorizontal size={15} />
+                              </button>
+                              <AnimatePresence>
+                                {convMenuId === conv.partner.id && (
+                                  <motion.div
+                                    initial={{ opacity: 0, scale: 0.9, y: 4 }}
+                                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                                    exit={{ opacity: 0, scale: 0.9, y: 4 }}
+                                    transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+                                    className="absolute right-0 top-full mt-1 z-50 bg-white rounded-xl shadow-lg border border-[#EDE5DA] overflow-hidden min-w-[175px]"
+                                  >
+                                    <button
+                                      onClick={() => unarchiveConversation(conv.partner.id)}
+                                      className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-[#2C2C2C] hover:bg-[#FAF6F1] transition-colors"
+                                    >
+                                      <ArchiveRestore size={14} className="text-[#6B6359]" /> Désarchiver
+                                    </button>
+                                  </motion.div>
+                                )}
+                              </AnimatePresence>
+                            </div>
+                          </div>
+                        ))}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </>
+              )}
+            </>
           )}
         </div>
       </div>
@@ -499,6 +659,22 @@ export default function MessagesPage() {
               </div>
             </div>
 
+            {/* Archived banner */}
+            {activeConvIsArchived && isAdmin && (
+              <div className="flex-shrink-0 flex items-center justify-between gap-2 px-4 py-2 bg-[#F2E8DF] border-b border-[#DCCFBF]">
+                <div className="flex items-center gap-2 text-xs text-[#6B6359]">
+                  <Archive size={13} className="text-[#C6684F]" />
+                  <span>Conversation archivée</span>
+                </div>
+                <button
+                  onClick={() => unarchiveConversation(activeId!)}
+                  className="text-xs font-medium text-[#C6684F] hover:text-[#A8543D] transition-colors flex items-center gap-1"
+                >
+                  <ArchiveRestore size={13} /> Désarchiver
+                </button>
+              </div>
+            )}
+
             {/* Pinned messages */}
             {pinnedMessages.length > 0 && (
               <div className="flex-shrink-0 bg-gradient-to-b from-[#FDF0EB] to-transparent border-b border-[#C6684F]/20 px-4 py-2 space-y-1.5">
@@ -535,8 +711,6 @@ export default function MessagesPage() {
                   const totalReactions = Object.values(msg.reaction_counts).reduce((a, b) => a + b, 0)
                   const isEditing = editingId === msg.id
                   const isSwiping = swipingMsg?.msgId === msg.id
-                  const next = messages[i + 1]
-                  const isLastInGroup = !next || next.sender_id !== msg.sender_id
 
                   return (
                     <div key={msg.id}>
@@ -561,16 +735,6 @@ export default function MessagesPage() {
                           transition: isSwiping ? 'none' : 'transform 0.3s cubic-bezier(0.34,1.56,0.64,1)',
                         }}
                       >
-                        {/* Avatar (received messages only) */}
-                        {!isMe && (
-                          <div className="flex-shrink-0 self-end">
-                            {isLastInGroup && activeProfile
-                              ? <ProfileAvatar p={activeProfile} size={28} />
-                              : <div className="w-7 h-7" />
-                            }
-                          </div>
-                        )}
-
                         {/* Swipe indicator */}
                         {isSwiping && swipingMsg.deltaX > 10 && (
                           <div className={`absolute ${isMe ? 'right-full mr-2' : 'left-full ml-2'} top-1/2 -translate-y-1/2`} style={{ opacity: Math.min(swipingMsg.deltaX / 50, 1) }}>
@@ -650,7 +814,7 @@ export default function MessagesPage() {
                         </div>
 
                         {/* Bubble */}
-                        <div className="max-w-[70%]">
+                        <div className="max-w-[75%]">
                           {/* Reply preview */}
                           {msg.reply_to_preview && (
                             <div className="mb-1 px-2.5 py-1.5 rounded-xl text-xs border-l-2 border-[#C6684F] bg-white/60 backdrop-blur-sm">
@@ -748,15 +912,6 @@ export default function MessagesPage() {
                           </button>
                         )}
 
-                        {/* Own avatar (sent messages — right side) */}
-                        {isMe && (
-                          <div className="flex-shrink-0 self-end">
-                            {isLastInGroup && profile
-                              ? <ProfileAvatar p={{ id: myId!, first_name: profile.first_name, avatar_url: profile.avatar_url ?? null }} size={28} />
-                              : <div className="w-7 h-7" />
-                            }
-                          </div>
-                        )}
                       </div>
                     </div>
                   )
