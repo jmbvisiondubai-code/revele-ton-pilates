@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   MessageSquare, Send, ArrowLeft, Smile, Paperclip, X,
@@ -1060,22 +1061,20 @@ export default function MessagesPage() {
         )}
       </div>
 
-      {/* ── Conv ⋯ dropdown — rendered fixed to escape overflow-hidden ── */}
-      <AnimatePresence>
-        {convMenuId && convMenuPos && (() => {
+      {/* ── Conv ⋯ dropdown — portaled to body to escape all clipping ── */}
+      {convMenuId && convMenuPos && typeof document !== 'undefined' && createPortal(
+        (() => {
           const conv = convs.find(c => c.partner.id === convMenuId)
           if (!conv) return null
           const isUnread = conv.unreadCount > 0
           return (
             <>
-              <div className="fixed inset-0 z-40" onClick={() => { setConvMenuId(null); setConvMenuPos(null) }} />
-              <motion.div
-                key="conv-menu"
-                initial={{ opacity: 0, scale: 0.95, y: -6 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.95, y: -6 }}
-                transition={{ type: 'spring', stiffness: 400, damping: 28 }}
-                style={{ position: 'fixed', top: convMenuPos.top, right: convMenuPos.right, minWidth: 220, zIndex: 50 }}
+              <div
+                style={{ position: 'fixed', inset: 0, zIndex: 9998 }}
+                onClick={() => { setConvMenuId(null); setConvMenuPos(null) }}
+              />
+              <div
+                style={{ position: 'fixed', top: convMenuPos.top, right: convMenuPos.right, minWidth: 220, zIndex: 9999 }}
                 className="bg-white rounded-2xl shadow-xl border border-[#EDE5DA] overflow-hidden"
               >
                 <button
@@ -1098,11 +1097,12 @@ export default function MessagesPage() {
                     <span>Archiver la discussion</span>
                   </button>
                 )}
-              </motion.div>
+              </div>
             </>
           )
-        })()}
-      </AnimatePresence>
+        })(),
+        document.body
+      )}
     </div>
   )
 }
