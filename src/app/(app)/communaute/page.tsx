@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Heart, MessageCircle, Send, Pin, PinOff, MoreHorizontal, Pencil, Trash2, Check, X, Link as LinkIcon, Image as ImageIcon, ExternalLink, CornerUpLeft } from 'lucide-react'
+import { Heart, MessageCircle, Send, Pin, PinOff, MoreHorizontal, Pencil, Trash2, Check, X, Link as LinkIcon, Image as ImageIcon, ExternalLink, CornerUpLeft, Smile, ChevronDown } from 'lucide-react'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/client'
 import { useAuthStore } from '@/stores/auth-store'
 import { Card, Avatar, Button } from '@/components/ui'
@@ -113,6 +113,7 @@ export default function CommunautePage() {
   const [replyingTo, setReplyingTo] = useState<{ id: string; content: string; authorName: string } | null>(null)
   const [doubleTapHeart, setDoubleTapHeart] = useState<string | null>(null)
   const [highlightPost, setHighlightPost] = useState<string | null>(null)
+  const [hoverReactionPost, setHoverReactionPost] = useState<string | null>(null)
 
   const { profile } = useAuthStore()
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
@@ -590,8 +591,8 @@ export default function CommunautePage() {
                   const authorName = post.is_from_marjorie ? 'Marjorie' : (isOwn ? 'Toi' : (post.profiles?.first_name || 'Membre'))
 
                   return (
-                    <motion.div key={post.id} id={`post-${post.id}`} initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ delay: i < 5 ? i * 0.04 : 0 }}>
-                      <div className={`flex items-end gap-2 ${isOwn ? 'flex-row-reverse' : 'flex-row'}`}>
+                    <motion.div key={post.id} id={`post-${post.id}`} initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ delay: i < 5 ? i * 0.04 : 0 }} onMouseLeave={() => setHoverReactionPost(null)}>
+                      <div className={`flex items-end gap-2 group/msg ${isOwn ? 'flex-row-reverse' : 'flex-row'}`}>
 
                         {/* Avatar */}
                         <div className="flex-shrink-0 self-end mb-1">
@@ -783,6 +784,39 @@ export default function CommunautePage() {
                             )}
                           </AnimatePresence>
                         </div>
+
+                        {/* Desktop hover actions (WhatsApp Web style) */}
+                        <div className={`hidden lg:flex flex-row items-center gap-0.5 self-end pb-0.5 transition-opacity duration-150 ${hoverReactionPost === post.id ? 'opacity-100' : 'opacity-0 group-hover/msg:opacity-100'}`}>
+                          <div className="relative">
+                            <button
+                              onClick={() => setHoverReactionPost(prev => prev === post.id ? null : post.id)}
+                              className="w-7 h-7 flex items-center justify-center rounded-full text-[#DCCFBF] hover:text-[#6B6359] hover:bg-[#F2E8DF] transition-colors"
+                              title="Réagir"
+                            >
+                              <Smile size={15} />
+                            </button>
+                            {hoverReactionPost === post.id && (
+                              <div className={`absolute bottom-9 z-30 bg-white rounded-2xl shadow-xl border border-[#DCCFBF] px-2 py-2 flex gap-1 ${isOwn ? 'right-0' : 'left-0'}`}>
+                                {REACTIONS.map(r => (
+                                  <button key={r.type}
+                                    onClick={() => { toggleReaction(post.id, r.type); setHoverReactionPost(null) }}
+                                    className={`text-xl hover:scale-125 transition-transform p-0.5 rounded ${post.user_reactions.includes(r.type) ? 'ring-2 ring-[#C6684F]/40' : ''}`}
+                                    title={r.label}
+                                  >
+                                    {r.emoji}
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                          <button
+                            onClick={() => setContextMenu({ postId: post.id, isOwn, content: post.content, authorName })}
+                            className="w-7 h-7 flex items-center justify-center rounded-full text-[#DCCFBF] hover:text-[#6B6359] hover:bg-[#F2E8DF] transition-colors"
+                            title="Plus d'options"
+                          >
+                            <ChevronDown size={15} />
+                          </button>
+                        </div>
                       </div>
 
                       {/* Comments — full width */}
@@ -868,6 +902,11 @@ export default function CommunautePage() {
       </div>
 
       {/* ── WhatsApp-style context menu ── */}
+      {/* Backdrop to close desktop emoji picker */}
+      {hoverReactionPost && (
+        <div className="hidden lg:block fixed inset-0 z-20" onClick={() => setHoverReactionPost(null)} />
+      )}
+
       <AnimatePresence>
         {contextMenu && contextPost && (
           <motion.div
