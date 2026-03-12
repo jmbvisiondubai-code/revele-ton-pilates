@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { BottomNav } from './bottom-nav'
 import { SideNav } from './side-nav'
+import { PushSetup } from '@/components/push-setup'
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const [isEmbedded, setIsEmbedded] = useState(false)
@@ -17,6 +18,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-dvh bg-bg">
+      <PushSetup />
       <SideNav />
       <div className="lg:ml-60 pb-20 lg:pb-8">
         {children}

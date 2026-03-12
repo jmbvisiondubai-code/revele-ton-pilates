@@ -1,5 +1,36 @@
 // Service Worker — Révèle Ton Pilates
-const CACHE = 'rtp-v3';
+const CACHE = 'rtp-v4';
+
+// ── Push notifications ────────────────────────────────────────────────────────
+self.addEventListener('push', (event) => {
+  const data = event.data?.json() ?? {};
+  event.waitUntil(
+    self.registration.showNotification(data.title ?? 'Révèle Ton Pilates', {
+      body: data.body ?? '',
+      icon: '/icon-192.png',
+      badge: '/icon-192.png',
+      data: { url: data.url ?? '/dashboard' },
+      tag: data.tag ?? 'rtp',
+      renotify: true,
+    })
+  );
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const url = event.notification.data?.url ?? '/dashboard';
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => {
+      for (const c of list) {
+        if ('focus' in c) {
+          c.navigate(url);
+          return c.focus();
+        }
+      }
+      return clients.openWindow(url);
+    })
+  );
+});
 
 self.addEventListener('install', () => self.skipWaiting());
 self.addEventListener('activate', (event) => {

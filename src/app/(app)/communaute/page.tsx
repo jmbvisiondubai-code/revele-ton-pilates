@@ -330,6 +330,35 @@ export default function CommunautePage() {
     }).select('*, profiles(username, avatar_url)').single()
     if (!error && data) {
       setPosts(prev => [{ ...data, reaction_counts: { pouce: 0, coeur: 0, applaudissement: 0, priere: 0, muscle: 0, fete: 0, feu: 0 }, user_reactions: [], reaction_users: [], comment_count: 0 }, ...prev])
+
+      // Push notifications to @mentioned users
+      const mentionMatches = [...newPost.matchAll(/@([a-zA-Z0-9_-]+)/g)]
+      if (mentionMatches.length > 0) {
+        const usernames = [...new Set(mentionMatches.map(m => m[1]))]
+        const { data: mentioned } = await supabase
+          .from('profiles')
+          .select('id, username')
+          .in('username', usernames)
+          .neq('id', profile.id)
+        if (mentioned?.length) {
+          const senderName = profile.username ?? 'Quelqu\'un'
+          const preview = newPost.trim().length > 80 ? newPost.trim().slice(0, 80) + '…' : newPost.trim()
+          mentioned.forEach(u => {
+            fetch('/api/push/send', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                userId: u.id,
+                title: `✦ ${senderName} vous a mentionné`,
+                body: preview,
+                url: '/communaute',
+                tag: `mention-${data.id}`,
+              }),
+            }).catch(() => {})
+          })
+        }
+      }
+
       resetPostForm()
     }
     setIsPosting(false)

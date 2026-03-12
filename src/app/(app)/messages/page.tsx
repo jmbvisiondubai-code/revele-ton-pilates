@@ -376,6 +376,20 @@ export default function MessagesPage() {
 
     if (!error && data) {
       setMessages(prev => prev.map(m => m.id === optimistic.id ? { ...data, reaction_counts: { ...EMPTY_REACTIONS }, user_reactions: [] } : m))
+      // Push notification to recipient
+      const senderName = profile?.username ?? 'Quelqu\'un'
+      const preview = text || (image_url ? '📷 Photo' : file_name ? `📎 ${file_name}` : 'Message')
+      fetch('/api/push/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: activeId,
+          title: `💬 ${senderName}`,
+          body: preview.length > 80 ? preview.slice(0, 80) + '…' : preview,
+          url: '/messages',
+          tag: `dm-${myId}`,
+        }),
+      }).catch(() => {})
     }
     loadConversations()
   }
