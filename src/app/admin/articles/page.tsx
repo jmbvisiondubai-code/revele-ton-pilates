@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import type { Article, ArticleCategory } from '@/types/database'
-import { Plus, Pencil, Trash2, Eye, EyeOff, X } from 'lucide-react'
+import { Plus, Pencil, Trash2, Eye, EyeOff, X, ExternalLink } from 'lucide-react'
 
 const CATEGORIES: { value: ArticleCategory; label: string }[] = [
   { value: 'pratique', label: 'Pratique' },
@@ -16,6 +16,8 @@ const EMPTY_FORM = {
   title: '', content: '', category: 'pratique' as ArticleCategory,
   thumbnail_url: '', reading_time_minutes: 5, marjorie_note: '',
   tags: '', is_published: false,
+  published_at: new Date().toISOString().slice(0, 16),
+  vod_link_url: '', vod_link_label: '', vod_link_thumbnail: '',
 }
 
 export default function AdminArticlesPage() {
@@ -24,11 +26,10 @@ export default function AdminArticlesPage() {
   const [editing, setEditing] = useState<Article | null>(null)
   const [form, setForm] = useState(EMPTY_FORM)
   const [saving, setSaving] = useState(false)
-
   const supabase = createClient()
 
   async function loadArticles() {
-    const { data } = await supabase.from('articles').select('*').order('created_at', { ascending: false })
+    const { data } = await supabase.from('articles').select('*').order('published_at', { ascending: false, nullsFirst: false })
     if (data) setArticles(data as Article[])
   }
 
@@ -36,7 +37,7 @@ export default function AdminArticlesPage() {
 
   function openNew() {
     setEditing(null)
-    setForm(EMPTY_FORM)
+    setForm({ ...EMPTY_FORM, published_at: new Date().toISOString().slice(0, 16) })
     setShowForm(true)
   }
 
@@ -51,6 +52,10 @@ export default function AdminArticlesPage() {
       marjorie_note: article.marjorie_note ?? '',
       tags: article.tags.join(', '),
       is_published: article.is_published,
+      published_at: article.published_at ? article.published_at.slice(0, 16) : new Date().toISOString().slice(0, 16),
+      vod_link_url: article.vod_link_url ?? '',
+      vod_link_label: article.vod_link_label ?? '',
+      vod_link_thumbnail: article.vod_link_thumbnail ?? '',
     })
     setShowForm(true)
   }
@@ -64,8 +69,12 @@ export default function AdminArticlesPage() {
       thumbnail_url: form.thumbnail_url || null,
       reading_time_minutes: form.reading_time_minutes,
       marjorie_note: form.marjorie_note || null,
-      tags: form.tags.split(',').map(t => t.trim()).filter(Boolean),
+      tags: form.tags.split(',').map((t: string) => t.trim()).filter(Boolean),
       is_published: form.is_published,
+      published_at: form.published_at ? new Date(form.published_at).toISOString() : null,
+      vod_link_url: form.vod_link_url || null,
+      vod_link_label: form.vod_link_label || null,
+      vod_link_thumbnail: form.vod_link_thumbnail || null,
     }
     if (editing) {
       await supabase.from('articles').update(payload).eq('id', editing.id)
@@ -88,6 +97,11 @@ export default function AdminArticlesPage() {
     loadArticles()
   }
 
+  function formatDate(d: string | null) {
+    if (!d) return '—'
+    return new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })
+  }
+
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
@@ -99,25 +113,32 @@ export default function AdminArticlesPage() {
 
       <div className="space-y-3">
         {articles.length === 0 && (
-          <div className="text-center py-12 text-[#C6684F] bg-white rounded-xl border border-[#DCCFBF]">
-            Aucun article pour l'instant.
-          </div>
+          <div className="text-center py-12 text-[#C6684F] bg-white rounded-xl border border-[#DCCFBF]">Aucun article pour l'instant.</div>
         )}
         {articles.map(article => (
           <div key={article.id} className="bg-white rounded-xl border border-[#DCCFBF] p-4 flex items-center gap-4">
+            {article.thumbnail_url && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={article.thumbnail_url} alt="" className="w-14 h-14 rounded-lg object-cover flex-shrink-0" />
+            )}
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <h3 className="font-medium text-[#2C2C2C] truncate">{article.title}</h3>
-                <span className={`text-xs px-2 py-0.5 rounded-full ${article.is_published ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                <span className={`text-xs px-2 py-0.5 rounded-full flex-shrink-0 ${article.is_published ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
                   {article.is_published ? 'Publié' : 'Brouillon'}
                 </span>
               </div>
-              <p className="text-sm text-[#C6684F]">
-                {CATEGORIES.find(c => c.value === article.category)?.label} · {article.reading_time_minutes} min de lecture
+              <p className="text-sm text-[#C6684F] mt-0.5">
+                {CATEGORIES.find(c => c.value === article.category)?.label}
+                {article.reading_time_minutes ? ` · ${article.reading_time_minutes} min` : ''}
+                {' · '}{formatDate(article.published_at)}
               </p>
+              {article.vod_link_url && (
+                <p className="text-xs text-[#6B6359] mt-0.5 flex items-center gap-1"><ExternalLink size={10} /> VOD liée</p>
+              )}
             </div>
-            <div className="flex items-center gap-2">
-              <button onClick={() => togglePublish(article)} className="p-2 text-[#C6684F] hover:text-[#2C2C2C]" title={article.is_published ? 'Dépublier' : 'Publier'}>
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <button onClick={() => togglePublish(article)} className="p-2 text-[#C6684F] hover:text-[#2C2C2C]">
                 {article.is_published ? <EyeOff size={16} /> : <Eye size={16} />}
               </button>
               <button onClick={() => openEdit(article)} className="p-2 text-[#C6684F] hover:text-[#2C2C2C]"><Pencil size={16} /></button>
@@ -131,7 +152,7 @@ export default function AdminArticlesPage() {
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between p-6 border-b border-[#DCCFBF]">
-              <h3 className="font-serif text-xl text-[#2C2C2C]">{editing ? 'Modifier l\'article' : 'Nouvel article'}</h3>
+              <h3 className="font-serif text-xl text-[#2C2C2C]">{editing ? "Modifier l'article" : 'Nouvel article'}</h3>
               <button onClick={() => setShowForm(false)}><X size={20} className="text-[#C6684F]" /></button>
             </div>
             <div className="p-6 space-y-4">
@@ -140,7 +161,7 @@ export default function AdminArticlesPage() {
                 <input value={form.title} onChange={e => setForm(p => ({ ...p, title: e.target.value }))}
                   className="w-full border border-[#DCCFBF] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#C6684F]" />
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-3 gap-3">
                 <div>
                   <label className="block text-sm font-medium text-[#6B6359] mb-1">Catégorie</label>
                   <select value={form.category} onChange={e => setForm(p => ({ ...p, category: e.target.value as ArticleCategory }))}
@@ -149,8 +170,13 @@ export default function AdminArticlesPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-[#6B6359] mb-1">Temps de lecture (min)</label>
+                  <label className="block text-sm font-medium text-[#6B6359] mb-1">Lecture (min)</label>
                   <input type="number" value={form.reading_time_minutes} onChange={e => setForm(p => ({ ...p, reading_time_minutes: parseInt(e.target.value) || 0 }))}
+                    className="w-full border border-[#DCCFBF] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#C6684F]" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-[#6B6359] mb-1">Date publication</label>
+                  <input type="datetime-local" value={form.published_at} onChange={e => setForm(p => ({ ...p, published_at: e.target.value }))}
                     className="w-full border border-[#DCCFBF] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#C6684F]" />
                 </div>
               </div>
@@ -164,29 +190,42 @@ export default function AdminArticlesPage() {
                 <textarea value={form.marjorie_note} onChange={e => setForm(p => ({ ...p, marjorie_note: e.target.value }))} rows={2}
                   className="w-full border border-[#DCCFBF] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#C6684F] resize-none" />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-[#6B6359] mb-1">Tags (séparés par des virgules)</label>
-                <input value={form.tags} onChange={e => setForm(p => ({ ...p, tags: e.target.value }))}
-                  className="w-full border border-[#DCCFBF] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#C6684F]" placeholder="respiration, core, dos" />
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-[#6B6359] mb-1">Tags (virgules)</label>
+                  <input value={form.tags} onChange={e => setForm(p => ({ ...p, tags: e.target.value }))}
+                    className="w-full border border-[#DCCFBF] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#C6684F]" placeholder="respiration, dos..." />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-[#6B6359] mb-1">URL miniature article</label>
+                  <input value={form.thumbnail_url} onChange={e => setForm(p => ({ ...p, thumbnail_url: e.target.value }))}
+                    className="w-full border border-[#DCCFBF] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#C6684F]" placeholder="https://..." />
+                </div>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-[#6B6359] mb-1">URL miniature</label>
-                <input value={form.thumbnail_url} onChange={e => setForm(p => ({ ...p, thumbnail_url: e.target.value }))}
-                  className="w-full border border-[#DCCFBF] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#C6684F]" placeholder="https://..." />
+              <div className="border border-[#DCCFBF] rounded-xl p-4 space-y-3 bg-[#FAF6F1]">
+                <p className="text-sm font-medium text-[#2C2C2C]">🎯 Cours VOD associé <span className="text-xs text-[#6B6359] font-normal">(optionnel)</span></p>
+                <input type="url" placeholder="URL du cours Uscreen" value={form.vod_link_url} onChange={e => setForm(p => ({ ...p, vod_link_url: e.target.value }))}
+                  className="w-full border border-[#DCCFBF] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#C6684F] bg-white" />
+                <div className="grid grid-cols-2 gap-3">
+                  <input placeholder="Texte du bouton" value={form.vod_link_label} onChange={e => setForm(p => ({ ...p, vod_link_label: e.target.value }))}
+                    className="w-full border border-[#DCCFBF] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#C6684F] bg-white" />
+                  <input type="url" placeholder="URL miniature du cours" value={form.vod_link_thumbnail} onChange={e => setForm(p => ({ ...p, vod_link_thumbnail: e.target.value }))}
+                    className="w-full border border-[#DCCFBF] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#C6684F] bg-white" />
+                </div>
               </div>
               <label className="flex items-center gap-3 cursor-pointer">
                 <div className={`w-10 h-6 rounded-full transition-colors ${form.is_published ? 'bg-[#C6684F]' : 'bg-gray-200'}`}
                   onClick={() => setForm(p => ({ ...p, is_published: !p.is_published }))}>
                   <div className={`w-5 h-5 bg-white rounded-full shadow m-0.5 transition-transform ${form.is_published ? 'translate-x-4' : ''}`} />
                 </div>
-                <span className="text-sm text-[#6B6359]">Publier immédiatement</span>
+                <span className="text-sm text-[#6B6359]">Publier</span>
               </label>
             </div>
             <div className="p-6 border-t border-[#DCCFBF] flex gap-3">
               <button onClick={() => setShowForm(false)} className="flex-1 border border-[#DCCFBF] text-[#6B6359] py-2 rounded-lg text-sm font-medium">Annuler</button>
               <button onClick={save} disabled={saving || !form.title || !form.content}
                 className="flex-1 bg-[#C6684F] text-white py-2 rounded-lg text-sm font-medium disabled:opacity-50 hover:bg-[#A8543D] transition-colors">
-                {saving ? 'Enregistrement...' : editing ? 'Mettre à jour' : 'Publier'}
+                {saving ? 'Enregistrement...' : editing ? 'Mettre à jour' : 'Créer'}
               </button>
             </div>
           </div>

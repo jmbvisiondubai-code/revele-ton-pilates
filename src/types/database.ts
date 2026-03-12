@@ -114,7 +114,20 @@ export interface Article {
   reading_time_minutes: number | null
   marjorie_note: string | null
   is_published: boolean
+  published_at: string | null
+  vod_link_url: string | null
+  vod_link_label: string | null
+  vod_link_thumbnail: string | null
   created_at: string
+}
+
+export interface ArticleComment {
+  id: string
+  article_id: string
+  user_id: string
+  content: string
+  created_at: string
+  profiles?: Pick<Profile, 'first_name' | 'avatar_url'>
 }
 
 export interface CommunityPost {

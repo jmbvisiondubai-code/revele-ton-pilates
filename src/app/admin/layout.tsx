@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/client'
 import Link from 'next/link'
-import { LayoutDashboard, Video, Calendar, BookOpen, ArrowLeft, Mail, Users, Settings, Lightbulb } from 'lucide-react'
+import { LayoutDashboard, Video, Calendar, BookOpen, ArrowLeft, Mail, Users, Settings } from 'lucide-react'
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter()
@@ -67,9 +67,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </Link>
           <Link href="/admin/clientes" className="flex items-center gap-3 px-3 py-2 rounded-lg text-[#6B6359] hover:bg-[#F2E8DF] text-sm font-medium">
             <Users size={16} /> Clientes
-          </Link>
-          <Link href="/admin/conseils" className="flex items-center gap-3 px-3 py-2 rounded-lg text-[#6B6359] hover:bg-[#F2E8DF] text-sm font-medium">
-            <Lightbulb size={16} /> Conseils
           </Link>
           <Link href="/admin/parametres" className="flex items-center gap-3 px-3 py-2 rounded-lg text-[#6B6359] hover:bg-[#F2E8DF] text-sm font-medium">
             <Settings size={16} /> Paramètres
