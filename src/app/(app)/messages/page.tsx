@@ -975,8 +975,10 @@ export default function MessagesPage() {
                           <button
                             className={`md:hidden flex-shrink-0 self-end mb-1 w-6 h-6 flex items-center justify-center text-[#C8BFB6] ${isMe ? 'order-first mr-1' : 'order-last ml-1'}`}
                             onTouchStart={e => e.stopPropagation()}
+                            onClick={e => e.stopPropagation()}
                             onTouchEnd={(e) => {
                               e.stopPropagation()
+                              e.preventDefault()
                               const rect = e.currentTarget.getBoundingClientRect()
                               setMsgMenu({
                                 msgId: msg.id, isOwn: isMe, content: msg.content, isPinned: msg.is_pinned ?? false,
