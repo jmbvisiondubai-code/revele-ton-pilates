@@ -63,11 +63,12 @@ const DEMO_POSTS: PostWithMeta[] = [
 ]
 
 function openExternal(url: string) {
+  const safeUrl = /^https?:\/\//i.test(url) ? url : `https://${url}`
   const isIosPwa = (navigator as Navigator & { standalone?: boolean }).standalone === true
-  if (isIosPwa) { navigator.clipboard.writeText(url).catch(() => {}) }
+  if (isIosPwa) { navigator.clipboard.writeText(safeUrl).catch(() => {}) }
   else {
     const a = document.createElement('a')
-    a.href = url; a.target = '_blank'; a.rel = 'noopener noreferrer'
+    a.href = safeUrl; a.target = '_blank'; a.rel = 'noopener noreferrer'
     document.body.appendChild(a); a.click(); document.body.removeChild(a)
   }
 }
