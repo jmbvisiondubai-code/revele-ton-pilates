@@ -137,6 +137,9 @@ export interface CommunityPost {
   image_url: string | null
   is_pinned: boolean
   is_from_marjorie: boolean
+  link_url: string | null
+  link_label: string | null
+  edited_at: string | null
   created_at: string
   profiles?: Pick<Profile, 'first_name' | 'avatar_url'>
 }
