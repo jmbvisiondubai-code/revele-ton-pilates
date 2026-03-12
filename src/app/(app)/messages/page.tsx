@@ -95,6 +95,7 @@ export default function MessagesPage() {
   const [deletingMsgId, setDeletingMsgId] = useState<string | null>(null)
   const [convMenuId, setConvMenuId] = useState<string | null>(null)
   const [showArchived, setShowArchived] = useState(false)
+  const [convSwipeId, setConvSwipeId] = useState<string | null>(null)
 
   // Refs
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -102,6 +103,7 @@ export default function MessagesPage() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const touchStartRef = useRef<{ x: number; y: number } | null>(null)
+  const convTouchRef = useRef<{ startX: number; startY: number } | null>(null)
 
   // ── Load conversations ───────────────────────────────────────────────────
   const loadConversations = useCallback(async () => {
@@ -160,6 +162,20 @@ export default function MessagesPage() {
   }, [myId, isAdmin])
 
   useEffect(() => { loadConversations() }, [loadConversations])
+
+  // ── Session restore ───────────────────────────────────────────────────────
+  useEffect(() => {
+    const saved = typeof window !== 'undefined' ? sessionStorage.getItem('dm_active_conv') : null
+    if (saved) { setActiveId(saved); setShowList(false) }
+  }, [])
+
+  useEffect(() => {
+    if (activeId && !activeProfile && convs.length > 0) {
+      const conv = convs.find(c => c.partner.id === activeId)
+      if (conv) setActiveProfile(conv.partner)
+      else { setActiveId(null); setShowList(true); sessionStorage.removeItem('dm_active_conv') }
+    }
+  }, [convs]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Load messages ────────────────────────────────────────────────────────
   const loadMessages = useCallback(async (partnerId: string) => {
@@ -422,10 +438,12 @@ export default function MessagesPage() {
   }
 
   function openConversation(conv: ConversationPreview) {
+    if (typeof window !== 'undefined') sessionStorage.setItem('dm_active_conv', conv.partner.id)
     setActiveId(conv.partner.id)
     setActiveProfile(conv.partner)
     setShowCommunaute(false)
     setShowList(false)
+    setConvSwipeId(null)
   }
 
   // ── Avatar ────────────────────────────────────────────────────────────────
@@ -483,7 +501,7 @@ export default function MessagesPage() {
         </button>
 
         {/* DM list */}
-        <div className="flex-1 overflow-y-auto" onClick={() => setConvMenuId(null)}>
+        <div className="flex-1 overflow-y-auto" onClick={() => { setConvMenuId(null); setConvSwipeId(null) }}>
           {loadingConvs ? (
             <div className="flex items-center justify-center py-12">
               <div className="w-6 h-6 border-2 border-[#C6684F] border-t-transparent rounded-full animate-spin" />
@@ -494,63 +512,98 @@ export default function MessagesPage() {
             <>
               {/* Active conversations */}
               {convs.filter(c => !c.isArchived).map(conv => (
-                <div
-                  key={conv.partner.id}
-                  className={`relative flex items-center gap-3 px-4 py-3 hover:bg-[#FAF6F1] transition-colors cursor-pointer ${activeId === conv.partner.id && !showCommunaute ? 'bg-[#F2E8DF]' : ''}`}
-                  onClick={() => openConversation(conv)}
-                >
-                  <div className="relative flex-shrink-0">
-                    <ProfileAvatar p={conv.partner} size={48} />
-                    {conv.unreadCount > 0 && (
-                      <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] bg-[#C6684F] rounded-full flex items-center justify-center text-white text-[10px] font-bold px-1">
-                        {conv.unreadCount > 9 ? '9+' : conv.unreadCount}
-                      </span>
+                <div key={conv.partner.id} className="relative overflow-hidden">
+                  {/* Swipe-left action buttons */}
+                  <div className="absolute right-0 top-0 h-full flex">
+                    <button
+                      onClick={(e) => { e.stopPropagation(); markConvAsUnread(conv.partner.id); setConvSwipeId(null) }}
+                      className="w-20 h-full bg-[#5B8DEF] flex flex-col items-center justify-center gap-1"
+                    >
+                      <EyeOff size={15} className="text-white" />
+                      <span className="text-[10px] text-white font-medium leading-none">Non lu</span>
+                    </button>
+                    {isAdmin && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); archiveConversation(conv.partner.id); setConvSwipeId(null) }}
+                        className="w-20 h-full bg-[#A09488] flex flex-col items-center justify-center gap-1"
+                      >
+                        <Archive size={15} className="text-white" />
+                        <span className="text-[10px] text-white font-medium leading-none">Archiver</span>
+                      </button>
                     )}
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-baseline justify-between gap-2">
-                      <p className={`text-sm truncate ${conv.unreadCount > 0 ? 'font-semibold text-[#2C2C2C]' : 'font-medium text-[#2C2C2C]'}`}>{conv.partner.first_name}</p>
-                      {conv.lastAt && <span className="text-[10px] text-[#A09488] flex-shrink-0">{formatRelativeDate(conv.lastAt)}</span>}
+                  {/* Row content */}
+                  <div
+                    className={`relative flex items-center gap-3 px-4 py-3 bg-white cursor-pointer ${activeId === conv.partner.id && !showCommunaute ? '!bg-[#F2E8DF]' : 'hover:bg-[#FAF6F1]'}`}
+                    style={{ transform: convSwipeId === conv.partner.id ? `translateX(-${isAdmin ? 160 : 80}px)` : 'translateX(0)', transition: 'transform 0.25s ease' }}
+                    onClick={() => { if (convSwipeId === conv.partner.id) { setConvSwipeId(null); return } openConversation(conv) }}
+                    onTouchStart={(e) => {
+                      if (convSwipeId && convSwipeId !== conv.partner.id) setConvSwipeId(null)
+                      convTouchRef.current = { startX: e.touches[0].clientX, startY: e.touches[0].clientY }
+                    }}
+                    onTouchEnd={(e) => {
+                      if (!convTouchRef.current) return
+                      const dx = e.changedTouches[0].clientX - convTouchRef.current.startX
+                      const dy = Math.abs(e.changedTouches[0].clientY - convTouchRef.current.startY)
+                      convTouchRef.current = null
+                      if (dy > 20) return
+                      if (dx < -50) setConvSwipeId(conv.partner.id)
+                      else if (dx > 20) setConvSwipeId(null)
+                    }}
+                  >
+                    <div className="relative flex-shrink-0">
+                      <ProfileAvatar p={conv.partner} size={48} />
+                      {conv.unreadCount > 0 && (
+                        <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] bg-[#C6684F] rounded-full flex items-center justify-center text-white text-[10px] font-bold px-1">
+                          {conv.unreadCount > 9 ? '9+' : conv.unreadCount}
+                        </span>
+                      )}
                     </div>
-                    <p className={`text-xs truncate ${conv.unreadCount > 0 ? 'font-medium text-[#2C2C2C]' : 'text-[#A09488]'}`}>
-                      {conv.lastMessage ?? 'Aucun message'}
-                    </p>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-baseline justify-between gap-2">
+                        <p className={`text-sm truncate ${conv.unreadCount > 0 ? 'font-semibold text-[#2C2C2C]' : 'font-medium text-[#2C2C2C]'}`}>{conv.partner.first_name}</p>
+                        {conv.lastAt && <span className="text-[10px] text-[#A09488] flex-shrink-0">{formatRelativeDate(conv.lastAt)}</span>}
+                      </div>
+                      <p className={`text-xs truncate ${conv.unreadCount > 0 ? 'font-medium text-[#2C2C2C]' : 'text-[#A09488]'}`}>
+                        {conv.lastMessage ?? 'Aucun message'}
+                      </p>
+                    </div>
+                    {/* Conv ⋯ menu (admin, desktop only) */}
+                    {isAdmin && (
+                      <div className="relative flex-shrink-0" onClick={e => e.stopPropagation()}>
+                        <button
+                          onClick={() => setConvMenuId(convMenuId === conv.partner.id ? null : conv.partner.id)}
+                          className="hidden md:flex w-7 h-7 rounded-full items-center justify-center text-[#A09488] hover:bg-[#EDE5DA] hover:text-[#6B6359] transition-colors"
+                        >
+                          <MoreHorizontal size={15} />
+                        </button>
+                        <AnimatePresence>
+                          {convMenuId === conv.partner.id && (
+                            <motion.div
+                              initial={{ opacity: 0, scale: 0.9, y: 4 }}
+                              animate={{ opacity: 1, scale: 1, y: 0 }}
+                              exit={{ opacity: 0, scale: 0.9, y: 4 }}
+                              transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+                              className="absolute right-0 top-full mt-1 z-50 bg-white rounded-xl shadow-lg border border-[#EDE5DA] overflow-hidden min-w-[175px]"
+                            >
+                              <button
+                                onClick={() => markConvAsUnread(conv.partner.id)}
+                                className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-[#2C2C2C] hover:bg-[#FAF6F1] transition-colors"
+                              >
+                                <EyeOff size={14} className="text-[#6B6359]" /> Marquer non lu
+                              </button>
+                              <button
+                                onClick={() => archiveConversation(conv.partner.id)}
+                                className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-[#2C2C2C] hover:bg-[#FAF6F1] transition-colors border-t border-[#EDE5DA]"
+                              >
+                                <Archive size={14} className="text-[#6B6359]" /> Archiver
+                              </button>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </div>
+                    )}
                   </div>
-                  {/* Conv menu button (admin only) */}
-                  {isAdmin && (
-                    <div className="relative flex-shrink-0" onClick={e => e.stopPropagation()}>
-                      <button
-                        onClick={() => setConvMenuId(convMenuId === conv.partner.id ? null : conv.partner.id)}
-                        className="w-7 h-7 rounded-full flex items-center justify-center text-[#A09488] hover:bg-[#EDE5DA] hover:text-[#6B6359] transition-colors"
-                      >
-                        <MoreHorizontal size={15} />
-                      </button>
-                      <AnimatePresence>
-                        {convMenuId === conv.partner.id && (
-                          <motion.div
-                            initial={{ opacity: 0, scale: 0.9, y: 4 }}
-                            animate={{ opacity: 1, scale: 1, y: 0 }}
-                            exit={{ opacity: 0, scale: 0.9, y: 4 }}
-                            transition={{ type: 'spring', stiffness: 400, damping: 25 }}
-                            className="absolute right-0 top-full mt-1 z-50 bg-white rounded-xl shadow-lg border border-[#EDE5DA] overflow-hidden min-w-[175px]"
-                          >
-                            <button
-                              onClick={() => markConvAsUnread(conv.partner.id)}
-                              className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-[#2C2C2C] hover:bg-[#FAF6F1] transition-colors"
-                            >
-                              <EyeOff size={14} className="text-[#6B6359]" /> Marquer non lu
-                            </button>
-                            <button
-                              onClick={() => archiveConversation(conv.partner.id)}
-                              className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-[#2C2C2C] hover:bg-[#FAF6F1] transition-colors border-t border-[#EDE5DA]"
-                            >
-                              <Archive size={14} className="text-[#6B6359]" /> Archiver
-                            </button>
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
-                    </div>
-                  )}
                 </div>
               ))}
 
@@ -648,7 +701,7 @@ export default function MessagesPage() {
             {/* Chat header */}
             <div className="flex items-center gap-3 px-4 py-3 bg-white border-b border-[#DCCFBF] flex-shrink-0">
               <button
-                onClick={() => { setShowList(true); setActiveId(null); setMessages([]); setShowCommunaute(false) }}
+                onClick={() => { sessionStorage.removeItem('dm_active_conv'); setShowList(true); setActiveId(null); setMessages([]); setShowCommunaute(false) }}
                 className="lg:hidden p-1.5 -ml-1 rounded-lg hover:bg-[#FAF6F1] transition-colors"
               >
                 <ArrowLeft size={20} className="text-[#6B6359]" />
