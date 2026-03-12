@@ -371,7 +371,7 @@ export default function CommunautePage() {
   const contextPost = contextMenu ? posts.find(p => p.id === contextMenu.postId) ?? null : null
 
   return (
-    <div className="px-4 pt-6 pb-compose lg:px-8 lg:pt-8 max-w-5xl mx-auto">
+    <div className="relative z-0 px-4 pt-6 pb-compose lg:px-8 lg:pt-8 max-w-5xl mx-auto">
       {/* Full-page background */}
       <div aria-hidden="true" className="fixed inset-0 -z-10 bg-[url('/fond-mobile.png')] md:bg-[url('/fond-desktop.png')] bg-cover bg-center opacity-[0.28] pointer-events-none" />
 
