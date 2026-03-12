@@ -139,6 +139,9 @@ export interface CommunityPost {
   is_from_marjorie: boolean
   link_url: string | null
   link_label: string | null
+  reply_to_id: string | null
+  reply_to_preview: string | null
+  reply_to_author: string | null
   edited_at: string | null
   created_at: string
   profiles?: Pick<Profile, 'first_name' | 'avatar_url'>

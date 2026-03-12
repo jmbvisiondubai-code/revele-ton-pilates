@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Heart, MessageCircle, Send, Pin, PinOff, MoreHorizontal, Pencil, Trash2, Check, X, Link as LinkIcon, Image as ImageIcon, ExternalLink } from 'lucide-react'
+import { Heart, MessageCircle, Send, Pin, PinOff, MoreHorizontal, Pencil, Trash2, Check, X, Link as LinkIcon, Image as ImageIcon, ExternalLink, CornerUpLeft } from 'lucide-react'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/client'
 import { useAuthStore } from '@/stores/auth-store'
 import { Card, Avatar, Button } from '@/components/ui'
@@ -43,7 +43,7 @@ const DEMO_POSTS: PostWithMeta[] = [
     id: 'demo-2', user_id: 'marjorie',
     content: 'Bonjour à toutes ! Un rappel bienveillant : même 15 minutes de pratique comptent. Votre corps vous dit merci 💛',
     image_url: null, is_pinned: true, is_from_marjorie: true,
-    link_url: null, link_label: null, edited_at: null,
+    link_url: null, link_label: null, reply_to_id: null, reply_to_preview: null, reply_to_author: null, edited_at: null,
     created_at: new Date(Date.now() - 5 * 3600000).toISOString(),
     profiles: { first_name: 'Marjorie', avatar_url: null },
     reaction_counts: { pouce: 5, coeur: 12, applaudissement: 8, priere: 3, muscle: 4, fete: 6, feu: 7 },
@@ -53,7 +53,7 @@ const DEMO_POSTS: PostWithMeta[] = [
     id: 'demo-1', user_id: 'demo',
     content: 'Première séance du matin faite ! Je me sens tellement bien après. Merci Marjorie pour cette énergie 🌿',
     image_url: null, is_pinned: false, is_from_marjorie: false,
-    link_url: null, link_label: null, edited_at: null,
+    link_url: null, link_label: null, reply_to_id: null, reply_to_preview: null, reply_to_author: null, edited_at: null,
     created_at: new Date(Date.now() - 2 * 3600000).toISOString(),
     profiles: { first_name: 'Sophie', avatar_url: null },
     reaction_counts: { pouce: 3, coeur: 5, applaudissement: 3, priere: 0, muscle: 0, fete: 0, feu: 0 },
@@ -71,108 +71,19 @@ function openExternal(url: string) {
   }
 }
 
-// ── Reaction badge (floating on bubble, Facebook Messenger style) ────────────
-function ReactionBadge({ post }: { post: PostWithMeta }) {
-  const totalCount = Object.values(post.reaction_counts).reduce((a, b) => a + b, 0)
-  const topReactions = REACTIONS.filter(r => post.reaction_counts[r.type] > 0).slice(0, 3)
-  if (totalCount === 0) return null
-  return (
-    <div className="flex items-center gap-0.5 bg-white rounded-full shadow-md border border-[#DCCFBF]/60 px-1.5 py-0.5">
-      {topReactions.map(r => (
-        <span key={r.type} className="text-xs leading-none">{r.emoji}</span>
-      ))}
-      {totalCount > 1 && <span className="text-[10px] text-[#6B6359] font-medium ml-0.5">{totalCount}</span>}
-    </div>
-  )
-}
-
-// ── Reaction button (Facebook style: tap=❤️, long-press=picker) ─────────────
-function ReactionButton({ post, myId, onReact, isOwn }: {
+// ── Quick like button (tap = ❤️) ──────────────────────────────────────────────
+function QuickLikeButton({ post, onReact }: {
   post: PostWithMeta
-  myId: string | null
   onReact: (postId: string, type: ReactionType) => void
-  isOwn: boolean
 }) {
-  const [open, setOpen] = useState(false)
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const containerRef = useRef<HTMLDivElement>(null)
-
-  const myReaction = post.user_reactions[0] as ReactionType | undefined
-
-  // Close picker when clicking outside
-  useEffect(() => {
-    if (!open) return
-    const handler = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setOpen(false)
-      }
-    }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
-  }, [open])
-
-  // Long press → open picker, short tap → toggle ❤️
-  function handlePressStart() {
-    timerRef.current = setTimeout(() => { setOpen(true) }, 400)
-  }
-  function handlePressEnd(e: React.TouchEvent | React.MouseEvent) {
-    if (timerRef.current) {
-      clearTimeout(timerRef.current)
-      if (!open) {
-        e.preventDefault()
-        onReact(post.id, 'coeur')
-      }
-    }
-  }
-
-  function pick(type: ReactionType) {
-    onReact(post.id, type)
-    setOpen(false)
-  }
-
   return (
-    <div ref={containerRef} className="relative">
-      {/* Reaction picker popup */}
-      <AnimatePresence>
-        {open && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.7, y: 8 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.7, y: 8 }}
-            transition={{ type: 'spring', stiffness: 400, damping: 25 }}
-            className={`absolute bottom-9 ${isOwn ? 'right-0' : 'left-0'} bg-white rounded-full shadow-xl border border-[#DCCFBF] px-3 py-2 flex gap-2 z-30 whitespace-nowrap`}
-          >
-            {REACTIONS.map(({ type, emoji, label }) => (
-              <button
-                key={type}
-                onClick={() => pick(type)}
-                title={label}
-                className={`relative text-2xl transition-transform hover:scale-125 active:scale-110 ${post.user_reactions.includes(type) ? 'scale-110 -translate-y-1' : ''}`}
-              >
-                {emoji}
-                {post.user_reactions.includes(type) && (
-                  <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 bg-[#C6684F] rounded-full" />
-                )}
-              </button>
-            ))}
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Heart button — tap = coeur, hold = picker */}
-      <button
-        onMouseDown={handlePressStart}
-        onMouseUp={handlePressEnd}
-        onMouseLeave={() => { if (timerRef.current) clearTimeout(timerRef.current) }}
-        onTouchStart={handlePressStart}
-        onTouchEnd={handlePressEnd}
-        onMouseEnter={() => { timerRef.current = setTimeout(() => setOpen(true), 600) }}
-        className={`select-none transition-all active:scale-125 ${post.user_reactions.includes('coeur') ? 'text-[#C6684F]' : 'text-[#DCCFBF] hover:text-[#C6684F]/60'}`}
-        title="Réagir (maintenir pour choisir)"
-      >
-        <Heart size={14} className={post.user_reactions.includes('coeur') ? 'fill-[#C6684F]' : ''} />
-      </button>
-    </div>
+    <button
+      onClick={() => onReact(post.id, 'coeur')}
+      className={`select-none transition-all active:scale-125 ${post.user_reactions.includes('coeur') ? 'text-[#C6684F]' : 'text-[#DCCFBF] hover:text-[#C6684F]/60'}`}
+      title="J'aime"
+    >
+      <Heart size={14} className={post.user_reactions.includes('coeur') ? 'fill-[#C6684F]' : ''} />
+    </button>
   )
 }
 
@@ -197,11 +108,16 @@ export default function CommunautePage() {
   const [editCommentContent, setEditCommentContent] = useState('')
   const [commentMenu, setCommentMenu] = useState<string | null>(null)
   const [openReactions, setOpenReactions] = useState<string | null>(null)
+  const [bubblePickerOpen, setBubblePickerOpen] = useState<string | null>(null)
+  const [swipingPost, setSwipingPost] = useState<{ postId: string; deltaX: number } | null>(null)
+  const [replyingTo, setReplyingTo] = useState<{ id: string; content: string; authorName: string } | null>(null)
 
   const { profile } = useAuthStore()
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const supabase = createClient()
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null)
+  const touchStartRef = useRef<{ x: number; y: number } | null>(null)
+  const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const isAdmin = profile?.is_admin === true
   const myId = profile?.id ?? currentUserId
@@ -252,7 +168,7 @@ export default function CommunautePage() {
 
   function resetPostForm() {
     setNewPost(''); setPostImageUrl(''); setPostLinkUrl(''); setPostLinkLabel('')
-    setShowImageInput(false); setShowLinkInput(false)
+    setShowImageInput(false); setShowLinkInput(false); setReplyingTo(null)
   }
 
   async function handlePost() {
@@ -262,7 +178,9 @@ export default function CommunautePage() {
       const op: PostWithMeta = {
         id: `temp-${Date.now()}`, user_id: profile.id, content: newPost.trim(),
         image_url: postImageUrl.trim() || null, is_pinned: false, is_from_marjorie: isAdmin,
-        link_url: postLinkUrl.trim() || null, link_label: postLinkLabel.trim() || null, edited_at: null,
+        link_url: postLinkUrl.trim() || null, link_label: postLinkLabel.trim() || null,
+        reply_to_id: replyingTo?.id ?? null, reply_to_preview: replyingTo ? replyingTo.content.slice(0, 120) : null, reply_to_author: replyingTo?.authorName ?? null,
+        edited_at: null,
         created_at: new Date().toISOString(),
         profiles: { first_name: profile.first_name, avatar_url: profile.avatar_url },
         reaction_counts: { pouce: 0, coeur: 0, applaudissement: 0, priere: 0, muscle: 0, fete: 0, feu: 0 }, user_reactions: [], reaction_users: [], comment_count: 0,
@@ -272,6 +190,9 @@ export default function CommunautePage() {
     const { data, error } = await supabase.from('community_posts').insert({
       user_id: profile.id, content: newPost.trim(), image_url: postImageUrl.trim() || null,
       is_from_marjorie: isAdmin, link_url: postLinkUrl.trim() || null, link_label: postLinkLabel.trim() || null,
+      reply_to_id: replyingTo?.id ?? null,
+      reply_to_preview: replyingTo ? replyingTo.content.slice(0, 120) : null,
+      reply_to_author: replyingTo?.authorName ?? null,
     }).select('*, profiles(first_name, avatar_url)').single()
     if (!error && data) {
       setPosts(prev => [{ ...data, reaction_counts: { pouce: 0, coeur: 0, applaudissement: 0, priere: 0, muscle: 0, fete: 0, feu: 0 }, user_reactions: [], reaction_users: [], comment_count: 0 }, ...prev])
@@ -372,13 +293,38 @@ export default function CommunautePage() {
     if (!error) setPosts(prev => prev.map(p => p.id !== postId ? p : { ...p, comment_count: p.comment_count - 1, comments: p.comments?.filter(c => c.id !== commentId) }))
   }
 
+  // ── Gesture handlers (long press = picker, swipe right = reply) ──────────
+  function startBubbleGesture(postId: string, x: number, y: number) {
+    touchStartRef.current = { x, y }
+    if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current)
+    longPressTimerRef.current = setTimeout(() => setBubblePickerOpen(postId), 500)
+  }
+  function moveBubbleGesture(postId: string, x: number, y: number) {
+    if (!touchStartRef.current) return
+    const dx = x - touchStartRef.current.x
+    const dy = Math.abs(y - touchStartRef.current.y)
+    if (Math.abs(dx) > 8 || dy > 8) {
+      if (longPressTimerRef.current) { clearTimeout(longPressTimerRef.current); longPressTimerRef.current = null }
+    }
+    if (dx > 8 && dy < Math.abs(dx)) setSwipingPost({ postId, deltaX: Math.min(dx, 80) })
+    else if (dy > 15) setSwipingPost(null)
+  }
+  function endBubbleGesture(postId: string, content: string, authorName: string) {
+    if (longPressTimerRef.current) { clearTimeout(longPressTimerRef.current); longPressTimerRef.current = null }
+    if (swipingPost?.postId === postId && swipingPost.deltaX >= 60) {
+      setReplyingTo({ id: postId, content, authorName })
+    }
+    setSwipingPost(null)
+    touchStartRef.current = null
+  }
+
   const pinnedPosts = posts.filter(p => p.is_pinned && p.is_from_marjorie)
   const feedPosts = posts.filter(p => !p.is_pinned || !p.is_from_marjorie)
 
   return (
     <div className="px-4 pt-6 pb-24 lg:px-8 lg:pt-8 max-w-5xl mx-auto">
-      {(postMenu || commentMenu) && (
-        <div className="fixed inset-0 z-10" onClick={() => { setPostMenu(null); setCommentMenu(null) }} />
+      {(postMenu || commentMenu || bubblePickerOpen) && (
+        <div className="fixed inset-0 z-10" onClick={() => { setPostMenu(null); setCommentMenu(null); setBubblePickerOpen(null) }} />
       )}
 
       <div className="mb-5">
@@ -393,6 +339,17 @@ export default function CommunautePage() {
             <div className="flex gap-3">
               <Avatar src={profile?.avatar_url} fallback={profile?.first_name} size="md" />
               <div className="flex-1">
+                {replyingTo && (
+                  <div className="flex items-start gap-2 border-l-2 border-[#C6684F] pl-2 py-1 mb-2 bg-[#C6684F]/5 rounded-r-lg">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[10px] font-semibold text-[#C6684F]">↩ {replyingTo.authorName}</p>
+                      <p className="text-xs text-[#6B6359] line-clamp-1">{replyingTo.content}</p>
+                    </div>
+                    <button onClick={() => setReplyingTo(null)} className="text-[#DCCFBF] hover:text-[#C6684F] flex-shrink-0 mt-0.5">
+                      <X size={12} />
+                    </button>
+                  </div>
+                )}
                 <textarea
                   placeholder={isAdmin ? "Écris un message pour ta communauté..." : "Partage ton expérience, une victoire, un ressenti..."}
                   value={newPost} onChange={e => setNewPost(e.target.value)} rows={3}
@@ -497,7 +454,7 @@ export default function CommunautePage() {
                       )}
                       {/* Reactions on pinned */}
                       <div className="flex items-center gap-3 mt-2">
-                        <ReactionButton post={post} myId={myId} onReact={toggleReaction} isOwn={false} />
+                        <QuickLikeButton post={post} onReact={toggleReaction} />
                         {Object.values(post.reaction_counts).reduce((a,b)=>a+b,0) > 0 && (
                           <button onClick={() => setOpenReactions(openReactions === post.id ? null : post.id)}
                             className="flex items-center gap-0.5">
@@ -595,6 +552,7 @@ export default function CommunautePage() {
                   const isOwn = !!myId && myId === post.user_id
                   const isEditingThisPost = editingPost === post.id
                   const isDeletingThisPost = deletingPost === post.id
+                  const authorName = post.is_from_marjorie ? 'Marjorie' : (isOwn ? 'Toi' : (post.profiles?.first_name || 'Membre'))
 
                   return (
                     <motion.div key={post.id} initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ delay: i < 5 ? i * 0.04 : 0 }}>
@@ -692,12 +650,57 @@ export default function CommunautePage() {
                               </div>
                             </div>
                           ) : (
-                            <div className="relative">
+                            <div
+                              className="relative"
+                              onTouchStart={e => startBubbleGesture(post.id, e.touches[0].clientX, e.touches[0].clientY)}
+                              onTouchMove={e => moveBubbleGesture(post.id, e.touches[0].clientX, e.touches[0].clientY)}
+                              onTouchEnd={() => endBubbleGesture(post.id, post.content, authorName)}
+                              style={{
+                                transform: swipingPost?.postId === post.id ? `translateX(${swipingPost.deltaX}px)` : undefined,
+                                transition: swipingPost?.postId === post.id ? 'none' : 'transform 0.3s cubic-bezier(0.34,1.56,0.64,1)',
+                              }}
+                            >
+                              {/* Floating reaction picker on long press */}
+                              <AnimatePresence>
+                                {bubblePickerOpen === post.id && (
+                                  <motion.div
+                                    initial={{ opacity: 0, scale: 0.7, y: 8 }}
+                                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                                    exit={{ opacity: 0, scale: 0.7, y: 8 }}
+                                    transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+                                    className={`absolute -top-14 ${isOwn ? 'right-0' : 'left-0'} bg-white rounded-full shadow-xl border border-[#DCCFBF] px-3 py-2 flex gap-2 z-40 whitespace-nowrap`}
+                                  >
+                                    {REACTIONS.map(({ type, emoji, label }) => (
+                                      <button key={type} onClick={() => { toggleReaction(post.id, type); setBubblePickerOpen(null) }}
+                                        title={label}
+                                        className={`relative text-2xl transition-transform hover:scale-125 active:scale-110 ${post.user_reactions.includes(type) ? 'scale-110 -translate-y-1' : ''}`}>
+                                        {emoji}
+                                        {post.user_reactions.includes(type) && (
+                                          <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 bg-[#C6684F] rounded-full" />
+                                        )}
+                                      </button>
+                                    ))}
+                                  </motion.div>
+                                )}
+                              </AnimatePresence>
+                              {/* Swipe-to-reply indicator */}
+                              {swipingPost?.postId === post.id && swipingPost.deltaX > 10 && (
+                                <div className="absolute -left-7 top-1/2 -translate-y-1/2"
+                                  style={{ opacity: Math.min(swipingPost.deltaX / 50, 1) }}>
+                                  <CornerUpLeft size={16} className="text-[#C6684F]" />
+                                </div>
+                              )}
                               <div className={`rounded-2xl px-4 py-3 ${
                                 isOwn ? 'bg-[#F2E8DF] rounded-br-sm'
                                 : post.is_from_marjorie ? 'bg-gradient-to-br from-[#FDF0EB] to-[#FAF6F1] border-2 border-[#C6684F]/30 rounded-bl-sm'
                                 : 'bg-white border border-[#DCCFBF] rounded-bl-sm'
                               }`}>
+                                {post.reply_to_preview && (
+                                  <div className="mb-2 border-l-2 border-[#C6684F]/50 pl-2 py-0.5 rounded-r-sm bg-black/5">
+                                    <p className="text-[10px] font-semibold text-[#C6684F]">{post.reply_to_author}</p>
+                                    <p className="text-xs text-[#6B6359] line-clamp-1">{post.reply_to_preview}</p>
+                                  </div>
+                                )}
                                 <p className="text-sm text-[#2C2C2C] leading-relaxed whitespace-pre-wrap">{post.content}</p>
                                 {post.image_url && (
                                   <div className="mt-2 rounded-xl overflow-hidden">
@@ -721,7 +724,7 @@ export default function CommunautePage() {
 
                           {/* Reaction + Comment actions (minimal, under bubble) */}
                           <div className={`flex items-center gap-3 mt-0.5 ${isOwn ? 'flex-row-reverse' : 'flex-row'}`}>
-                            <ReactionButton post={post} myId={myId} onReact={toggleReaction} isOwn={isOwn} />
+                            <QuickLikeButton post={post} onReact={toggleReaction} />
                             {Object.values(post.reaction_counts).reduce((a,b)=>a+b,0) > 0 && (
                               <button onClick={() => setOpenReactions(openReactions === post.id ? null : post.id)}
                                 className="flex items-center gap-0.5">
