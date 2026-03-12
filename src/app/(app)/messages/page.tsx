@@ -63,6 +63,7 @@ export default function MessagesPage() {
   const [showArchived,   setShowArchived]   = useState(false)
   const [convSwipeId,    setConvSwipeId]    = useState<string | null>(null)
   const [convMenuId,     setConvMenuId]     = useState<string | null>(null)
+  const [convMenuPos,    setConvMenuPos]    = useState<{ top: number; right: number } | null>(null)
 
   // Active conversation
   const [activeId,      setActiveId]      = useState<string | null>(null)
@@ -391,6 +392,7 @@ export default function MessagesPage() {
     await createClient().from('dm_archived_conversations').upsert({ admin_id: myId, client_id: partnerId })
     if (activeId === partnerId) { setActiveId(null); setActiveProfile(null); setMessages([]); setShowList(true) }
     loadConversations()
+    setConvMenuId(null); setConvMenuPos(null)
   }
   async function unarchiveConversation(partnerId: string) {
     if (!myId || !isAdmin || !isSupabaseConfigured()) return
@@ -409,7 +411,7 @@ export default function MessagesPage() {
       await supabase.from('direct_messages').update({ read_at: null }).eq('id', lastMsg.id)
       loadConversations()
     }
-    setConvSwipeId(null); setConvMenuId(null)
+    setConvSwipeId(null); setConvMenuId(null); setConvMenuPos(null)
   }
 
   // ── Mark as read ─────────────────────────────────────────────────────────
@@ -420,7 +422,7 @@ export default function MessagesPage() {
       .update({ read_at: new Date().toISOString() })
       .eq('receiver_id', myId).eq('sender_id', partnerId).is('read_at', null)
     loadConversations()
-    setConvSwipeId(null); setConvMenuId(null)
+    setConvSwipeId(null); setConvMenuId(null); setConvMenuPos(null)
   }
 
   // ── Open conversation ────────────────────────────────────────────────────
@@ -536,7 +538,7 @@ export default function MessagesPage() {
                   <div
                     className={`relative flex items-center gap-3 px-4 py-3 bg-white cursor-pointer transition-colors group/row ${activeId === conv.partner.id && !showCommunaute ? '!bg-[#F2E8DF]' : 'hover:bg-[#FAF6F1]'}`}
                     style={{ transform: convSwipeId === conv.partner.id ? `translateX(-${isAdmin ? 160 : 80}px)` : 'translateX(0)', transition: 'transform 0.25s ease' }}
-                    onClick={() => { if (convSwipeId === conv.partner.id) { setConvSwipeId(null); return } setConvMenuId(null); openConversation(conv) }}
+                    onClick={() => { if (convSwipeId === conv.partner.id) { setConvSwipeId(null); return } setConvMenuId(null); setConvMenuPos(null); openConversation(conv) }}
                     onTouchStart={(e) => convTouchStart(conv, e)}
                     onTouchEnd={(e) => convTouchEnd(conv, e)}
                   >
@@ -556,48 +558,21 @@ export default function MessagesPage() {
                         </span>
                       )}
                       {/* Desktop ⋯ button — hidden on mobile */}
-                      <div className="relative hidden md:block" onClick={e => e.stopPropagation()}>
+                      <div className="hidden md:block" onClick={e => e.stopPropagation()}>
                         <button
-                          onClick={() => setConvMenuId(convMenuId === conv.partner.id ? null : conv.partner.id)}
+                          onClick={(e) => {
+                            if (convMenuId === conv.partner.id) {
+                              setConvMenuId(null); setConvMenuPos(null)
+                            } else {
+                              const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+                              setConvMenuPos({ top: rect.bottom + 4, right: window.innerWidth - rect.right })
+                              setConvMenuId(conv.partner.id)
+                            }
+                          }}
                           className="w-7 h-7 rounded-full flex items-center justify-center text-[#A09488] hover:bg-[#EDE5DA] hover:text-[#6B6359] transition-colors opacity-0 group-hover/row:opacity-100"
                         >
                           <MoreHorizontal size={15} />
                         </button>
-                        <AnimatePresence>
-                          {convMenuId === conv.partner.id && (
-                            <>
-                              <div className="fixed inset-0 z-40" onClick={() => setConvMenuId(null)} />
-                              <motion.div
-                                initial={{ opacity: 0, scale: 0.95, y: -6 }}
-                                animate={{ opacity: 1, scale: 1, y: 0 }}
-                                exit={{ opacity: 0, scale: 0.95, y: -6 }}
-                                transition={{ type: 'spring', stiffness: 400, damping: 28 }}
-                                className="absolute right-0 top-full mt-1 z-50 bg-white rounded-2xl shadow-xl border border-[#EDE5DA] overflow-hidden min-w-[220px]"
-                              >
-                                <button
-                                  onClick={() => isUnread ? markConvAsRead(conv.partner.id) : markConvAsUnread(conv.partner.id)}
-                                  className="w-full flex items-center gap-3 px-4 py-3 text-sm text-[#2C2C2C] hover:bg-[#FAF6F1] transition-colors"
-                                >
-                                  <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${isUnread ? 'bg-[#5B8DEF]/10' : 'bg-[#F2E8DF]'}`}>
-                                    {isUnread ? <Eye size={15} className="text-[#5B8DEF]" /> : <EyeOff size={15} className="text-[#A09488]" />}
-                                  </div>
-                                  <span>{isUnread ? 'Marquer comme lu' : 'Marquer comme non lu'}</span>
-                                </button>
-                                {isAdmin && (
-                                  <button
-                                    onClick={() => archiveConversation(conv.partner.id)}
-                                    className="w-full flex items-center gap-3 px-4 py-3 text-sm text-[#2C2C2C] hover:bg-[#FAF6F1] transition-colors border-t border-[#F0EAE2]"
-                                  >
-                                    <div className="w-8 h-8 rounded-full bg-[#F2E8DF] flex items-center justify-center flex-shrink-0">
-                                      <Archive size={15} className="text-[#A09488]" />
-                                    </div>
-                                    <span>Archiver la discussion</span>
-                                  </button>
-                                )}
-                              </motion.div>
-                            </>
-                          )}
-                        </AnimatePresence>
                       </div>
                     </div>
                   </div>
@@ -1084,6 +1059,50 @@ export default function MessagesPage() {
           </>
         )}
       </div>
+
+      {/* ── Conv ⋯ dropdown — rendered fixed to escape overflow-hidden ── */}
+      <AnimatePresence>
+        {convMenuId && convMenuPos && (() => {
+          const conv = convs.find(c => c.partner.id === convMenuId)
+          if (!conv) return null
+          const isUnread = conv.unreadCount > 0
+          return (
+            <>
+              <div className="fixed inset-0 z-40" onClick={() => { setConvMenuId(null); setConvMenuPos(null) }} />
+              <motion.div
+                key="conv-menu"
+                initial={{ opacity: 0, scale: 0.95, y: -6 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: -6 }}
+                transition={{ type: 'spring', stiffness: 400, damping: 28 }}
+                style={{ position: 'fixed', top: convMenuPos.top, right: convMenuPos.right, minWidth: 220, zIndex: 50 }}
+                className="bg-white rounded-2xl shadow-xl border border-[#EDE5DA] overflow-hidden"
+              >
+                <button
+                  onClick={() => { isUnread ? markConvAsRead(conv.partner.id) : markConvAsUnread(conv.partner.id) }}
+                  className="w-full flex items-center gap-3 px-4 py-3 text-sm text-[#2C2C2C] hover:bg-[#FAF6F1] transition-colors"
+                >
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${isUnread ? 'bg-[#5B8DEF]/10' : 'bg-[#F2E8DF]'}`}>
+                    {isUnread ? <Eye size={15} className="text-[#5B8DEF]" /> : <EyeOff size={15} className="text-[#A09488]" />}
+                  </div>
+                  <span>{isUnread ? 'Marquer comme lu' : 'Marquer comme non lu'}</span>
+                </button>
+                {isAdmin && (
+                  <button
+                    onClick={() => archiveConversation(conv.partner.id)}
+                    className="w-full flex items-center gap-3 px-4 py-3 text-sm text-[#2C2C2C] hover:bg-[#FAF6F1] transition-colors border-t border-[#F0EAE2]"
+                  >
+                    <div className="w-8 h-8 rounded-full bg-[#F2E8DF] flex items-center justify-center flex-shrink-0">
+                      <Archive size={15} className="text-[#A09488]" />
+                    </div>
+                    <span>Archiver la discussion</span>
+                  </button>
+                )}
+              </motion.div>
+            </>
+          )
+        })()}
+      </AnimatePresence>
     </div>
   )
 }
