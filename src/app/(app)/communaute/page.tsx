@@ -358,7 +358,7 @@ export default function CommunautePage() {
   const contextPost = contextMenu ? posts.find(p => p.id === contextMenu.postId) ?? null : null
 
   return (
-    <div className="px-4 pt-6 pb-[220px] lg:pb-8 lg:px-8 lg:pt-8 max-w-5xl mx-auto">
+    <div className="px-4 pt-6 pb-[220px] lg:pb-28 lg:px-8 lg:pt-8 max-w-5xl mx-auto">
       {(postMenu || commentMenu) && (
         <div className="fixed inset-0 z-10" onClick={() => { setPostMenu(null); setCommentMenu(null) }} />
       )}
@@ -369,75 +369,9 @@ export default function CommunautePage() {
       </div>
 
       <div className="lg:grid lg:grid-cols-3 lg:gap-6">
-        {/* Sidebar compose — desktop only */}
+        {/* Sidebar — desktop only (quote card) */}
         <div className="hidden lg:block lg:col-span-1 lg:order-2 space-y-4">
-          <Card>
-            <div className="flex gap-3">
-              <Avatar src={profile?.avatar_url} fallback={profile?.first_name} size="md" />
-              <div className="flex-1">
-                {replyingTo && (
-                  <div className="flex items-start gap-2 border-l-2 border-[#C6684F] pl-2 py-1 mb-2 bg-[#C6684F]/5 rounded-r-lg">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[10px] font-semibold text-[#C6684F]">↩ {replyingTo.authorName}</p>
-                      <p className="text-xs text-[#6B6359] line-clamp-1">{replyingTo.content}</p>
-                    </div>
-                    <button onClick={() => setReplyingTo(null)} className="text-[#DCCFBF] hover:text-[#C6684F] flex-shrink-0 mt-0.5">
-                      <X size={12} />
-                    </button>
-                  </div>
-                )}
-                <textarea
-                  placeholder={isAdmin ? "Écris un message pour ta communauté..." : "Partage ton expérience, une victoire, un ressenti..."}
-                  value={newPost} onChange={e => setNewPost(e.target.value)} rows={3}
-                  className="w-full resize-none bg-transparent text-sm text-text placeholder:text-text-muted focus:outline-none"
-                />
-                {isAdmin && (
-                  <div className="space-y-2 mt-1">
-                    {showImageInput && (
-                      <div className="flex items-center gap-2">
-                        <ImageIcon size={13} className="text-[#6B6359] flex-shrink-0" />
-                        <input type="url" placeholder="URL de l'image..." value={postImageUrl} onChange={e => setPostImageUrl(e.target.value)}
-                          className="flex-1 text-xs border border-[#DCCFBF] rounded-lg px-2 py-1.5 focus:outline-none focus:border-[#C6684F] bg-[#FAF6F1]" />
-                        <button onClick={() => { setShowImageInput(false); setPostImageUrl('') }} className="text-[#DCCFBF] hover:text-[#C6684F]"><X size={13} /></button>
-                      </div>
-                    )}
-                    {showLinkInput && (
-                      <div className="space-y-1.5">
-                        <div className="flex items-center gap-2">
-                          <LinkIcon size={13} className="text-[#6B6359] flex-shrink-0" />
-                          <input type="url" placeholder="URL du lien..." value={postLinkUrl} onChange={e => setPostLinkUrl(e.target.value)}
-                            className="flex-1 text-xs border border-[#DCCFBF] rounded-lg px-2 py-1.5 focus:outline-none focus:border-[#C6684F] bg-[#FAF6F1]" />
-                          <button onClick={() => { setShowLinkInput(false); setPostLinkUrl(''); setPostLinkLabel('') }} className="text-[#DCCFBF] hover:text-[#C6684F]"><X size={13} /></button>
-                        </div>
-                        {postLinkUrl && (
-                          <input type="text" placeholder="Texte du bouton (ex : Voir le cours)" value={postLinkLabel} onChange={e => setPostLinkLabel(e.target.value)}
-                            className="w-full text-xs border border-[#DCCFBF] rounded-lg px-2 py-1.5 focus:outline-none focus:border-[#C6684F] bg-[#FAF6F1] ml-5" />
-                        )}
-                      </div>
-                    )}
-                  </div>
-                )}
-                <div className="flex items-center justify-between mt-2 pt-2 border-t border-border-light">
-                  {isAdmin ? (
-                    <div className="flex items-center gap-1">
-                      <button onClick={() => setShowImageInput(v => !v)}
-                        className={`p-1.5 rounded-lg transition-colors ${showImageInput ? 'text-[#C6684F] bg-[#C6684F]/10' : 'text-[#6B6359] hover:bg-[#F2E8DF]'}`}>
-                        <ImageIcon size={15} />
-                      </button>
-                      <button onClick={() => setShowLinkInput(v => !v)}
-                        className={`p-1.5 rounded-lg transition-colors ${showLinkInput ? 'text-[#C6684F] bg-[#C6684F]/10' : 'text-[#6B6359] hover:bg-[#F2E8DF]'}`}>
-                        <LinkIcon size={15} />
-                      </button>
-                    </div>
-                  ) : <div />}
-                  <Button size="sm" onClick={handlePost} isLoading={isPosting} disabled={!newPost.trim()}>
-                    <Send size={14} />Publier
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </Card>
-          <Card className="bg-primary/5 border-primary/10 hidden lg:block">
+          <Card className="bg-primary/5 border-primary/10">
             <p className="font-[family-name:var(--font-heading)] text-base italic text-text leading-relaxed">"Ensemble, on va plus loin."</p>
             <p className="text-sm text-text-secondary mt-1">— Marjorie</p>
           </Card>
@@ -592,7 +526,7 @@ export default function CommunautePage() {
 
                   return (
                     <motion.div key={post.id} id={`post-${post.id}`} initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ delay: i < 5 ? i * 0.04 : 0 }}>
-                      <div className={`flex items-end gap-2 group ${isOwn ? 'flex-row-reverse' : 'flex-row'}`} onMouseLeave={() => setHoverReactionPost(null)}>
+                      <div className={`flex items-end gap-2 group ${isOwn ? 'flex-row-reverse' : 'flex-row'}`} onMouseEnter={() => { if (hoverReactionPost && hoverReactionPost !== post.id) setHoverReactionPost(null) }}>
 
                         {/* Avatar */}
                         <div className="flex-shrink-0 self-end mb-1">
@@ -786,7 +720,7 @@ export default function CommunautePage() {
                         </div>
 
                         {/* Desktop hover actions (WhatsApp Web style) */}
-                        <div className={`hidden lg:flex flex-row items-center gap-0.5 self-end pb-0.5 transition-opacity duration-150 ${hoverReactionPost === post.id ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
+                        <div className={`hidden md:flex flex-row items-center gap-0.5 self-center transition-opacity duration-150 ${hoverReactionPost === post.id ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
                           <div className="relative">
                             <button
                               onClick={() => setHoverReactionPost(prev => prev === post.id ? null : post.id)}
@@ -988,10 +922,10 @@ export default function CommunautePage() {
         )}
       </AnimatePresence>
 
-      {/* ── Mobile fixed compose bar ── */}
+      {/* ── Fixed compose bar (all screens) ── */}
       {profile && (
-        <div className="fixed bottom-0 left-0 right-0 z-40 lg:hidden bg-[#FAF6F1]/97 backdrop-blur-md border-t border-[#DCCFBF]">
-          <div className="px-3 pt-2 pb-[68px]">
+        <div className="fixed bottom-0 left-0 right-0 z-40 bg-[#FAF6F1]/97 backdrop-blur-md border-t border-[#DCCFBF]">
+          <div className="max-w-5xl mx-auto px-3 lg:px-8 pt-2 pb-[68px] lg:pb-4">
             {replyingTo && (
               <div className="flex items-start gap-2 border-l-2 border-[#C6684F] pl-2 py-1 mb-1.5 bg-[#C6684F]/5 rounded-r-lg">
                 <div className="flex-1 min-w-0">
