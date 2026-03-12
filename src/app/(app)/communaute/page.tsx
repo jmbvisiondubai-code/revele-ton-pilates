@@ -114,6 +114,7 @@ export default function CommunautePage() {
   const [doubleTapHeart, setDoubleTapHeart] = useState<string | null>(null)
   const [highlightPost, setHighlightPost] = useState<string | null>(null)
   const [hoverReactionPost, setHoverReactionPost] = useState<string | null>(null)
+  const [hoveredPost, setHoveredPost] = useState<string | null>(null)
 
   const { profile } = useAuthStore()
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
@@ -591,8 +592,8 @@ export default function CommunautePage() {
                   const authorName = post.is_from_marjorie ? 'Marjorie' : (isOwn ? 'Toi' : (post.profiles?.first_name || 'Membre'))
 
                   return (
-                    <motion.div key={post.id} id={`post-${post.id}`} initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ delay: i < 5 ? i * 0.04 : 0 }} onMouseLeave={() => setHoverReactionPost(null)}>
-                      <div className={`flex items-end gap-2 group/msg ${isOwn ? 'flex-row-reverse' : 'flex-row'}`}>
+                    <motion.div key={post.id} id={`post-${post.id}`} initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ delay: i < 5 ? i * 0.04 : 0 }} onMouseEnter={() => setHoveredPost(post.id)} onMouseLeave={() => { setHoveredPost(null); setHoverReactionPost(null) }}>
+                      <div className={`flex items-end gap-2 ${isOwn ? 'flex-row-reverse' : 'flex-row'}`}>
 
                         {/* Avatar */}
                         <div className="flex-shrink-0 self-end mb-1">
@@ -786,7 +787,7 @@ export default function CommunautePage() {
                         </div>
 
                         {/* Desktop hover actions (WhatsApp Web style) */}
-                        <div className={`hidden lg:flex flex-row items-center gap-0.5 self-end pb-0.5 transition-opacity duration-150 ${hoverReactionPost === post.id ? 'opacity-100' : 'opacity-0 group-hover/msg:opacity-100'}`}>
+                        <div className={`hidden lg:flex flex-row items-center gap-0.5 self-end pb-0.5 transition-opacity duration-150 ${hoveredPost === post.id || hoverReactionPost === post.id ? 'opacity-100' : 'opacity-0'}`}>
                           <div className="relative">
                             <button
                               onClick={() => setHoverReactionPost(prev => prev === post.id ? null : post.id)}
