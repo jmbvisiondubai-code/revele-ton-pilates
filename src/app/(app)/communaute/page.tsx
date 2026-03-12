@@ -436,9 +436,9 @@ export default function CommunautePage() {
         {/* Feed column */}
         <div className="lg:col-span-2 lg:order-1">
 
-          {/* ── Pinned messages from Marjorie — always visible at top ── */}
+          {/* ── Pinned messages from Marjorie — sticky at top ── */}
           {pinnedPosts.length > 0 && (
-            <div className="space-y-3 mb-6">
+            <div className="sticky top-0 z-20 space-y-3 -mx-4 lg:mx-0 px-4 lg:px-0 pt-2 pb-4 mb-4 bg-[#FAF6F1]/95 backdrop-blur-sm border-b border-[#C6684F]/15">
               {pinnedPosts.map((post) => (
                 <div key={post.id} className="relative rounded-2xl bg-gradient-to-br from-[#FDF0EB] to-[#FAF6F1] border-2 border-[#C6684F]/30 px-4 py-3 shadow-sm">
                   {/* Pin badge */}
