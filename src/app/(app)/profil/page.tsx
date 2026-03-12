@@ -34,7 +34,10 @@ import {
 } from '@/components/ui'
 import { GOAL_LABELS, LEVEL_LABELS, formatDuration } from '@/lib/utils'
 import { DEMO_PROFILE } from '@/lib/demo-data'
-import type { Profile, Badge } from '@/types/database'
+import type { Profile, Badge, Goal } from '@/types/database'
+
+const ALL_GOALS: { value: Goal; label: string }[] = Object.entries(GOAL_LABELS).map(([value, label]) => ({ value: value as Goal, label }))
+const DAYS = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche']
 
 async function getCroppedImg(imageSrc: string, croppedAreaPixels: Area): Promise<Blob> {
   const image = await new Promise<HTMLImageElement>((resolve, reject) => {
@@ -92,6 +95,13 @@ export default function ProfilPage() {
   const [editLastName, setEditLastName] = useState('')
   const [infoError, setInfoError] = useState('')
   const [savingInfo, setSavingInfo] = useState(false)
+  const [editingGoals, setEditingGoals] = useState(false)
+  const [editGoals, setEditGoals] = useState<Goal[]>([])
+  const [savingGoals, setSavingGoals] = useState(false)
+  const [editingRhythm, setEditingRhythm] = useState(false)
+  const [editRhythm, setEditRhythm] = useState(3)
+  const [editDays, setEditDays] = useState<string[]>([])
+  const [savingRhythm, setSavingRhythm] = useState(false)
   const [cropSrc, setCropSrc] = useState<string | null>(null)
   const [crop, setCrop] = useState({ x: 0, y: 0 })
   const [zoom, setZoom] = useState(1)
@@ -246,6 +256,32 @@ export default function ProfilPage() {
     } finally {
       setSavingInfo(false)
     }
+  }
+
+  async function handleSaveGoals() {
+    if (!profile) return
+    setSavingGoals(true)
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+      const { error } = await supabase.from('profiles').update({ goals: editGoals }).eq('id', user.id)
+      if (error) throw error
+      setProfile({ ...profile, goals: editGoals })
+      setEditingGoals(false)
+    } catch { /* silent */ } finally { setSavingGoals(false) }
+  }
+
+  async function handleSaveRhythm() {
+    if (!profile) return
+    setSavingRhythm(true)
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+      const { error } = await supabase.from('profiles').update({ weekly_rhythm: editRhythm, preferred_days: editDays }).eq('id', user.id)
+      if (error) throw error
+      setProfile({ ...profile, weekly_rhythm: editRhythm, preferred_days: editDays })
+      setEditingRhythm(false)
+    } catch { /* silent */ } finally { setSavingRhythm(false) }
   }
 
   if (!profile) {
@@ -430,39 +466,115 @@ export default function ProfilPage() {
               )}
             </Card>
 
+            {/* ── Objectifs ── */}
             <Card>
-              <h3 className="font-medium text-sm text-text-secondary mb-3">
-                Mes objectifs
-              </h3>
-              <div className="flex flex-wrap gap-2">
-                {profile.goals.map((goal) => (
-                  <BadgePill key={goal} variant="accent">
-                    {GOAL_LABELS[goal] || goal}
-                  </BadgePill>
-                ))}
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="font-medium text-sm text-text-secondary">Mes objectifs</h3>
+                {!editingGoals && (
+                  <button onClick={() => { setEditGoals(profile.goals); setEditingGoals(true) }}
+                    className="flex items-center gap-1 text-xs text-primary hover:text-accent transition-colors">
+                    <Pencil size={12} /> Modifier
+                  </button>
+                )}
               </div>
+              {editingGoals ? (
+                <div>
+                  <div className="flex flex-wrap gap-2 mb-4">
+                    {ALL_GOALS.map(({ value, label }) => {
+                      const selected = editGoals.includes(value)
+                      return (
+                        <button key={value} type="button"
+                          onClick={() => setEditGoals(prev => selected ? prev.filter(g => g !== value) : [...prev, value])}
+                          className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${selected ? 'bg-primary text-white' : 'bg-bg-elevated text-text-secondary hover:bg-secondary/40'}`}>
+                          {label}
+                        </button>
+                      )
+                    })}
+                  </div>
+                  <div className="flex gap-2">
+                    <button onClick={() => setEditingGoals(false)} className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg border border-border text-sm text-text-secondary hover:bg-bg-elevated transition-colors">
+                      <X size={14} /> Annuler
+                    </button>
+                    <button onClick={handleSaveGoals} disabled={savingGoals || editGoals.length === 0}
+                      className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg bg-primary text-white text-sm disabled:opacity-50 hover:bg-primary-dark transition-colors">
+                      {savingGoals ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <><Check size={14} /> Enregistrer</>}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {profile.goals.length > 0 ? profile.goals.map((goal) => (
+                    <BadgePill key={goal} variant="accent">{GOAL_LABELS[goal] || goal}</BadgePill>
+                  )) : <p className="text-sm text-text-muted">Aucun objectif défini</p>}
+                </div>
+              )}
             </Card>
 
+            {/* ── Rythme ── */}
             <Card>
-              <h3 className="font-medium text-sm text-text-secondary mb-3">
-                Mon rythme
-              </h3>
-              <div className="flex items-center gap-2">
-                <Calendar size={16} className="text-primary" />
-                <span className="text-text">
-                  {profile.weekly_rhythm}x par semaine
-                </span>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="font-medium text-sm text-text-secondary">Mon rythme</h3>
+                {!editingRhythm && (
+                  <button onClick={() => { setEditRhythm(profile.weekly_rhythm); setEditDays(profile.preferred_days); setEditingRhythm(true) }}
+                    className="flex items-center gap-1 text-xs text-primary hover:text-accent transition-colors">
+                    <Pencil size={12} /> Modifier
+                  </button>
+                )}
               </div>
-              {profile.preferred_days.length > 0 && (
-                <div className="flex gap-1.5 mt-2">
-                  {profile.preferred_days.map((day) => (
-                    <span
-                      key={day}
-                      className="text-xs bg-bg-elevated px-2 py-1 rounded-[var(--radius-sm)] text-text-secondary capitalize"
-                    >
-                      {day.slice(0, 3)}
-                    </span>
-                  ))}
+              {editingRhythm ? (
+                <div className="space-y-4">
+                  <div>
+                    <p className="text-xs text-text-muted mb-2">Séances par semaine</p>
+                    <div className="flex gap-2">
+                      {[1,2,3,4,5,6,7].map(n => (
+                        <button key={n} type="button"
+                          onClick={() => setEditRhythm(n)}
+                          className={`w-9 h-9 rounded-full text-sm font-medium transition-all ${editRhythm === n ? 'bg-primary text-white' : 'bg-bg-elevated text-text-secondary hover:bg-secondary/40'}`}>
+                          {n}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-xs text-text-muted mb-2">Jours préférés (optionnel)</p>
+                    <div className="flex flex-wrap gap-2">
+                      {DAYS.map(day => {
+                        const selected = editDays.includes(day)
+                        return (
+                          <button key={day} type="button"
+                            onClick={() => setEditDays(prev => selected ? prev.filter(d => d !== day) : [...prev, day])}
+                            className={`px-3 py-1.5 rounded-full text-xs font-medium capitalize transition-all ${selected ? 'bg-primary text-white' : 'bg-bg-elevated text-text-secondary hover:bg-secondary/40'}`}>
+                            {day.slice(0, 3)}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <button onClick={() => setEditingRhythm(false)} className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg border border-border text-sm text-text-secondary hover:bg-bg-elevated transition-colors">
+                      <X size={14} /> Annuler
+                    </button>
+                    <button onClick={handleSaveRhythm} disabled={savingRhythm}
+                      className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg bg-primary text-white text-sm disabled:opacity-50 hover:bg-primary-dark transition-colors">
+                      {savingRhythm ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <><Check size={14} /> Enregistrer</>}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <div className="flex items-center gap-2">
+                    <Calendar size={16} className="text-primary" />
+                    <span className="text-text">{profile.weekly_rhythm}x par semaine</span>
+                  </div>
+                  {profile.preferred_days.length > 0 && (
+                    <div className="flex gap-1.5 mt-2">
+                      {profile.preferred_days.map((day) => (
+                        <span key={day} className="text-xs bg-bg-elevated px-2 py-1 rounded-[var(--radius-sm)] text-text-secondary capitalize">
+                          {day.slice(0, 3)}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
             </Card>
