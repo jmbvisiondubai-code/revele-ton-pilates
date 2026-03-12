@@ -17,6 +17,8 @@ import {
   CheckCircle2,
   Camera,
   X,
+  Sparkles,
+  ExternalLink,
 } from 'lucide-react'
 import Cropper from 'react-easy-crop'
 import type { Area } from 'react-easy-crop'
@@ -31,7 +33,7 @@ import {
 } from '@/components/ui'
 import { GOAL_LABELS, LEVEL_LABELS, formatDuration } from '@/lib/utils'
 import { DEMO_PROFILE } from '@/lib/demo-data'
-import type { Profile, Badge } from '@/types/database'
+import type { Profile, Badge, Recommendation } from '@/types/database'
 
 async function getCroppedImg(imageSrc: string, croppedAreaPixels: Area): Promise<Blob> {
   const image = await new Promise<HTMLImageElement>((resolve, reject) => {
@@ -56,7 +58,7 @@ async function getCroppedImg(imageSrc: string, croppedAreaPixels: Area): Promise
   )
 }
 
-type Tab = 'profil' | 'parcours' | 'objectifs' | 'badges'
+type Tab = 'profil' | 'parcours' | 'objectifs' | 'badges' | 'recommandations'
 
 type Completion = {
   id: string
@@ -72,6 +74,7 @@ const tabs: { value: Tab; label: string; icon: React.ReactNode }[] = [
   { value: 'parcours', label: 'Parcours', icon: <TrendingUp size={16} /> },
   { value: 'objectifs', label: 'Objectifs', icon: <Target size={16} /> },
   { value: 'badges', label: 'Badges', icon: <Award size={16} /> },
+  { value: 'recommandations', label: 'Marjorie', icon: <Sparkles size={16} /> },
 ]
 
 export default function ProfilPage() {
@@ -81,6 +84,8 @@ export default function ProfilPage() {
   const [badges, setBadges] = useState<AllBadge[]>([])
   const [recentCompletions, setRecentCompletions] = useState<Completion[]>([])
   const [sessionsThisWeek, setSessionsThisWeek] = useState(0)
+  const [recommendations, setRecommendations] = useState<Recommendation[]>([])
+  const [unreadCount, setUnreadCount] = useState(0)
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
   const [avatarError, setAvatarError] = useState('')
   const [cropSrc, setCropSrc] = useState<string | null>(null)
@@ -140,6 +145,17 @@ export default function ProfilPage() {
         })
         setBadges(enriched.sort((a, b) => (b.earned ? 1 : 0) - (a.earned ? 1 : 0)))
       }
+
+      // Recommendations from Marjorie
+      const { data: recs } = await supabase
+        .from('recommendations')
+        .select('*, courses(id, title, thumbnail_url, uscreen_url)')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+      if (recs) {
+        setRecommendations(recs as unknown as Recommendation[])
+        setUnreadCount(recs.filter((r: any) => !r.is_read).length)
+      }
     }
     loadData()
   }, [supabase, setProfile])
@@ -185,6 +201,12 @@ export default function ProfilPage() {
       setAvatarError('Erreur lors du recadrage')
     }
     setUploadingAvatar(false)
+  }
+
+  async function markRecAsRead(recId: string) {
+    await supabase.from('recommendations').update({ is_read: true }).eq('id', recId)
+    setRecommendations(prev => prev.map(r => r.id === recId ? { ...r, is_read: true } : r))
+    setUnreadCount(prev => Math.max(0, prev - 1))
   }
 
   async function handleLogout() {
@@ -497,6 +519,71 @@ export default function ProfilPage() {
                   </Card>
                 ))}
               </div>
+            )}
+          </div>
+        )}
+        {activeTab === 'recommandations' && (
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 mb-1">
+              <Sparkles size={16} className="text-primary" />
+              <p className="text-sm font-medium text-text">Recommandations de Marjorie</p>
+              {unreadCount > 0 && (
+                <span className="bg-primary text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
+                  {unreadCount} nouveau{unreadCount > 1 ? 'x' : ''}
+                </span>
+              )}
+            </div>
+
+            {recommendations.length === 0 ? (
+              <Card>
+                <div className="text-center py-8">
+                  <Sparkles size={32} className="mx-auto text-text-muted mb-3" />
+                  <p className="text-text-secondary text-sm">Pas encore de recommandations</p>
+                  <p className="text-xs text-text-muted mt-1">Marjorie te fera des suggestions personnalisées ici</p>
+                </div>
+              </Card>
+            ) : (
+              recommendations.map(rec => (
+                <div
+                  key={rec.id}
+                  onClick={() => !rec.is_read && markRecAsRead(rec.id)}
+                  className={`rounded-[var(--radius-lg)] border p-4 transition cursor-default ${
+                    rec.is_read
+                      ? 'bg-bg-card border-border'
+                      : 'bg-primary/5 border-primary/30 cursor-pointer'
+                  }`}
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                      <Sparkles size={14} className="text-primary" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-semibold text-text">{rec.title}</p>
+                        {!rec.is_read && (
+                          <span className="w-2 h-2 bg-primary rounded-full flex-shrink-0" />
+                        )}
+                      </div>
+                      {rec.message && (
+                        <p className="text-sm text-text-secondary mt-1">{rec.message}</p>
+                      )}
+                      {rec.courses && (
+                        <button
+                          onClick={e => { e.stopPropagation(); window.open(rec.courses!.uscreen_url, '_blank', 'noopener,noreferrer') }}
+                          className="flex items-center gap-1.5 mt-2 text-xs text-primary font-medium hover:underline"
+                        >
+                          <ExternalLink size={11} />
+                          {rec.courses.title}
+                        </button>
+                      )}
+                      <p className="text-[11px] text-text-muted mt-2">
+                        {new Date(rec.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
+                        {rec.is_read ? '' : ' · Appuie pour marquer comme lu'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ))
             )}
           </div>
         )}

@@ -242,6 +242,18 @@ CREATE TABLE IF NOT EXISTS notifications (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Recommandations personnalisées (de Marjorie vers cliente)
+CREATE TABLE IF NOT EXISTS recommendations (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
+  created_by UUID REFERENCES profiles(id),
+  course_id UUID REFERENCES courses(id) ON DELETE SET NULL,
+  title TEXT NOT NULL,
+  message TEXT,
+  is_read BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- ==========================================
 -- ROW LEVEL SECURITY POLICIES
 -- ==========================================
@@ -335,6 +347,28 @@ CREATE POLICY "Anyone can view inspirations" ON daily_inspirations FOR SELECT US
 -- Notifications: users can view/update their own
 CREATE POLICY "Users can view own notifications" ON notifications FOR SELECT USING (auth.uid() = user_id);
 CREATE POLICY "Users can update own notifications" ON notifications FOR UPDATE USING (auth.uid() = user_id);
+
+-- Recommendations
+ALTER TABLE recommendations ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users can view own recommendations" ON recommendations FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can mark recommendations as read" ON recommendations FOR UPDATE USING (auth.uid() = user_id);
+
+-- Admin helper function (SECURITY DEFINER bypasses RLS for the check)
+CREATE OR REPLACE FUNCTION public.is_admin()
+RETURNS boolean AS $$
+  SELECT EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND is_admin = true);
+$$ LANGUAGE sql SECURITY DEFINER;
+
+CREATE POLICY "Admins can manage recommendations" ON recommendations FOR ALL USING (public.is_admin());
+
+-- Admins can view all profiles
+CREATE POLICY "Admins can view all profiles" ON profiles FOR SELECT USING (auth.uid() = id OR public.is_admin());
+
+-- Admins can view all course completions
+CREATE POLICY "Admins can view all completions" ON course_completions FOR SELECT USING (auth.uid() = user_id OR public.is_admin());
+
+-- Admins can view all live registrations
+CREATE POLICY "Admins can view all registrations" ON live_registrations FOR SELECT USING (auth.uid() = user_id OR public.is_admin());
 
 -- ==========================================
 -- HELPER FUNCTION: Auto-create profile on signup

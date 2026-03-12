@@ -176,3 +176,15 @@ export interface UserMilestone {
   completed_at: string | null
   created_at: string
 }
+
+export interface Recommendation {
+  id: string
+  user_id: string
+  created_by: string | null
+  course_id: string | null
+  title: string
+  message: string | null
+  is_read: boolean
+  created_at: string
+  courses?: Pick<Course, 'id' | 'title' | 'thumbnail_url' | 'uscreen_url'> | null
+}
