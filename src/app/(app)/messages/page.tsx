@@ -716,7 +716,7 @@ export default function MessagesPage() {
             )}
 
             {/* Messages list */}
-            <div ref={msgListRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-1" style={{ background: 'linear-gradient(to bottom, #FAF6F1, #F5EFE8)' }}>
+            <div ref={msgListRef} className="flex-1 overflow-y-auto overflow-x-hidden px-4 py-4 space-y-1" style={{ background: 'linear-gradient(to bottom, #FAF6F1, #F5EFE8)' }}>
               {loadingMsgs ? (
                 <div className="flex items-center justify-center py-10">
                   <div className="w-5 h-5 border-2 border-[#C6684F] border-t-transparent rounded-full animate-spin" />
@@ -757,6 +757,7 @@ export default function MessagesPage() {
                         onTouchStart={e => startGesture(msg.id, isMe, msg.content, msg.is_pinned ?? false, e.touches[0].clientX, e.touches[0].clientY)}
                         onTouchMove={e => moveGesture(msg.id, e.touches[0].clientX, e.touches[0].clientY)}
                         onTouchEnd={() => endGesture(msg.id, msg.content, isMe)}
+                        onTouchCancel={() => { setSwipingMsg(null); touchStartRef.current = null; if (longPressTimer.current) { clearTimeout(longPressTimer.current); longPressTimer.current = null } }}
                         onMouseEnter={() => {}}
                         onMouseLeave={() => {}}
                         style={{
