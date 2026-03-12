@@ -1,9 +1,20 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import { BottomNav } from './bottom-nav'
 import { SideNav } from './side-nav'
 
 export function AppShell({ children }: { children: React.ReactNode }) {
+  const [isEmbedded, setIsEmbedded] = useState(false)
+
+  useEffect(() => {
+    try { setIsEmbedded(window.self !== window.top) } catch { setIsEmbedded(true) }
+  }, [])
+
+  if (isEmbedded) {
+    return <div className="min-h-dvh bg-bg">{children}</div>
+  }
+
   return (
     <div className="min-h-dvh bg-bg">
       <SideNav />

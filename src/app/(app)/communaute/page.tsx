@@ -90,6 +90,11 @@ function QuickLikeButton({ post, onReact }: {
 
 // ── Main page ────────────────────────────────────────────────────────────────
 export default function CommunautePage() {
+  const [isEmbedded, setIsEmbedded] = useState(false)
+  useEffect(() => {
+    try { setIsEmbedded(window.self !== window.top) } catch { setIsEmbedded(true) }
+  }, [])
+
   const [posts, setPosts] = useState<PostWithMeta[]>([])
   const [newPost, setNewPost] = useState('')
   const [postImageUrl, setPostImageUrl] = useState('')
@@ -943,7 +948,7 @@ export default function CommunautePage() {
 
       {/* ── Fixed compose bar (all screens) ── */}
       {profile && (
-        <div className="fixed bottom-16 lg:bottom-0 left-0 lg:left-60 right-0 z-[45] bg-[#FAF6F1]/97 backdrop-blur-md border-t border-[#DCCFBF] safe-bottom">
+        <div className={`fixed right-0 z-[45] bg-[#FAF6F1]/97 backdrop-blur-md border-t border-[#DCCFBF] safe-bottom ${isEmbedded ? 'bottom-0 left-0' : 'bottom-16 lg:bottom-0 left-0 lg:left-60'}`}>
           <div className="max-w-5xl mx-auto px-3 lg:px-8 pt-2 pb-3">
             {replyingTo && (
               <div className="flex items-start gap-2 border-l-2 border-[#C6684F] pl-2 py-1 mb-1.5 bg-[#C6684F]/5 rounded-r-lg">
