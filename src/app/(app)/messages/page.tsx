@@ -90,6 +90,7 @@ export default function MessagesPage() {
   const [hoverMsg, setHoverMsg] = useState<string | null>(null)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editText, setEditText] = useState('')
+  const [highlightMsg, setHighlightMsg] = useState<string | null>(null)
   const [swipingMsg, setSwipingMsg] = useState<{ msgId: string; deltaX: number } | null>(null)
   const [showDotMenu, setShowDotMenu] = useState<string | null>(null)
   const [deletingMsgId, setDeletingMsgId] = useState<string | null>(null)
@@ -293,6 +294,15 @@ export default function MessagesPage() {
     }
     setSwipingMsg(null)
     touchStartRef.current = null
+  }
+
+  // ── Scroll to original message ───────────────────────────────────────────
+  function scrollToMsg(msgId: string) {
+    const el = document.getElementById(`msg-${msgId}`)
+    if (!el) return
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    setHighlightMsg(msgId)
+    setTimeout(() => setHighlightMsg(null), 1400)
   }
 
   // ── Toggle reaction (one reaction per user per message) ──────────────────
@@ -799,7 +809,7 @@ export default function MessagesPage() {
                   const isSwiping = swipingMsg?.msgId === msg.id
 
                   return (
-                    <div key={msg.id}>
+                    <div key={msg.id} id={`msg-${msg.id}`} style={{ transition: 'background 0.4s', borderRadius: '12px', background: highlightMsg === msg.id ? 'rgba(198,104,79,0.15)' : 'transparent' }}>
                       {showDate && (
                         <div className="flex justify-center my-3">
                           <span className="text-[10px] text-[#A09488] bg-[#EDE5DA]/80 rounded-full px-3 py-1">
@@ -903,11 +913,14 @@ export default function MessagesPage() {
                         {/* Bubble */}
                         <div className="max-w-[75%]">
                           {/* Reply preview */}
-                          {msg.reply_to_preview && (
-                            <div className="mb-1 px-2.5 py-1.5 rounded-xl text-xs border-l-2 border-[#C6684F] bg-white/60 backdrop-blur-sm">
-                              <p className="font-semibold text-[#C6684F] text-[10px]">{msg.reply_to_author}</p>
-                              <p className="text-[#6B6359] line-clamp-1">{msg.reply_to_preview}</p>
-                            </div>
+                          {msg.reply_to_preview && msg.reply_to_id && (
+                            <button
+                              onClick={() => scrollToMsg(msg.reply_to_id!)}
+                              className="w-full text-left mb-2 border-l-2 border-[#C6684F]/50 pl-2 py-0.5 rounded-r-sm bg-black/5 hover:bg-[#C6684F]/10 active:bg-[#C6684F]/15 transition-colors"
+                            >
+                              <p className="text-[10px] font-semibold text-[#C6684F]">{msg.reply_to_author}</p>
+                              <p className="text-xs text-[#6B6359] line-clamp-1">{msg.reply_to_preview}</p>
+                            </button>
                           )}
 
                           {isEditing ? (
