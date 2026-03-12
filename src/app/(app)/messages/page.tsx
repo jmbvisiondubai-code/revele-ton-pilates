@@ -85,7 +85,6 @@ export default function MessagesPage() {
   const [deletingMsgId,  setDeletingMsgId]  = useState<string | null>(null)
   const [highlightMsg,   setHighlightMsg]   = useState<string | null>(null)
   const [hoverReaction,  setHoverReaction]  = useState<string | null>(null)
-  const [pinnedExpanded, setPinnedExpanded] = useState(false)
   const [swipingMsg,     setSwipingMsg]     = useState<{ msgId: string; deltaX: number } | null>(null)
   const [doubleTapHeart, setDoubleTapHeart] = useState<string | null>(null)
 
@@ -693,25 +692,53 @@ export default function MessagesPage() {
               )}
             </div>
 
-            {/* Pinned messages */}
+            {/* Pinned messages — community-style cards */}
             {pinnedMessages.length > 0 && (
-              <div className="flex-shrink-0 border-b border-[#DCCFBF] bg-white/80 backdrop-blur-sm px-4 py-2">
-                <button onClick={() => setPinnedExpanded(v => !v)} className="w-full flex items-center gap-2 text-xs text-[#6B6359]">
-                  <Pin size={11} className="text-[#C6684F]" />
-                  <span className="font-medium text-[#C6684F]">{pinnedMessages.length} message{pinnedMessages.length > 1 ? 's' : ''} épinglé{pinnedMessages.length > 1 ? 's' : ''}</span>
-                  <ChevronDown size={12} className={`ml-auto transition-transform ${pinnedExpanded ? 'rotate-180' : ''}`} />
-                </button>
-                <AnimatePresence>
-                  {pinnedExpanded && (
-                    <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }} className="space-y-1 mt-2">
-                      {pinnedMessages.map(m => (
-                        <button key={m.id} onClick={() => scrollToMsg(m.id)} className="w-full text-left text-xs text-[#6B6359] bg-[#FAF6F1] rounded-lg px-3 py-1.5 hover:bg-[#F2E8DF] truncate transition-colors">
-                          {m.content || (m.image_url ? '📷 Photo' : m.file_name ? `📎 ${m.file_name}` : '')}
+              <div className="flex-shrink-0 space-y-2 px-4 pt-2 pb-3 border-b border-[#DCCFBF] bg-gradient-to-b from-white/95 to-white/60 backdrop-blur-sm">
+                {pinnedMessages.map(m => {
+                  const isMeSender = m.sender_id === myId
+                  const senderName = isMeSender ? (profile?.username ?? 'Toi') : activePartnerName
+                  const senderAvatar = isMeSender ? profile?.avatar_url : activeProfile?.avatar_url
+                  return (
+                    <div key={m.id} className="relative rounded-2xl bg-gradient-to-br from-[#FDF0EB] to-[#FAF6F1] border-2 border-[#C6684F]/30 px-4 py-3 shadow-sm">
+                      {/* Épinglé badge */}
+                      <div className="absolute -top-2.5 left-3 flex items-center gap-1 bg-[#C6684F] text-white text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full shadow-sm">
+                        <Pin size={10} />
+                        Épinglé
+                      </div>
+                      <div className="flex items-start gap-2.5 mt-1">
+                        {/* Avatar */}
+                        <div className="flex-shrink-0 mt-0.5">
+                          {senderAvatar ? (
+                            <Image src={senderAvatar} alt={senderName} width={32} height={32} className="w-8 h-8 rounded-full object-cover" />
+                          ) : (
+                            <div className="w-8 h-8 rounded-full bg-[#E8D5C4] flex items-center justify-center text-[#C6684F] font-semibold text-xs">
+                              {senderName.charAt(0).toUpperCase()}
+                            </div>
+                          )}
+                        </div>
+                        {/* Content */}
+                        <button className="flex-1 min-w-0 text-left" onClick={() => scrollToMsg(m.id)}>
+                          <div className="flex items-center gap-1.5 mb-1">
+                            <span className="text-xs font-bold text-[#C6684F]">{senderName}</span>
+                            <span className="text-[10px] text-[#DCCFBF]">{formatRelativeDate(m.created_at)}</span>
+                          </div>
+                          <p className="text-xs text-[#2C2C2C] leading-relaxed line-clamp-2 whitespace-pre-wrap">
+                            {m.content || (m.image_url ? '📷 Photo' : m.file_name ? `📎 ${m.file_name}` : '')}
+                          </p>
                         </button>
-                      ))}
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+                        {/* PinOff button */}
+                        <button
+                          onClick={() => togglePin(m.id, true)}
+                          title="Désépingler"
+                          className="flex-shrink-0 p-1.5 rounded-full text-[#C6684F]/40 hover:text-[#C6684F] hover:bg-[#C6684F]/10 transition-colors"
+                        >
+                          <PinOff size={14} />
+                        </button>
+                      </div>
+                    </div>
+                  )
+                })}
               </div>
             )}
 
