@@ -371,7 +371,7 @@ export default function CommunautePage() {
   const contextPost = contextMenu ? posts.find(p => p.id === contextMenu.postId) ?? null : null
 
   return (
-    <div className="relative z-0 px-4 pt-6 pb-compose lg:px-8 lg:pt-8 max-w-5xl mx-auto">
+    <div className="relative z-0">
       {/* Full-page background */}
       <div aria-hidden="true" className="fixed inset-0 -z-10 bg-[url('/fond-mobile.png')] md:bg-[url('/fond-desktop.png')] bg-cover bg-center opacity-[0.28] pointer-events-none" />
 
@@ -379,7 +379,7 @@ export default function CommunautePage() {
         <div className="fixed inset-0 z-10" onClick={() => { setPostMenu(null); setCommentMenu(null) }} />
       )}
 
-      <div className="sticky top-0 z-30 -mx-4 lg:-mx-8 px-4 lg:px-8 pt-6 lg:pt-8 pb-4 mb-1 bg-[#FAF6F1]/95 backdrop-blur-sm">
+      <div className="sticky top-0 z-30 px-4 lg:px-8 pt-6 lg:pt-8 pb-4 mb-1 bg-[#FAF6F1]/95 backdrop-blur-sm">
         <Link
           href="/messages"
           className="lg:hidden inline-flex items-center gap-1.5 text-sm text-text-muted hover:text-primary transition-colors mb-2"
@@ -391,6 +391,7 @@ export default function CommunautePage() {
         <p className="text-text-secondary mt-1">Partage, inspire et célèbre ensemble</p>
       </div>
 
+      <div className="px-4 pb-compose lg:px-8 max-w-5xl mx-auto">
       <div className="lg:grid lg:grid-cols-3 lg:gap-6">
         {/* Sidebar — desktop only (quote card) */}
         <div className="hidden lg:block lg:col-span-1 lg:order-2 space-y-4">
@@ -864,6 +865,7 @@ export default function CommunautePage() {
           )}
           <div ref={messagesEndRef} className="h-1" />
         </div>
+      </div>
       </div>
 
       {/* ── WhatsApp-style context menu ── */}
