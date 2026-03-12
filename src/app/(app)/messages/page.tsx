@@ -7,11 +7,11 @@ import {
   MessageSquare, Send, ArrowLeft, Smile, Paperclip, X,
   CornerUpLeft, Check, Pencil, Trash2, Pin, PinOff,
   MoreHorizontal, FileText, Archive, ArchiveRestore, ChevronDown,
-  EyeOff, Eye,
+  EyeOff, Eye, Copy,
 } from 'lucide-react'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/client'
 import { useAuthStore } from '@/stores/auth-store'
-import { formatRelativeDate } from '@/lib/utils'
+import { formatRelativeDate, parseTextWithLinks, safeUrl } from '@/lib/utils'
 import type { DirectMessage, ReactionType } from '@/types/database'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
@@ -903,7 +903,7 @@ export default function MessagesPage() {
                               {/* Text */}
                               {msg.content && (
                                 <div className="px-3.5 pt-2.5 pb-1">
-                                  <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">{msg.content}</p>
+                                  <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">{parseTextWithLinks(msg.content).map((part, i) => part.type === 'url' ? (<button key={i} onClick={e => { e.stopPropagation(); window.open(safeUrl(part.value), '_blank', 'noopener,noreferrer') }} className={`underline underline-offset-2 break-all ${isMe ? 'text-white/90' : 'text-[#C6684F]'}`}>{part.value}</button>) : part.value)}</p>
                                 </div>
                               )}
                               {/* Timestamp */}
@@ -996,6 +996,14 @@ export default function MessagesPage() {
                     >
                       <span>Répondre</span><CornerUpLeft size={16} className="text-[#6B6359]" />
                     </button>
+                    {msgMenu.content && (
+                      <button
+                        onClick={() => { navigator.clipboard.writeText(msgMenu.content).catch(() => {}); setMsgMenu(null) }}
+                        className="w-full flex items-center justify-between px-5 py-3.5 text-sm text-[#2C2C2C] border-b border-[#F5F0EB] active:bg-[#FAF6F1]"
+                      >
+                        <span>Copier</span><Copy size={16} className="text-[#6B6359]" />
+                      </button>
+                    )}
                     {msgMenu.isOwn && (
                       <>
                         <button

@@ -7,7 +7,7 @@ import Link from 'next/link'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/client'
 import { useAuthStore } from '@/stores/auth-store'
 import { Card, Avatar, Button } from '@/components/ui'
-import { formatRelativeDate } from '@/lib/utils'
+import { formatRelativeDate, parseTextWithLinks, safeUrl } from '@/lib/utils'
 import type { CommunityPost, ReactionType } from '@/types/database'
 
 const REACTIONS: { type: ReactionType; emoji: string; label: string }[] = [
@@ -536,7 +536,7 @@ export default function CommunautePage() {
                             <span className="text-[10px] text-[#DCCFBF]">{formatRelativeDate(post.created_at)}</span>
                             {post.edited_at && <span className="text-[10px] text-[#DCCFBF]">(modifié)</span>}
                           </div>
-                          <p className="text-sm text-[#2C2C2C] leading-relaxed whitespace-pre-wrap">{post.content}</p>
+                          <p className="text-sm text-[#2C2C2C] leading-relaxed whitespace-pre-wrap">{parseTextWithLinks(post.content).map((part, i) => part.type === 'url' ? (<button key={i} onClick={e => { e.stopPropagation(); window.open(safeUrl(part.value), '_blank', 'noopener,noreferrer') }} className="text-[#C6684F] underline underline-offset-2 break-all">{part.value}</button>) : part.value)}</p>
                           {post.image_url && (
                             <div className="mt-2 rounded-xl overflow-hidden">
                               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -880,7 +880,7 @@ export default function CommunautePage() {
                                     <p className="text-xs text-[#6B6359] line-clamp-1">{post.reply_to_preview}</p>
                                   </button>
                                 )}
-                                <p className="text-sm text-[#2C2C2C] leading-relaxed whitespace-pre-wrap">{post.content}</p>
+                                <p className="text-sm text-[#2C2C2C] leading-relaxed whitespace-pre-wrap">{parseTextWithLinks(post.content).map((part, i) => part.type === 'url' ? (<button key={i} onClick={e => { e.stopPropagation(); window.open(safeUrl(part.value), '_blank', 'noopener,noreferrer') }} className="text-[#C6684F] underline underline-offset-2 break-all">{part.value}</button>) : part.value)}</p>
                                 {post.image_url && (
                                   <div className="mt-2 rounded-xl overflow-hidden">
                                     {/* eslint-disable-next-line @next/next/no-img-element */}

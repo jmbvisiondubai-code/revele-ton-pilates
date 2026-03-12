@@ -1,3 +1,23 @@
+// Splits text into plain segments and URL segments for rendering clickable links
+const URL_REGEX = /(https?:\/\/[^\s]+|www\.[^\s]+)/gi
+export function parseTextWithLinks(text: string): { type: 'text' | 'url'; value: string }[] {
+  const result: { type: 'text' | 'url'; value: string }[] = []
+  let lastIndex = 0
+  let match: RegExpExecArray | null
+  URL_REGEX.lastIndex = 0
+  while ((match = URL_REGEX.exec(text)) !== null) {
+    if (match.index > lastIndex) result.push({ type: 'text', value: text.slice(lastIndex, match.index) })
+    result.push({ type: 'url', value: match[0] })
+    lastIndex = match.index + match[0].length
+  }
+  if (lastIndex < text.length) result.push({ type: 'text', value: text.slice(lastIndex) })
+  return result
+}
+
+export function safeUrl(url: string): string {
+  return /^https?:\/\//i.test(url) ? url : `https://${url}`
+}
+
 export function getGreeting(firstName: string): string {
   const hour = new Date().getHours()
 
