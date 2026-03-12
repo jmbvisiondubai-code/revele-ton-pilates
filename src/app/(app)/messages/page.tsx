@@ -912,17 +912,6 @@ export default function MessagesPage() {
 
                         {/* Bubble */}
                         <div className="max-w-[75%]">
-                          {/* Reply preview */}
-                          {msg.reply_to_preview && msg.reply_to_id && (
-                            <button
-                              onClick={() => scrollToMsg(msg.reply_to_id!)}
-                              className="w-full text-left mb-2 border-l-2 border-[#C6684F]/50 pl-2 py-0.5 rounded-r-sm bg-black/5 hover:bg-[#C6684F]/10 active:bg-[#C6684F]/15 transition-colors"
-                            >
-                              <p className="text-[10px] font-semibold text-[#C6684F]">{msg.reply_to_author}</p>
-                              <p className="text-xs text-[#6B6359] line-clamp-1">{msg.reply_to_preview}</p>
-                            </button>
-                          )}
-
                           {isEditing ? (
                             <div className="flex items-end gap-1">
                               <textarea
@@ -942,6 +931,18 @@ export default function MessagesPage() {
                             </div>
                           ) : (
                             <div className={`rounded-2xl shadow-sm overflow-hidden ${isMe ? 'bg-[#C6684F] text-white rounded-br-sm' : 'bg-white text-[#2C2C2C] rounded-bl-sm border border-[#EDE5DA]'}`}>
+                              {/* Reply preview */}
+                              {msg.reply_to_preview && msg.reply_to_id && (
+                                <button
+                                  onClick={() => scrollToMsg(msg.reply_to_id!)}
+                                  className={`w-full text-left px-3.5 pt-2.5 pb-1.5 border-b transition-colors ${isMe ? 'border-white/20 hover:bg-white/10 active:bg-white/15' : 'border-[#EDE5DA] hover:bg-[#C6684F]/5 active:bg-[#C6684F]/10'}`}
+                                >
+                                  <div className={`border-l-2 pl-2 py-0.5 ${isMe ? 'border-white/60' : 'border-[#C6684F]/60'}`}>
+                                    <p className={`text-[10px] font-semibold ${isMe ? 'text-white/80' : 'text-[#C6684F]'}`}>{msg.reply_to_author}</p>
+                                    <p className={`text-xs line-clamp-1 ${isMe ? 'text-white/65' : 'text-[#6B6359]'}`}>{msg.reply_to_preview}</p>
+                                  </div>
+                                </button>
+                              )}
                               {/* Image */}
                               {msg.image_url && (
                                 // eslint-disable-next-line @next/next/no-img-element
