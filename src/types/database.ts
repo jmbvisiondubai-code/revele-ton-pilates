@@ -185,6 +185,17 @@ export interface Recommendation {
   message: string | null
   link_url: string | null
   link_label: string | null
+  link_thumbnail_url: string | null
   is_read: boolean
+  created_at: string
+}
+
+export interface VodCategory {
+  id: string
+  label: string
+  emoji: string
+  url: string
+  order_index: number
+  is_active: boolean
   created_at: string
 }

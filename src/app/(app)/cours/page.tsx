@@ -5,32 +5,26 @@ import { motion } from 'framer-motion'
 import { Clock, Monitor, Video, ExternalLink, Radio, Film, X, ChevronRight, Play } from 'lucide-react'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/client'
 import { Card, Button } from '@/components/ui'
-import type { LiveSession } from '@/types/database'
+import type { LiveSession, VodCategory } from '@/types/database'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
 
 type Tab = 'lives' | 'vod' | 'replays'
 
-const VOD_CATEGORIES = [
-  { label: 'Programmes', emoji: '🗓️', url: 'https://vod.marjoriejamin.com/categories/programmespilates', color: 'bg-rose-50 border-rose-200 text-rose-700' },
-  { label: 'Nouveaux cours', emoji: '✨', url: 'https://vod.marjoriejamin.com/categories/nouveauxcours', color: 'bg-amber-50 border-amber-200 text-amber-700' },
-  { label: 'Full Body', emoji: '💪', url: 'https://vod.marjoriejamin.com/categories/fullbody', color: 'bg-orange-50 border-orange-200 text-orange-700' },
-  { label: 'Reformer', emoji: '🎯', url: 'https://vod.marjoriejamin.com/categories/reformer', color: 'bg-purple-50 border-purple-200 text-purple-700' },
-  { label: 'Perfect Time', subtitle: '16 à 30 min', emoji: '⏱️', url: 'https://vod.marjoriejamin.com/categories/pilatesperfecttime', color: 'bg-sky-50 border-sky-200 text-sky-700' },
-  { label: 'Quick Pilates', subtitle: '15 min max', emoji: '⚡', url: 'https://vod.marjoriejamin.com/categories/quickpilates', color: 'bg-yellow-50 border-yellow-200 text-yellow-700' },
-  { label: 'Sessions Longues', subtitle: '35 min à 1h', emoji: '🕐', url: 'https://vod.marjoriejamin.com/categories/pilatessessionslongues', color: 'bg-teal-50 border-teal-200 text-teal-700' },
-  { label: 'Energy & Vitality', emoji: '🌟', url: 'https://vod.marjoriejamin.com/categories/energy-reboost-vitality-pilates', color: 'bg-lime-50 border-lime-200 text-lime-700' },
-  { label: 'Intense & Dynamic', emoji: '🔥', url: 'https://vod.marjoriejamin.com/categories/intense-dynamic-pilates', color: 'bg-red-50 border-red-200 text-red-700' },
-  { label: 'Détente & Stretching', emoji: '🌸', url: 'https://vod.marjoriejamin.com/categories/detente-stretching', color: 'bg-pink-50 border-pink-200 text-pink-700' },
-  { label: 'Basic Pilates', subtitle: 'Débutant', emoji: '🌱', url: 'https://vod.marjoriejamin.com/categories/basicpilates', color: 'bg-green-50 border-green-200 text-green-700' },
-  { label: 'Accessoires', emoji: '🎽', url: 'https://vod.marjoriejamin.com/categories/pilatesaccessoires', color: 'bg-indigo-50 border-indigo-200 text-indigo-700' },
-  { label: 'Souplesse', emoji: '🤸', url: 'https://vod.marjoriejamin.com/categories/souplesse', color: 'bg-violet-50 border-violet-200 text-violet-700' },
-  { label: 'Prénatal', emoji: '🤰', url: 'https://vod.marjoriejamin.com/categories/prenatal', color: 'bg-rose-50 border-rose-200 text-rose-700' },
-  { label: 'Postnatal', emoji: '👶', url: 'https://vod.marjoriejamin.com/categories/postnatal', color: 'bg-pink-50 border-pink-200 text-pink-700' },
-  { label: 'Abdos', emoji: '🎯', url: 'https://vod.marjoriejamin.com/categories/abdos', color: 'bg-orange-50 border-orange-200 text-orange-700' },
-  { label: 'Bas du corps', emoji: '🦵', url: 'https://vod.marjoriejamin.com/categories/basducorps', color: 'bg-amber-50 border-amber-200 text-amber-700' },
-  { label: 'Haut du corps', emoji: '🏋️', url: 'https://vod.marjoriejamin.com/categories/hautducorps', color: 'bg-sky-50 border-sky-200 text-sky-700' },
-  { label: 'Circuit-Training', emoji: '🏃', url: 'https://vod.marjoriejamin.com/categories/circuit-training', color: 'bg-red-50 border-red-200 text-red-700' },
+const TILE_COLORS = [
+  'bg-rose-50 border-rose-200 text-rose-700',
+  'bg-amber-50 border-amber-200 text-amber-700',
+  'bg-orange-50 border-orange-200 text-orange-700',
+  'bg-purple-50 border-purple-200 text-purple-700',
+  'bg-sky-50 border-sky-200 text-sky-700',
+  'bg-yellow-50 border-yellow-200 text-yellow-700',
+  'bg-teal-50 border-teal-200 text-teal-700',
+  'bg-lime-50 border-lime-200 text-lime-700',
+  'bg-red-50 border-red-200 text-red-700',
+  'bg-pink-50 border-pink-200 text-pink-700',
+  'bg-green-50 border-green-200 text-green-700',
+  'bg-indigo-50 border-indigo-200 text-indigo-700',
+  'bg-violet-50 border-violet-200 text-violet-700',
 ]
 
 const DEMO_LIVE: LiveSession = {
@@ -52,6 +46,7 @@ const DEMO_LIVE: LiveSession = {
 export default function CoursPage() {
   const [tab, setTab] = useState<Tab>('lives')
   const [nextLive, setNextLive] = useState<LiveSession | null>(null)
+  const [vodCategories, setVodCategories] = useState<VodCategory[]>([])
   const [vimeoUrl, setVimeoUrl] = useState<string | null>(null)
   const [vimeoCode, setVimeoCode] = useState<string | null>(null)
   const [zoomUrl, setZoomUrl] = useState<string | null>(null)
@@ -92,6 +87,13 @@ export default function CoursPage() {
         if (code?.value) setVimeoCode(code.value)
         if (zoom?.value) setZoomUrl(zoom.value)
       }
+
+      const { data: cats } = await supabase
+        .from('vod_categories')
+        .select('*')
+        .eq('is_active', true)
+        .order('order_index')
+      if (cats && cats.length > 0) setVodCategories(cats as VodCategory[])
     }
     loadData()
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -259,21 +261,18 @@ export default function CoursPage() {
 
           {/* Category grid */}
           <div className="grid grid-cols-2 gap-3">
-            {VOD_CATEGORIES.map((cat, i) => (
+            {vodCategories.map((cat, i) => (
               <motion.button
-                key={cat.url}
+                key={cat.id}
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.03 }}
                 onClick={() => openExternal(cat.url)}
-                className={`flex items-center gap-3 p-3.5 rounded-2xl border text-left transition-all active:scale-95 ${cat.color}`}
+                className={`flex items-center gap-3 p-3.5 rounded-2xl border text-left transition-all active:scale-95 ${TILE_COLORS[i % TILE_COLORS.length]}`}
               >
                 <span className="text-2xl flex-shrink-0">{cat.emoji}</span>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold leading-tight">{cat.label}</p>
-                  {'subtitle' in cat && cat.subtitle && (
-                    <p className="text-[11px] opacity-70 mt-0.5">{cat.subtitle}</p>
-                  )}
                 </div>
                 <ChevronRight size={14} className="flex-shrink-0 opacity-40" />
               </motion.button>

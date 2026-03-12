@@ -547,39 +547,48 @@ export default function ProfilPage() {
                 <div
                   key={rec.id}
                   onClick={() => !rec.is_read && markRecAsRead(rec.id)}
-                  className={`rounded-[var(--radius-lg)] border p-4 transition cursor-default ${
-                    rec.is_read
-                      ? 'bg-bg-card border-border'
-                      : 'bg-primary/5 border-primary/30 cursor-pointer'
+                  className={`rounded-[var(--radius-lg)] border overflow-hidden transition cursor-default ${
+                    rec.is_read ? 'bg-bg-card border-border' : 'bg-primary/5 border-primary/30 cursor-pointer'
                   }`}
                 >
-                  <div className="flex items-start gap-3">
-                    <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                      <Sparkles size={14} className="text-primary" />
+                  {/* Thumbnail */}
+                  {rec.link_thumbnail_url && (
+                    <div className="relative w-full aspect-video overflow-hidden">
+                      <img src={rec.link_thumbnail_url} alt={rec.title} className="w-full h-full object-cover" />
+                      {!rec.is_read && (
+                        <span className="absolute top-2 right-2 w-2.5 h-2.5 bg-primary rounded-full shadow" />
+                      )}
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <p className="text-sm font-semibold text-text">{rec.title}</p>
-                        {!rec.is_read && (
-                          <span className="w-2 h-2 bg-primary rounded-full flex-shrink-0" />
-                        )}
+                  )}
+                  <div className="p-4">
+                    <div className="flex items-start gap-3">
+                      <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                        <Sparkles size={14} className="text-primary" />
                       </div>
-                      {rec.message && (
-                        <p className="text-sm text-text-secondary mt-1">{rec.message}</p>
-                      )}
-                      {rec.link_url && rec.link_label && (
-                        <button
-                          onClick={e => { e.stopPropagation(); window.open(rec.link_url!, '_blank', 'noopener,noreferrer') }}
-                          className="flex items-center gap-1.5 mt-2 text-xs text-primary font-medium hover:underline"
-                        >
-                          <ExternalLink size={11} />
-                          {rec.link_label}
-                        </button>
-                      )}
-                      <p className="text-[11px] text-text-muted mt-2">
-                        {new Date(rec.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
-                        {rec.is_read ? '' : ' · Appuie pour marquer comme lu'}
-                      </p>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm font-semibold text-text">{rec.title}</p>
+                          {!rec.is_read && !rec.link_thumbnail_url && (
+                            <span className="w-2 h-2 bg-primary rounded-full flex-shrink-0" />
+                          )}
+                        </div>
+                        {rec.message && (
+                          <p className="text-sm text-text-secondary mt-1">{rec.message}</p>
+                        )}
+                        {rec.link_url && (
+                          <button
+                            onClick={e => { e.stopPropagation(); window.open(rec.link_url!, '_blank', 'noopener,noreferrer') }}
+                            className="flex items-center gap-1.5 mt-2 text-xs text-primary font-medium hover:underline"
+                          >
+                            <ExternalLink size={11} />
+                            {rec.link_label || 'Voir le cours'}
+                          </button>
+                        )}
+                        <p className="text-[11px] text-text-muted mt-2">
+                          {new Date(rec.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
+                          {rec.is_read ? '' : ' · Appuie pour marquer comme lu'}
+                        </p>
+                      </div>
                     </div>
                   </div>
                 </div>

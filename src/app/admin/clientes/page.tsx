@@ -1,33 +1,11 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/client'
 import { Card } from '@/components/ui'
-import { Users, Clock, Trophy, Star, X, Plus, ExternalLink, ChevronRight } from 'lucide-react'
+import { Users, Clock, Trophy, Star, X, Plus, ExternalLink, ChevronRight, Upload, Link as LinkIcon } from 'lucide-react'
 import { formatDuration, LEVEL_LABELS } from '@/lib/utils'
-import type { Recommendation } from '@/types/database'
-
-const VOD_CATEGORIES = [
-  { label: 'Programmes', url: 'https://vod.marjoriejamin.com/categories/programmespilates' },
-  { label: 'Nouveaux cours', url: 'https://vod.marjoriejamin.com/categories/nouveauxcours' },
-  { label: 'Full Body', url: 'https://vod.marjoriejamin.com/categories/fullbody' },
-  { label: 'Reformer', url: 'https://vod.marjoriejamin.com/categories/reformer' },
-  { label: 'Pilates Perfect Time (16 à 30 min)', url: 'https://vod.marjoriejamin.com/categories/pilatesperfecttime' },
-  { label: 'Quick Pilates (15 min max)', url: 'https://vod.marjoriejamin.com/categories/quickpilates' },
-  { label: 'Pilates Sessions Longues (35 min à 1h)', url: 'https://vod.marjoriejamin.com/categories/pilatessessionslongues' },
-  { label: 'Energy (re)boost & Vitality', url: 'https://vod.marjoriejamin.com/categories/energy-reboost-vitality-pilates' },
-  { label: 'Intense & Dynamic', url: 'https://vod.marjoriejamin.com/categories/intense-dynamic-pilates' },
-  { label: 'Détente & Stretching', url: 'https://vod.marjoriejamin.com/categories/detente-stretching' },
-  { label: 'Basic Pilates — Débutant', url: 'https://vod.marjoriejamin.com/categories/basicpilates' },
-  { label: 'Avec Accessoires / Petit matériel Pilates', url: 'https://vod.marjoriejamin.com/categories/pilatesaccessoires' },
-  { label: 'Souplesse', url: 'https://vod.marjoriejamin.com/categories/souplesse' },
-  { label: 'Prénatal', url: 'https://vod.marjoriejamin.com/categories/prenatal' },
-  { label: 'Postnatal', url: 'https://vod.marjoriejamin.com/categories/postnatal' },
-  { label: 'Abdos', url: 'https://vod.marjoriejamin.com/categories/abdos' },
-  { label: 'Bas du corps', url: 'https://vod.marjoriejamin.com/categories/basducorps' },
-  { label: 'Haut du corps', url: 'https://vod.marjoriejamin.com/categories/hautducorps' },
-  { label: 'Circuit-Training', url: 'https://vod.marjoriejamin.com/categories/circuit-training' },
-]
+import type { Recommendation, VodCategory } from '@/types/database'
 
 type ClientSummary = {
   id: string
@@ -50,22 +28,33 @@ type ClientDetail = ClientSummary & {
 export default function ClientesPage() {
   const [clients, setClients] = useState<ClientSummary[]>([])
   const [selected, setSelected] = useState<ClientDetail | null>(null)
+  const [categories, setCategories] = useState<VodCategory[]>([])
   const [loading, setLoading] = useState(true)
   const [loadingDetail, setLoadingDetail] = useState(false)
-  const [form, setForm] = useState({ title: '', message: '', category: '' })
+  const [form, setForm] = useState({ title: '', message: '', category: '', directUrl: '', thumbnailUrl: '', thumbnailMode: 'none' as 'none' | 'url' | 'upload' })
   const [saving, setSaving] = useState(false)
+  const [uploadingThumb, setUploadingThumb] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const supabase = createClient()
 
   useEffect(() => {
     if (!isSupabaseConfigured()) { setLoading(false); return }
     async function load() {
-      const { data } = await supabase
-        .from('profiles')
-        .select('id, first_name, avatar_url, practice_level, total_sessions, total_practice_minutes, limitations, goals, created_at')
-        .eq('is_admin', false)
-        .order('total_sessions', { ascending: false })
-      setClients((data as ClientSummary[]) ?? [])
+      const [{ data: profiles }, { data: cats }] = await Promise.all([
+        supabase
+          .from('profiles')
+          .select('id, first_name, avatar_url, practice_level, total_sessions, total_practice_minutes, limitations, goals, created_at')
+          .eq('is_admin', false)
+          .order('total_sessions', { ascending: false }),
+        supabase
+          .from('vod_categories')
+          .select('*')
+          .eq('is_active', true)
+          .order('order_index'),
+      ])
+      setClients((profiles as ClientSummary[]) ?? [])
+      setCategories((cats as VodCategory[]) ?? [])
       setLoading(false)
     }
     load()
@@ -82,37 +71,53 @@ export default function ClientesPage() {
         .eq('user_id', client.id)
         .order('completed_at', { ascending: false })
         .limit(20),
-      supabase
-        .from('live_registrations')
-        .select('attended')
-        .eq('user_id', client.id),
-      supabase
-        .from('recommendations')
-        .select('*')
-        .eq('user_id', client.id)
-        .order('created_at', { ascending: false }),
+      supabase.from('live_registrations').select('attended').eq('user_id', client.id),
+      supabase.from('recommendations').select('*').eq('user_id', client.id).order('created_at', { ascending: false }),
     ])
-
-    const formattedCompletions = (completions ?? []).map((c: any) => ({
-      course_title: c.courses?.title ?? 'Cours',
-      completed_at: c.completed_at,
-      duration_minutes: c.duration_watched_minutes ?? c.courses?.duration_minutes ?? null,
-    }))
 
     setSelected({
       ...client,
-      completions: formattedCompletions,
+      completions: (completions ?? []).map((c: any) => ({
+        course_title: c.courses?.title ?? 'Cours',
+        completed_at: c.completed_at,
+        duration_minutes: c.duration_watched_minutes ?? c.courses?.duration_minutes ?? null,
+      })),
       lives_attended: (registrations ?? []).filter((r: any) => r.attended).length,
       recommendations: (recs as Recommendation[]) ?? [],
     })
     setLoadingDetail(false)
   }
 
+  async function uploadThumbnail(file: File): Promise<string | null> {
+    setUploadingThumb(true)
+    const ext = file.name.split('.').pop()
+    const path = `rec-thumbnails/${Date.now()}.${ext}`
+    const { error } = await supabase.storage.from('courses').upload(path, file, { upsert: true })
+    if (error) { setUploadingThumb(false); return null }
+    const { data } = supabase.storage.from('courses').getPublicUrl(path)
+    setUploadingThumb(false)
+    return data.publicUrl
+  }
+
+  async function handleThumbnailFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const url = await uploadThumbnail(file)
+    if (url) setForm(f => ({ ...f, thumbnailUrl: url }))
+    e.target.value = ''
+  }
+
   async function addRecommendation() {
     if (!selected || !form.title.trim()) return
     setSaving(true)
     const { data: me } = await supabase.auth.getUser()
-    const selectedCategory = VOD_CATEGORIES.find(c => c.url === form.category)
+    const selectedCategory = categories.find(c => c.url === form.category)
+
+    // Determine link
+    const link_url = form.directUrl.trim() || selectedCategory?.url || null
+    const link_label = form.directUrl.trim() ? form.directUrl.trim() : (selectedCategory?.label || null)
+    const link_thumbnail_url = form.thumbnailUrl.trim() || null
+
     const { data, error } = await supabase
       .from('recommendations')
       .insert({
@@ -120,33 +125,26 @@ export default function ClientesPage() {
         created_by: me.user?.id,
         title: form.title.trim(),
         message: form.message.trim() || null,
-        link_url: selectedCategory?.url ?? null,
-        link_label: selectedCategory?.label ?? null,
+        link_url,
+        link_label,
+        link_thumbnail_url,
       })
       .select('*')
       .single()
 
     if (!error && data) {
-      setSelected(prev => prev ? {
-        ...prev,
-        recommendations: [data as Recommendation, ...prev.recommendations],
-      } : prev)
-      setForm({ title: '', message: '', category: '' })
+      setSelected(prev => prev ? { ...prev, recommendations: [data as Recommendation, ...prev.recommendations] } : prev)
+      setForm({ title: '', message: '', category: '', directUrl: '', thumbnailUrl: '', thumbnailMode: 'none' })
     }
     setSaving(false)
   }
 
   async function deleteRecommendation(recId: string) {
     await supabase.from('recommendations').delete().eq('id', recId)
-    setSelected(prev => prev ? {
-      ...prev,
-      recommendations: prev.recommendations.filter(r => r.id !== recId),
-    } : prev)
+    setSelected(prev => prev ? { ...prev, recommendations: prev.recommendations.filter(r => r.id !== recId) } : prev)
   }
 
-  if (!isSupabaseConfigured()) {
-    return <p className="text-[#6B6359]">Supabase non configuré.</p>
-  }
+  if (!isSupabaseConfigured()) return <p className="text-[#6B6359]">Supabase non configuré.</p>
 
   return (
     <div className="max-w-5xl">
@@ -156,27 +154,21 @@ export default function ClientesPage() {
       </div>
 
       {loading ? (
-        <div className="flex justify-center py-12">
-          <div className="w-6 h-6 border-2 border-[#C6684F] border-t-transparent rounded-full animate-spin" />
-        </div>
+        <div className="flex justify-center py-12"><div className="w-6 h-6 border-2 border-[#C6684F] border-t-transparent rounded-full animate-spin" /></div>
       ) : clients.length === 0 ? (
         <Card><p className="text-center text-[#6B6359] py-6">Aucune cliente pour l'instant.</p></Card>
       ) : (
         <div className="grid gap-3">
           {clients.map(client => (
-            <button
-              key={client.id}
-              onClick={() => openClient(client)}
-              className="w-full text-left bg-white border border-[#DCCFBF] rounded-xl px-4 py-3 hover:bg-[#FAF6F1] transition flex items-center gap-4"
-            >
+            <button key={client.id} onClick={() => openClient(client)}
+              className="w-full text-left bg-white border border-[#DCCFBF] rounded-xl px-4 py-3 hover:bg-[#FAF6F1] transition flex items-center gap-4">
               <div className="w-10 h-10 rounded-full bg-[#F2E8DF] flex items-center justify-center text-[#C6684F] font-semibold text-sm flex-shrink-0">
                 {client.first_name.charAt(0).toUpperCase()}
               </div>
               <div className="flex-1 min-w-0">
                 <p className="font-medium text-[#2C2C2C]">{client.first_name}</p>
                 <p className="text-xs text-[#6B6359]">
-                  {LEVEL_LABELS[client.practice_level || ''] || 'Niveau non défini'}
-                  {' · '}Membre depuis {new Date(client.created_at).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}
+                  {LEVEL_LABELS[client.practice_level || ''] || 'Niveau non défini'} · Membre depuis {new Date(client.created_at).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}
                 </p>
               </div>
               <div className="flex items-center gap-4 flex-shrink-0">
@@ -195,13 +187,9 @@ export default function ClientesPage() {
         </div>
       )}
 
-      {/* Detail panel */}
       {selected && (
         <div className="fixed inset-0 z-50 flex items-stretch justify-end bg-black/30" onClick={() => setSelected(null)}>
-          <div
-            className="w-full max-w-lg bg-white h-full overflow-y-auto shadow-2xl"
-            onClick={e => e.stopPropagation()}
-          >
+          <div className="w-full max-w-lg bg-white h-full overflow-y-auto shadow-2xl" onClick={e => e.stopPropagation()}>
             {/* Header */}
             <div className="sticky top-0 bg-white border-b border-[#DCCFBF] px-5 py-4 flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-[#F2E8DF] flex items-center justify-center text-[#C6684F] font-semibold">
@@ -211,15 +199,11 @@ export default function ClientesPage() {
                 <h2 className="font-semibold text-[#2C2C2C]">{selected.first_name}</h2>
                 <p className="text-xs text-[#6B6359]">{LEVEL_LABELS[selected.practice_level || ''] || '—'}</p>
               </div>
-              <button onClick={() => setSelected(null)} className="p-2 rounded-lg hover:bg-[#F2E8DF] text-[#6B6359]">
-                <X size={18} />
-              </button>
+              <button onClick={() => setSelected(null)} className="p-2 rounded-lg hover:bg-[#F2E8DF] text-[#6B6359]"><X size={18} /></button>
             </div>
 
             {loadingDetail ? (
-              <div className="flex justify-center py-12">
-                <div className="w-6 h-6 border-2 border-[#C6684F] border-t-transparent rounded-full animate-spin" />
-              </div>
+              <div className="flex justify-center py-12"><div className="w-6 h-6 border-2 border-[#C6684F] border-t-transparent rounded-full animate-spin" /></div>
             ) : (
               <div className="p-5 space-y-6">
                 {/* Stats */}
@@ -237,7 +221,6 @@ export default function ClientesPage() {
                   ))}
                 </div>
 
-                {/* Limitations */}
                 {selected.limitations && (
                   <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
                     <p className="text-xs font-semibold text-amber-700 mb-1">Limitations signalées</p>
@@ -271,23 +254,21 @@ export default function ClientesPage() {
                 <div>
                   <h3 className="font-semibold text-sm text-[#2C2C2C] mb-3">Recommandations personnalisées</h3>
 
-                  {/* Existing */}
                   {selected.recommendations.length > 0 && (
                     <div className="space-y-2 mb-4">
                       {selected.recommendations.map(rec => (
-                        <div key={rec.id} className="bg-[#FAF6F1] border border-[#DCCFBF] rounded-xl p-3">
-                          <div className="flex items-start justify-between gap-2">
+                        <div key={rec.id} className="bg-[#FAF6F1] border border-[#DCCFBF] rounded-xl overflow-hidden">
+                          {rec.link_thumbnail_url && (
+                            <img src={rec.link_thumbnail_url} alt="" className="w-full h-32 object-cover" />
+                          )}
+                          <div className="p-3 flex items-start justify-between gap-2">
                             <div className="flex-1 min-w-0">
                               <p className="text-sm font-medium text-[#2C2C2C]">{rec.title}</p>
                               {rec.message && <p className="text-xs text-[#6B6359] mt-0.5">{rec.message}</p>}
-                              {rec.link_url && rec.link_label && (
-                                <a
-                                  href={rec.link_url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="flex items-center gap-1 mt-1 text-xs text-[#C6684F] hover:underline"
-                                >
-                                  <ExternalLink size={11} /> {rec.link_label}
+                              {rec.link_url && (
+                                <a href={rec.link_url} target="_blank" rel="noopener noreferrer"
+                                  className="flex items-center gap-1 mt-1 text-xs text-[#C6684F] hover:underline">
+                                  <ExternalLink size={11} /> {rec.link_label || rec.link_url}
                                 </a>
                               )}
                               <p className="text-[10px] text-[#6B6359] mt-1">
@@ -295,10 +276,7 @@ export default function ClientesPage() {
                                 {' · '}{rec.is_read ? 'Lu' : 'Non lu'}
                               </p>
                             </div>
-                            <button
-                              onClick={() => deleteRecommendation(rec.id)}
-                              className="p-1 rounded hover:bg-[#F2E8DF] text-[#6B6359] flex-shrink-0"
-                            >
+                            <button onClick={() => deleteRecommendation(rec.id)} className="p-1 rounded hover:bg-[#F2E8DF] text-[#6B6359] flex-shrink-0">
                               <X size={14} />
                             </button>
                           </div>
@@ -310,40 +288,71 @@ export default function ClientesPage() {
                   {/* Add form */}
                   <div className="bg-white border border-[#DCCFBF] rounded-xl p-4 space-y-3">
                     <p className="text-xs font-semibold text-[#6B6359]">Nouvelle recommandation</p>
-                    <input
-                      type="text"
-                      placeholder="Titre *"
-                      value={form.title}
+
+                    <input type="text" placeholder="Titre *" value={form.title}
                       onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
-                      className="w-full text-sm border border-[#DCCFBF] rounded-lg px-3 py-2 focus:outline-none focus:border-[#C6684F] bg-[#FAF6F1]"
-                    />
-                    <textarea
-                      placeholder="Message personnalisé (ex : idéal pour ton dos, commence par cette catégorie…)"
-                      value={form.message}
+                      className="w-full text-sm border border-[#DCCFBF] rounded-lg px-3 py-2 focus:outline-none focus:border-[#C6684F] bg-[#FAF6F1]" />
+
+                    <textarea placeholder="Message personnalisé (ex : idéal pour ton dos…)" value={form.message}
                       onChange={e => setForm(f => ({ ...f, message: e.target.value }))}
-                      rows={3}
-                      className="w-full text-sm border border-[#DCCFBF] rounded-lg px-3 py-2 focus:outline-none focus:border-[#C6684F] bg-[#FAF6F1] resize-none"
-                    />
-                    <select
-                      value={form.category}
-                      onChange={e => setForm(f => ({ ...f, category: e.target.value }))}
-                      className="w-full text-sm border border-[#DCCFBF] rounded-lg px-3 py-2 focus:outline-none focus:border-[#C6684F] bg-[#FAF6F1] text-[#6B6359]"
-                    >
-                      <option value="">Lier une catégorie VOD (optionnel)</option>
-                      {VOD_CATEGORIES.map(c => (
-                        <option key={c.url} value={c.url}>{c.label}</option>
-                      ))}
-                    </select>
-                    <button
-                      onClick={addRecommendation}
-                      disabled={saving || !form.title.trim()}
-                      className="w-full flex items-center justify-center gap-2 bg-[#C6684F] text-white text-sm font-medium py-2.5 rounded-lg hover:bg-[#b05a42] disabled:opacity-50 transition"
-                    >
-                      {saving ? (
-                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                      ) : (
-                        <><Plus size={15} /> Envoyer la recommandation</>
+                      rows={3} className="w-full text-sm border border-[#DCCFBF] rounded-lg px-3 py-2 focus:outline-none focus:border-[#C6684F] bg-[#FAF6F1] resize-none" />
+
+                    {/* Link section */}
+                    <div className="space-y-2">
+                      <p className="text-xs font-medium text-[#6B6359]">Lien (optionnel)</p>
+                      <select value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value, directUrl: '' }))}
+                        className="w-full text-sm border border-[#DCCFBF] rounded-lg px-3 py-2 focus:outline-none focus:border-[#C6684F] bg-[#FAF6F1] text-[#6B6359]">
+                        <option value="">— Choisir une catégorie VOD</option>
+                        {categories.map(c => <option key={c.id} value={c.url}>{c.emoji} {c.label}</option>)}
+                      </select>
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1 h-px bg-[#DCCFBF]" />
+                        <span className="text-xs text-[#6B6359]">ou</span>
+                        <div className="flex-1 h-px bg-[#DCCFBF]" />
+                      </div>
+                      <div className="relative">
+                        <LinkIcon size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#6B6359]" />
+                        <input type="url" placeholder="URL directe d'un cours spécifique"
+                          value={form.directUrl} onChange={e => setForm(f => ({ ...f, directUrl: e.target.value, category: '' }))}
+                          className="w-full text-sm border border-[#DCCFBF] rounded-lg pl-9 pr-3 py-2 focus:outline-none focus:border-[#C6684F] bg-[#FAF6F1]" />
+                      </div>
+                    </div>
+
+                    {/* Thumbnail section */}
+                    <div className="space-y-2">
+                      <p className="text-xs font-medium text-[#6B6359]">Vignette (optionnel)</p>
+                      <div className="flex gap-2">
+                        <button type="button" onClick={() => setForm(f => ({ ...f, thumbnailMode: f.thumbnailMode === 'url' ? 'none' : 'url', thumbnailUrl: '' }))}
+                          className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs border transition ${form.thumbnailMode === 'url' ? 'border-[#C6684F] bg-[#C6684F]/5 text-[#C6684F]' : 'border-[#DCCFBF] text-[#6B6359]'}`}>
+                          <LinkIcon size={12} /> URL image
+                        </button>
+                        <button type="button" onClick={() => { setForm(f => ({ ...f, thumbnailMode: f.thumbnailMode === 'upload' ? 'none' : 'upload', thumbnailUrl: '' })); fileInputRef.current?.click() }}
+                          className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs border transition ${form.thumbnailMode === 'upload' ? 'border-[#C6684F] bg-[#C6684F]/5 text-[#C6684F]' : 'border-[#DCCFBF] text-[#6B6359]'}`}>
+                          <Upload size={12} /> {uploadingThumb ? 'Upload...' : 'Uploader'}
+                        </button>
+                      </div>
+                      <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleThumbnailFile} />
+
+                      {form.thumbnailMode === 'url' && (
+                        <input type="url" placeholder="https://..." value={form.thumbnailUrl}
+                          onChange={e => setForm(f => ({ ...f, thumbnailUrl: e.target.value }))}
+                          className="w-full text-sm border border-[#DCCFBF] rounded-lg px-3 py-2 focus:outline-none focus:border-[#C6684F] bg-[#FAF6F1]" />
                       )}
+
+                      {form.thumbnailUrl && (
+                        <div className="relative rounded-xl overflow-hidden">
+                          <img src={form.thumbnailUrl} alt="" className="w-full h-32 object-cover" />
+                          <button onClick={() => setForm(f => ({ ...f, thumbnailUrl: '', thumbnailMode: 'none' }))}
+                            className="absolute top-2 right-2 bg-black/50 text-white rounded-full p-1">
+                            <X size={12} />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
+                    <button onClick={addRecommendation} disabled={saving || !form.title.trim()}
+                      className="w-full flex items-center justify-center gap-2 bg-[#C6684F] text-white text-sm font-medium py-2.5 rounded-lg hover:bg-[#b05a42] disabled:opacity-50 transition">
+                      {saving ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <><Plus size={15} /> Envoyer la recommandation</>}
                     </button>
                   </div>
                 </div>
