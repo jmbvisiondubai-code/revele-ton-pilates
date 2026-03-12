@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import {
   Send, ArrowLeft, MessageSquare, Smile, Pencil, Trash2,
   Pin, PinOff, CornerUpLeft, X, Paperclip, FileText, Check, MoreHorizontal,
-  Archive, ArchiveRestore, EyeOff, ChevronDown,
+  Archive, ArchiveRestore, Eye, EyeOff, ChevronDown,
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/client'
@@ -61,7 +61,7 @@ function ReactionPicker({ onReact }: { onReact: (type: ReactionType) => void }) 
 
 // ── Main page ────────────────────────────────────────────────────────────────
 export default function MessagesPage() {
-  const { profile } = useAuthStore()
+  const { profile, setProfile } = useAuthStore()
   const myId = profile?.id
   const isAdmin = profile?.is_admin ?? false
   const router = useRouter()
@@ -176,6 +176,18 @@ export default function MessagesPage() {
       else { setActiveId(null); setShowList(true); sessionStorage.removeItem('dm_active_conv') }
     }
   }, [convs]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Self-load profile if Zustand store is empty (page refresh) ──────────
+  useEffect(() => {
+    if (profile || !isSupabaseConfigured()) return
+    const supabase = createClient()
+    supabase.auth.getUser().then(async ({ data: { user } }) => {
+      if (!user) { setLoadingConvs(false); return }
+      const { data } = await supabase.from('profiles').select('*').eq('id', user.id).single()
+      if (data) setProfile(data)
+      else setLoadingConvs(false)
+    })
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Load messages ────────────────────────────────────────────────────────
   const loadMessages = useCallback(async (partnerId: string) => {
@@ -350,6 +362,19 @@ export default function MessagesPage() {
     setConvMenuId(null)
   }
 
+  async function markConvAsRead(partnerId: string) {
+    if (!myId || !isSupabaseConfigured()) return
+    const supabase = createClient()
+    await supabase
+      .from('direct_messages')
+      .update({ read_at: new Date().toISOString() })
+      .eq('receiver_id', myId)
+      .eq('sender_id', partnerId)
+      .is('read_at', null)
+    loadConversations()
+    setConvMenuId(null)
+  }
+
   // ── File upload ───────────────────────────────────────────────────────────
   async function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -516,11 +541,18 @@ export default function MessagesPage() {
                   {/* Swipe-left action buttons */}
                   <div className="absolute right-0 top-0 h-full flex">
                     <button
-                      onClick={(e) => { e.stopPropagation(); markConvAsUnread(conv.partner.id); setConvSwipeId(null) }}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        if (conv.unreadCount > 0) markConvAsRead(conv.partner.id)
+                        else markConvAsUnread(conv.partner.id)
+                        setConvSwipeId(null)
+                      }}
                       className="w-20 h-full bg-[#5B8DEF] flex flex-col items-center justify-center gap-1"
                     >
-                      <EyeOff size={15} className="text-white" />
-                      <span className="text-[10px] text-white font-medium leading-none">Non lu</span>
+                      {conv.unreadCount > 0
+                        ? <><Eye size={15} className="text-white" /><span className="text-[10px] text-white font-medium leading-none">Lu</span></>
+                        : <><EyeOff size={15} className="text-white" /><span className="text-[10px] text-white font-medium leading-none">Non lu</span></>
+                      }
                     </button>
                     {isAdmin && (
                       <button
@@ -587,10 +619,13 @@ export default function MessagesPage() {
                               className="absolute right-0 top-full mt-1 z-50 bg-white rounded-xl shadow-lg border border-[#EDE5DA] overflow-hidden min-w-[175px]"
                             >
                               <button
-                                onClick={() => markConvAsUnread(conv.partner.id)}
+                                onClick={() => conv.unreadCount > 0 ? markConvAsRead(conv.partner.id) : markConvAsUnread(conv.partner.id)}
                                 className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-[#2C2C2C] hover:bg-[#FAF6F1] transition-colors"
                               >
-                                <EyeOff size={14} className="text-[#6B6359]" /> Marquer non lu
+                                {conv.unreadCount > 0
+                                  ? <><Eye size={14} className="text-[#6B6359]" /> Marquer lu</>
+                                  : <><EyeOff size={14} className="text-[#6B6359]" /> Marquer non lu</>
+                                }
                               </button>
                               <button
                                 onClick={() => archiveConversation(conv.partner.id)}
