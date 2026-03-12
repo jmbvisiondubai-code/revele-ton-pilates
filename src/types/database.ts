@@ -218,6 +218,13 @@ export interface DirectMessage {
   created_at: string
   read_at: string | null
   edited_at: string | null
+  reply_to_id?: string | null
+  reply_to_preview?: string | null
+  reply_to_author?: string | null
+  image_url?: string | null
+  file_url?: string | null
+  file_name?: string | null
+  is_pinned?: boolean
 }
 
 export interface VodCategory {
