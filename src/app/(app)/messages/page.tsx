@@ -533,6 +533,8 @@ export default function MessagesPage() {
                   const totalReactions = Object.values(msg.reaction_counts).reduce((a, b) => a + b, 0)
                   const isEditing = editingId === msg.id
                   const isSwiping = swipingMsg?.msgId === msg.id
+                  const next = messages[i + 1]
+                  const isLastInGroup = !next || next.sender_id !== msg.sender_id
 
                   return (
                     <div key={msg.id}>
@@ -545,7 +547,7 @@ export default function MessagesPage() {
                       )}
 
                       <div
-                        className={`flex ${isMe ? 'justify-end' : 'justify-start'} mb-0.5 relative select-none group`}
+                        className={`flex items-end gap-1.5 ${isMe ? 'justify-end' : 'justify-start'} mb-0.5 relative select-none group`}
                         onContextMenu={e => e.preventDefault()}
                         onTouchStart={e => startGesture(msg.id, isMe, msg.content, msg.is_pinned ?? false, e.touches[0].clientX, e.touches[0].clientY)}
                         onTouchMove={e => moveGesture(msg.id, e.touches[0].clientX, e.touches[0].clientY)}
@@ -557,6 +559,16 @@ export default function MessagesPage() {
                           transition: isSwiping ? 'none' : 'transform 0.3s cubic-bezier(0.34,1.56,0.64,1)',
                         }}
                       >
+                        {/* Avatar (received messages only) */}
+                        {!isMe && (
+                          <div className="flex-shrink-0 self-end">
+                            {isLastInGroup && activeProfile
+                              ? <ProfileAvatar p={activeProfile} size={28} />
+                              : <div className="w-7 h-7" />
+                            }
+                          </div>
+                        )}
+
                         {/* Swipe indicator */}
                         {isSwiping && swipingMsg.deltaX > 10 && (
                           <div className={`absolute ${isMe ? 'right-full mr-2' : 'left-full ml-2'} top-1/2 -translate-y-1/2`} style={{ opacity: Math.min(swipingMsg.deltaX / 50, 1) }}>
@@ -614,7 +626,7 @@ export default function MessagesPage() {
                         </div>
 
                         {/* Bubble */}
-                        <div className="max-w-[75%]">
+                        <div className="max-w-[70%]">
                           {/* Reply preview */}
                           {msg.reply_to_preview && (
                             <div className="mb-1 px-2.5 py-1.5 rounded-xl text-xs border-l-2 border-[#C6684F] bg-white/60 backdrop-blur-sm">
