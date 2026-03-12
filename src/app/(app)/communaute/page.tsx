@@ -112,6 +112,7 @@ export default function CommunautePage() {
   const [swipingPost, setSwipingPost] = useState<{ postId: string; deltaX: number } | null>(null)
   const [replyingTo, setReplyingTo] = useState<{ id: string; content: string; authorName: string } | null>(null)
   const [doubleTapHeart, setDoubleTapHeart] = useState<string | null>(null)
+  const [highlightPost, setHighlightPost] = useState<string | null>(null)
 
   const { profile } = useAuthStore()
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
@@ -341,6 +342,14 @@ export default function CommunautePage() {
     }
     setSwipingPost(null)
     touchStartRef.current = null
+  }
+
+  function scrollToPost(postId: string) {
+    const el = document.getElementById(`post-${postId}`)
+    if (!el) return
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    setHighlightPost(postId)
+    setTimeout(() => setHighlightPost(null), 1400)
   }
 
   const pinnedPosts = posts.filter(p => p.is_pinned && p.is_from_marjorie)
@@ -581,7 +590,7 @@ export default function CommunautePage() {
                   const authorName = post.is_from_marjorie ? 'Marjorie' : (isOwn ? 'Toi' : (post.profiles?.first_name || 'Membre'))
 
                   return (
-                    <motion.div key={post.id} initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ delay: i < 5 ? i * 0.04 : 0 }}>
+                    <motion.div key={post.id} id={`post-${post.id}`} initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ delay: i < 5 ? i * 0.04 : 0 }}>
                       <div className={`flex items-end gap-2 ${isOwn ? 'flex-row-reverse' : 'flex-row'}`}>
 
                         {/* Avatar */}
@@ -708,16 +717,19 @@ export default function CommunautePage() {
                                   <CornerUpLeft size={16} className="text-[#C6684F]" />
                                 </div>
                               )}
-                              <div className={`rounded-2xl px-4 py-3 ${
-                                isOwn ? 'bg-[#F2E8DF] rounded-br-sm'
+                              <div className={`rounded-2xl px-4 py-3 transition-colors duration-300 ${
+                                highlightPost === post.id ? 'ring-2 ring-[#C6684F] ring-offset-1 bg-[#FDF0EB]!'
+                                : isOwn ? 'bg-[#F2E8DF] rounded-br-sm'
                                 : post.is_from_marjorie ? 'bg-gradient-to-br from-[#FDF0EB] to-[#FAF6F1] border-2 border-[#C6684F]/30 rounded-bl-sm'
                                 : 'bg-white border border-[#DCCFBF] rounded-bl-sm'
                               }`}>
-                                {post.reply_to_preview && (
-                                  <div className="mb-2 border-l-2 border-[#C6684F]/50 pl-2 py-0.5 rounded-r-sm bg-black/5">
+                                {post.reply_to_preview && post.reply_to_id && (
+                                  <button
+                                    onClick={() => scrollToPost(post.reply_to_id!)}
+                                    className="w-full text-left mb-2 border-l-2 border-[#C6684F]/50 pl-2 py-0.5 rounded-r-sm bg-black/5 hover:bg-[#C6684F]/10 active:bg-[#C6684F]/15 transition-colors">
                                     <p className="text-[10px] font-semibold text-[#C6684F]">{post.reply_to_author}</p>
                                     <p className="text-xs text-[#6B6359] line-clamp-1">{post.reply_to_preview}</p>
-                                  </div>
+                                  </button>
                                 )}
                                 <p className="text-sm text-[#2C2C2C] leading-relaxed whitespace-pre-wrap">{post.content}</p>
                                 {post.image_url && (
