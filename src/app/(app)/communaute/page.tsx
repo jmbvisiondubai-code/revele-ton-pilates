@@ -1,19 +1,19 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Heart, HandMetal, Dumbbell, Star, MessageCircle, Send, Pin, PinOff, MoreHorizontal, Pencil, Trash2, Check, X, Link as LinkIcon, Image as ImageIcon, ExternalLink } from 'lucide-react'
+import { MessageCircle, Send, Pin, PinOff, MoreHorizontal, Pencil, Trash2, Check, X, Link as LinkIcon, Image as ImageIcon, ExternalLink } from 'lucide-react'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/client'
 import { useAuthStore } from '@/stores/auth-store'
 import { Card, Avatar, Button } from '@/components/ui'
 import { formatRelativeDate } from '@/lib/utils'
 import type { CommunityPost, ReactionType } from '@/types/database'
 
-const REACTIONS: { type: ReactionType; icon: React.ReactNode }[] = [
-  { type: 'coeur', icon: <Heart size={14} /> },
-  { type: 'applaudissement', icon: <HandMetal size={14} /> },
-  { type: 'muscle', icon: <Dumbbell size={14} /> },
-  { type: 'etoile', icon: <Star size={14} /> },
+const REACTIONS: { type: ReactionType; emoji: string; label: string }[] = [
+  { type: 'coeur',          emoji: '❤️',  label: 'Adore' },
+  { type: 'applaudissement', emoji: '👏', label: 'Bravo' },
+  { type: 'muscle',         emoji: '💪',  label: 'Force' },
+  { type: 'etoile',         emoji: '⭐',  label: 'Super' },
 ]
 
 type Comment = {
@@ -34,40 +34,143 @@ type PostWithMeta = CommunityPost & {
 
 const DEMO_POSTS: PostWithMeta[] = [
   {
-    id: 'demo-2',
-    user_id: 'marjorie',
+    id: 'demo-2', user_id: 'marjorie',
     content: 'Bonjour à toutes ! Un rappel bienveillant : même 15 minutes de pratique comptent. Votre corps vous dit merci 💛',
     image_url: null, is_pinned: true, is_from_marjorie: true,
     link_url: null, link_label: null, edited_at: null,
-    created_at: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(),
+    created_at: new Date(Date.now() - 5 * 3600000).toISOString(),
     profiles: { first_name: 'Marjorie', avatar_url: null },
     reaction_counts: { coeur: 12, applaudissement: 8, muscle: 4, etoile: 6 },
     user_reactions: [], comment_count: 4,
   },
   {
-    id: 'demo-1',
-    user_id: 'demo',
+    id: 'demo-1', user_id: 'demo',
     content: 'Première séance du matin faite ! Je me sens tellement bien après. Merci Marjorie pour cette énergie 🌿',
     image_url: null, is_pinned: false, is_from_marjorie: false,
     link_url: null, link_label: null, edited_at: null,
-    created_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+    created_at: new Date(Date.now() - 2 * 3600000).toISOString(),
     profiles: { first_name: 'Sophie', avatar_url: null },
-    reaction_counts: { coeur: 5, applaudissement: 3, muscle: 2, etoile: 0 },
+    reaction_counts: { coeur: 5, applaudissement: 3, muscle: 0, etoile: 0 },
     user_reactions: [], comment_count: 2,
   },
 ]
 
 function openExternal(url: string) {
   const isIosPwa = (navigator as Navigator & { standalone?: boolean }).standalone === true
-  if (isIosPwa) {
-    navigator.clipboard.writeText(url).catch(() => {})
-  } else {
+  if (isIosPwa) { navigator.clipboard.writeText(url).catch(() => {}) }
+  else {
     const a = document.createElement('a')
     a.href = url; a.target = '_blank'; a.rel = 'noopener noreferrer'
     document.body.appendChild(a); a.click(); document.body.removeChild(a)
   }
 }
 
+// ── Reaction badge (floating on bubble, Facebook Messenger style) ────────────
+function ReactionBadge({ post }: { post: PostWithMeta }) {
+  const totalCount = Object.values(post.reaction_counts).reduce((a, b) => a + b, 0)
+  const topReactions = REACTIONS.filter(r => post.reaction_counts[r.type] > 0).slice(0, 3)
+  if (totalCount === 0) return null
+  return (
+    <div className="flex items-center gap-0.5 bg-white rounded-full shadow-md border border-[#DCCFBF]/60 px-1.5 py-0.5">
+      {topReactions.map(r => (
+        <span key={r.type} className="text-xs leading-none">{r.emoji}</span>
+      ))}
+      {totalCount > 1 && <span className="text-[10px] text-[#6B6359] font-medium ml-0.5">{totalCount}</span>}
+    </div>
+  )
+}
+
+// ── Reaction button (Facebook style: tap=❤️, long-press=picker) ─────────────
+function ReactionButton({ post, myId, onReact, isOwn }: {
+  post: PostWithMeta
+  myId: string | null
+  onReact: (postId: string, type: ReactionType) => void
+  isOwn: boolean
+}) {
+  const [open, setOpen] = useState(false)
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  const myReaction = post.user_reactions[0] as ReactionType | undefined
+
+  // Close picker when clicking outside
+  useEffect(() => {
+    if (!open) return
+    const handler = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [open])
+
+  // Long press → open picker, short tap → toggle ❤️
+  function handlePressStart() {
+    timerRef.current = setTimeout(() => { setOpen(true) }, 400)
+  }
+  function handlePressEnd(e: React.TouchEvent | React.MouseEvent) {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current)
+      if (!open) {
+        e.preventDefault()
+        onReact(post.id, 'coeur')
+      }
+    }
+  }
+
+  function pick(type: ReactionType) {
+    onReact(post.id, type)
+    setOpen(false)
+  }
+
+  return (
+    <div ref={containerRef} className="relative">
+      {/* Reaction picker popup */}
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.7, y: 8 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.7, y: 8 }}
+            transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+            className={`absolute bottom-9 ${isOwn ? 'right-0' : 'left-0'} bg-white rounded-full shadow-xl border border-[#DCCFBF] px-3 py-2 flex gap-2 z-30 whitespace-nowrap`}
+          >
+            {REACTIONS.map(({ type, emoji, label }) => (
+              <button
+                key={type}
+                onClick={() => pick(type)}
+                title={label}
+                className={`relative text-2xl transition-transform hover:scale-125 active:scale-110 ${post.user_reactions.includes(type) ? 'scale-110 -translate-y-1' : ''}`}
+              >
+                {emoji}
+                {post.user_reactions.includes(type) && (
+                  <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 bg-[#C6684F] rounded-full" />
+                )}
+              </button>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Minimal reaction trigger — just an emoji, no border when idle */}
+      <button
+        onMouseDown={handlePressStart}
+        onMouseUp={handlePressEnd}
+        onMouseLeave={() => { if (timerRef.current) clearTimeout(timerRef.current) }}
+        onTouchStart={handlePressStart}
+        onTouchEnd={handlePressEnd}
+        onMouseEnter={() => { timerRef.current = setTimeout(() => setOpen(true), 600) }}
+        className={`text-sm select-none transition-transform active:scale-125 ${myReaction ? 'opacity-100' : 'opacity-50 hover:opacity-80'}`}
+        title="Réagir (maintenir pour choisir)"
+      >
+        {myReaction ? REACTIONS.find(r => r.type === myReaction)?.emoji : '🤍'}
+      </button>
+    </div>
+  )
+}
+
+// ── Main page ────────────────────────────────────────────────────────────────
 export default function CommunautePage() {
   const [posts, setPosts] = useState<PostWithMeta[]>([])
   const [newPost, setNewPost] = useState('')
@@ -87,6 +190,7 @@ export default function CommunautePage() {
   const [editingComment, setEditingComment] = useState<string | null>(null)
   const [editCommentContent, setEditCommentContent] = useState('')
   const [commentMenu, setCommentMenu] = useState<string | null>(null)
+  // pinnedExpanded removed — pinned messages are always visible
 
   const { profile } = useAuthStore()
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
@@ -97,30 +201,25 @@ export default function CommunautePage() {
   const myId = profile?.id ?? currentUserId
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (user) setCurrentUserId(user.id)
-    })
+    supabase.auth.getUser().then(({ data: { user } }) => { if (user) setCurrentUserId(user.id) })
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function loadPosts() {
     if (!isSupabaseConfigured()) { setPosts(DEMO_POSTS); return }
     const { data: postsData } = await supabase
-      .from('community_posts')
-      .select('*, profiles(first_name, avatar_url)')
+      .from('community_posts').select('*, profiles(first_name, avatar_url)')
       .order('is_pinned', { ascending: false })
       .order('created_at', { ascending: false })
       .limit(50)
     if (!postsData) return
     const postIds = postsData.map((p: CommunityPost) => p.id)
-    const { data: reactions } = await supabase
-      .from('post_reactions').select('post_id, reaction_type, user_id').in('post_id', postIds)
-    const { data: comments } = await supabase
-      .from('post_comments').select('post_id, id').in('post_id', postIds)
+    const { data: reactions } = await supabase.from('post_reactions').select('post_id, reaction_type, user_id').in('post_id', postIds)
+    const { data: comments } = await supabase.from('post_comments').select('post_id, id').in('post_id', postIds)
     const enriched: PostWithMeta[] = postsData.map((post: CommunityPost) => {
-      const postReactions = reactions?.filter((r: { post_id: string }) => r.post_id === post.id) ?? []
+      const pr = reactions?.filter((r: { post_id: string }) => r.post_id === post.id) ?? []
       const reaction_counts: Record<ReactionType, number> = { coeur: 0, applaudissement: 0, muscle: 0, etoile: 0 }
-      postReactions.forEach((r: { reaction_type: string }) => { reaction_counts[r.reaction_type as ReactionType]++ })
-      const user_reactions = postReactions.filter((r: { user_id: string }) => r.user_id === profile?.id).map((r: { reaction_type: string }) => r.reaction_type as ReactionType)
+      pr.forEach((r: { reaction_type: string }) => { reaction_counts[r.reaction_type as ReactionType]++ })
+      const user_reactions = pr.filter((r: { user_id: string }) => r.user_id === profile?.id).map((r: { reaction_type: string }) => r.reaction_type as ReactionType)
       const comment_count = comments?.filter((c: { post_id: string }) => c.post_id === post.id).length ?? 0
       return { ...post, reaction_counts, user_reactions, comment_count }
     })
@@ -130,11 +229,9 @@ export default function CommunautePage() {
   useEffect(() => {
     loadPosts()
     if (!isSupabaseConfigured()) return
-    channelRef.current = supabase
-      .channel('community')
+    channelRef.current = supabase.channel('community')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'community_posts' }, async (payload) => {
-        const { data } = await supabase
-          .from('community_posts').select('*, profiles(first_name, avatar_url)').eq('id', payload.new.id).single()
+        const { data } = await supabase.from('community_posts').select('*, profiles(first_name, avatar_url)').eq('id', payload.new.id).single()
         if (data) {
           const post: PostWithMeta = { ...data, reaction_counts: { coeur: 0, applaudissement: 0, muscle: 0, etoile: 0 }, user_reactions: [], comment_count: 0 }
           setPosts(prev => prev.find(p => p.id === post.id) ? prev : [post, ...prev])
@@ -153,24 +250,20 @@ export default function CommunautePage() {
     if (!newPost.trim() || !profile) return
     setIsPosting(true)
     if (!isSupabaseConfigured()) {
-      const optimistic: PostWithMeta = {
+      const op: PostWithMeta = {
         id: `temp-${Date.now()}`, user_id: profile.id, content: newPost.trim(),
         image_url: postImageUrl.trim() || null, is_pinned: false, is_from_marjorie: isAdmin,
         link_url: postLinkUrl.trim() || null, link_label: postLinkLabel.trim() || null, edited_at: null,
         created_at: new Date().toISOString(),
         profiles: { first_name: profile.first_name, avatar_url: profile.avatar_url },
-        reaction_counts: { coeur: 0, applaudissement: 0, muscle: 0, etoile: 0 },
-        user_reactions: [], comment_count: 0,
+        reaction_counts: { coeur: 0, applaudissement: 0, muscle: 0, etoile: 0 }, user_reactions: [], comment_count: 0,
       }
-      setPosts(prev => [optimistic, ...prev]); resetPostForm(); setIsPosting(false); return
+      setPosts(prev => [op, ...prev]); resetPostForm(); setIsPosting(false); return
     }
-    const { data, error } = await supabase
-      .from('community_posts').insert({
-        user_id: profile.id, content: newPost.trim(),
-        image_url: postImageUrl.trim() || null, is_from_marjorie: isAdmin,
-        link_url: postLinkUrl.trim() || null, link_label: postLinkLabel.trim() || null,
-      })
-      .select('*, profiles(first_name, avatar_url)').single()
+    const { data, error } = await supabase.from('community_posts').insert({
+      user_id: profile.id, content: newPost.trim(), image_url: postImageUrl.trim() || null,
+      is_from_marjorie: isAdmin, link_url: postLinkUrl.trim() || null, link_label: postLinkLabel.trim() || null,
+    }).select('*, profiles(first_name, avatar_url)').single()
     if (!error && data) {
       setPosts(prev => [{ ...data, reaction_counts: { coeur: 0, applaudissement: 0, muscle: 0, etoile: 0 }, user_reactions: [], comment_count: 0 }, ...prev])
       resetPostForm()
@@ -180,8 +273,7 @@ export default function CommunautePage() {
 
   async function handleEditPost(postId: string) {
     if (!editPostContent.trim()) return
-    const { error } = await supabase.from('community_posts')
-      .update({ content: editPostContent.trim(), edited_at: new Date().toISOString() }).eq('id', postId)
+    const { error } = await supabase.from('community_posts').update({ content: editPostContent.trim(), edited_at: new Date().toISOString() }).eq('id', postId)
     if (!error) setPosts(prev => prev.map(p => p.id === postId ? { ...p, content: editPostContent.trim() } : p))
     setEditingPost(null); setEditPostContent('')
   }
@@ -206,7 +298,7 @@ export default function CommunautePage() {
     }
   }
 
-  async function toggleReaction(postId: string, type: ReactionType) {
+  const toggleReaction = useCallback(async (postId: string, type: ReactionType) => {
     if (!profile || !isSupabaseConfigured()) return
     const post = posts.find(p => p.id === postId)
     if (!post) return
@@ -222,14 +314,13 @@ export default function CommunautePage() {
     } else {
       await supabase.from('post_reactions').insert({ user_id: profile.id, post_id: postId, reaction_type: type })
     }
-  }
+  }, [posts, profile, supabase]) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function loadComments(postId: string) {
     if (openComments === postId) { setOpenComments(null); return }
     setOpenComments(postId)
     if (!isSupabaseConfigured()) return
-    const { data } = await supabase
-      .from('post_comments')
+    const { data } = await supabase.from('post_comments')
       .select('id, user_id, content, created_at, edited_at, profiles(first_name, avatar_url)')
       .eq('post_id', postId).order('created_at', { ascending: true })
     if (data) setPosts(prev => prev.map(p => p.id === postId ? { ...p, comments: data as unknown as Comment[] } : p))
@@ -238,8 +329,7 @@ export default function CommunautePage() {
   async function submitComment(postId: string) {
     if (!newComment.trim() || !profile || !isSupabaseConfigured()) return
     setIsCommenting(true)
-    const { data } = await supabase
-      .from('post_comments')
+    const { data } = await supabase.from('post_comments')
       .insert({ user_id: profile.id, post_id: postId, content: newComment.trim() })
       .select('id, user_id, content, created_at, edited_at, profiles(first_name, avatar_url)').single()
     if (data) {
@@ -251,8 +341,7 @@ export default function CommunautePage() {
 
   async function handleEditComment(postId: string, commentId: string) {
     if (!editCommentContent.trim()) return
-    const { error } = await supabase.from('post_comments')
-      .update({ content: editCommentContent.trim(), edited_at: new Date().toISOString() }).eq('id', commentId)
+    const { error } = await supabase.from('post_comments').update({ content: editCommentContent.trim(), edited_at: new Date().toISOString() }).eq('id', commentId)
     if (!error) {
       setPosts(prev => prev.map(p => p.id !== postId ? p : {
         ...p, comments: p.comments?.map(c => c.id === commentId ? { ...c, content: editCommentContent.trim(), edited_at: new Date().toISOString() } : c)
@@ -263,12 +352,11 @@ export default function CommunautePage() {
 
   async function handleDeleteComment(postId: string, commentId: string) {
     const { error } = await supabase.from('post_comments').delete().eq('id', commentId)
-    if (!error) {
-      setPosts(prev => prev.map(p => p.id !== postId ? p : {
-        ...p, comment_count: p.comment_count - 1, comments: p.comments?.filter(c => c.id !== commentId)
-      }))
-    }
+    if (!error) setPosts(prev => prev.map(p => p.id !== postId ? p : { ...p, comment_count: p.comment_count - 1, comments: p.comments?.filter(c => c.id !== commentId) }))
   }
+
+  const pinnedPosts = posts.filter(p => p.is_pinned && p.is_from_marjorie)
+  const feedPosts = posts.filter(p => !p.is_pinned || !p.is_from_marjorie)
 
   return (
     <div className="px-4 pt-6 pb-24 lg:px-8 lg:pt-8 max-w-5xl mx-auto">
@@ -290,9 +378,7 @@ export default function CommunautePage() {
               <div className="flex-1">
                 <textarea
                   placeholder={isAdmin ? "Écris un message pour ta communauté..." : "Partage ton expérience, une victoire, un ressenti..."}
-                  value={newPost}
-                  onChange={e => setNewPost(e.target.value)}
-                  rows={3}
+                  value={newPost} onChange={e => setNewPost(e.target.value)} rows={3}
                   className="w-full resize-none bg-transparent text-sm text-text placeholder:text-text-muted focus:outline-none"
                 />
                 {isAdmin && (
@@ -347,41 +433,132 @@ export default function CommunautePage() {
           </Card>
         </div>
 
-        {/* Chat feed */}
+        {/* Feed column */}
         <div className="lg:col-span-2 lg:order-1">
-          {posts.length === 0 ? (
+
+          {/* ── Pinned messages from Marjorie — always visible at top ── */}
+          {pinnedPosts.length > 0 && (
+            <div className="space-y-3 mb-6">
+              {pinnedPosts.map((post) => (
+                <div key={post.id} className="relative rounded-2xl bg-gradient-to-br from-[#FDF0EB] to-[#FAF6F1] border-2 border-[#C6684F]/30 px-4 py-3 shadow-sm">
+                  {/* Pin badge */}
+                  <div className="absolute -top-2.5 left-3 flex items-center gap-1 bg-[#C6684F] text-white text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full shadow-sm">
+                    <Pin size={10} />
+                    Épinglé
+                  </div>
+
+                  <div className="flex items-start gap-3 mt-1">
+                    <div className="relative flex-shrink-0 mt-0.5">
+                      <Avatar src={post.profiles?.avatar_url} fallback={post.profiles?.first_name} size="md" />
+                      <div className="absolute -bottom-0.5 -right-0.5 w-4.5 h-4.5 bg-[#C6684F] rounded-full flex items-center justify-center">
+                        <span className="text-[8px] text-white">✦</span>
+                      </div>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5 mb-1">
+                        <span className="text-sm font-bold text-[#C6684F]">Marjorie</span>
+                        <span className="text-[9px] font-semibold bg-[#C6684F] text-white px-1.5 py-0.5 rounded-full">Coach</span>
+                        <span className="text-[10px] text-[#DCCFBF]">{formatRelativeDate(post.created_at)}</span>
+                        {post.edited_at && <span className="text-[10px] text-[#DCCFBF]">(modifié)</span>}
+                      </div>
+                      <p className="text-sm text-[#2C2C2C] leading-relaxed whitespace-pre-wrap">{post.content}</p>
+                      {post.image_url && (
+                        <div className="mt-2 rounded-xl overflow-hidden">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={post.image_url} alt="" className="w-full object-cover max-h-60" />
+                        </div>
+                      )}
+                      {post.link_url && (
+                        <button onClick={() => openExternal(post.link_url!)}
+                          className="mt-2 flex items-center gap-2 bg-white/70 border border-[#DCCFBF] rounded-xl p-2.5 hover:border-[#C6684F]/50 transition-colors text-left">
+                          <div className="w-7 h-7 rounded-lg bg-[#C6684F]/10 flex items-center justify-center flex-shrink-0">
+                            <ExternalLink size={12} className="text-[#C6684F]" />
+                          </div>
+                          <span className="text-xs font-medium text-[#2C2C2C] leading-snug">{post.link_label || 'Voir le lien'}</span>
+                          <ExternalLink size={11} className="text-[#C6684F] flex-shrink-0" />
+                        </button>
+                      )}
+                      {/* Reactions on pinned */}
+                      <div className="flex items-center gap-3 mt-2">
+                        <ReactionButton post={post} myId={myId} onReact={toggleReaction} isOwn={false} />
+                        <button onClick={() => loadComments(post.id)}
+                          className={`text-sm transition-all select-none ${openComments === post.id ? 'opacity-100' : 'opacity-50 hover:opacity-80'}`}>
+                          <MessageCircle size={14} />
+                        </button>
+                        {post.comment_count > 0 && (
+                          <span className="text-[10px] text-[#6B6359]">{post.comment_count}</span>
+                        )}
+                        <div className="ml-auto">
+                          <ReactionBadge post={post} />
+                        </div>
+                      </div>
+                    </div>
+                    {isAdmin && (
+                      <button onClick={() => togglePin(post.id, true)}
+                        title="Désépingler"
+                        className="flex-shrink-0 p-1.5 rounded-full text-[#C6684F]/40 hover:text-[#C6684F] hover:bg-[#C6684F]/10 transition-colors">
+                        <PinOff size={14} />
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Comments for pinned */}
+                  <AnimatePresence>
+                    {openComments === post.id && (
+                      <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
+                        className="mt-3 ml-11 space-y-2 border-t border-[#DCCFBF]/30 pt-2">
+                        {(post.comments ?? []).map(comment => {
+                          const isMyComment = !!myId && myId === comment.user_id
+                          return (
+                            <div key={comment.id} className="flex items-start gap-2">
+                              <Avatar src={comment.profiles?.avatar_url} fallback={comment.profiles?.first_name} size="sm" />
+                              <div className="flex-1 min-w-0">
+                                <span className="text-[10px] text-[#6B6359] font-medium">{isMyComment ? 'Toi' : comment.profiles?.first_name}</span>
+                                <div className="rounded-xl bg-white/70 border border-[#DCCFBF]/40 px-3 py-1.5 text-xs text-[#2C2C2C]">
+                                  {comment.content}
+                                  {comment.edited_at && <span className="text-[9px] text-[#DCCFBF] ml-1">(modifié)</span>}
+                                </div>
+                              </div>
+                            </div>
+                          )
+                        })}
+                        {profile && (
+                          <div className="flex gap-2 items-center pt-1">
+                            <Avatar src={profile.avatar_url} fallback={profile.first_name} size="sm" />
+                            <div className="flex-1 flex gap-2">
+                              <input value={newComment} onChange={e => setNewComment(e.target.value)}
+                                onKeyDown={e => e.key === 'Enter' && !e.shiftKey && submitComment(post.id)}
+                                placeholder="Répondre..."
+                                className="flex-1 bg-white border border-[#DCCFBF] text-xs placeholder:text-text-muted rounded-full px-3 py-2 focus:outline-none focus:border-[#C6684F]" />
+                              <button onClick={() => submitComment(post.id)} disabled={isCommenting || !newComment.trim()} className="text-[#C6684F] disabled:opacity-40">
+                                <Send size={14} />
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* ── Regular feed ── */}
+          {feedPosts.length === 0 && posts.length === 0 ? (
             <div className="text-center py-12">
               <p className="text-text-secondary">Sois la première à partager quelque chose !</p>
             </div>
           ) : (
             <div className="space-y-4">
               <AnimatePresence initial={false}>
-                {posts.map((post, i) => {
+                {feedPosts.map((post, i) => {
                   const isOwn = !!myId && myId === post.user_id
-                  const canModerate = isAdmin
                   const isEditingThisPost = editingPost === post.id
                   const isDeletingThisPost = deletingPost === post.id
 
                   return (
-                    <motion.div
-                      key={post.id}
-                      initial={{ opacity: 0, y: -12 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, scale: 0.95 }}
-                      transition={{ delay: i < 5 ? i * 0.04 : 0 }}
-                    >
-                      {/* Pinned label — centered above bubble */}
-                      {post.is_pinned && (
-                        <div className="flex items-center justify-center gap-1.5 mb-1">
-                          <div className="h-px flex-1 bg-[#DCCFBF]" />
-                          <span className="text-[10px] font-semibold text-[#C6684F] flex items-center gap-1">
-                            <Pin size={9} /> Épinglé
-                          </span>
-                          <div className="h-px flex-1 bg-[#DCCFBF]" />
-                        </div>
-                      )}
-
-                      {/* Chat row — flip direction for own messages */}
+                    <motion.div key={post.id} initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ delay: i < 5 ? i * 0.04 : 0 }}>
                       <div className={`flex items-end gap-2 ${isOwn ? 'flex-row-reverse' : 'flex-row'}`}>
 
                         {/* Avatar */}
@@ -398,8 +575,8 @@ export default function CommunautePage() {
                           )}
                         </div>
 
-                        {/* Bubble + meta */}
-                        <div className={`flex flex-col gap-1 min-w-0 max-w-[78%] ${isOwn ? 'items-end' : 'items-start'}`}>
+                        {/* Content column */}
+                        <div className={`flex flex-col gap-1.5 min-w-0 max-w-[78%] ${isOwn ? 'items-end' : 'items-start'}`}>
 
                           {/* Name + date + menu */}
                           <div className={`flex items-center gap-2 px-1 ${isOwn ? 'flex-row-reverse' : 'flex-row'}`}>
@@ -409,43 +586,34 @@ export default function CommunautePage() {
                                 <span className="text-[9px] font-semibold bg-[#C6684F] text-white px-1.5 py-0.5 rounded-full">Coach</span>
                               </div>
                             ) : (
-                              <span className="text-xs font-medium text-[#2C2C2C]">
-                                {isOwn ? 'Toi' : (post.profiles?.first_name || 'Membre')}
-                              </span>
+                              <span className="text-xs font-medium text-[#2C2C2C]">{isOwn ? 'Toi' : (post.profiles?.first_name || 'Membre')}</span>
                             )}
                             <span className="text-[10px] text-[#DCCFBF]">{formatRelativeDate(post.created_at)}</span>
                             {post.edited_at && <span className="text-[10px] text-[#DCCFBF]">(modifié)</span>}
 
-                            {/* Menu */}
-                            {(isOwn || canModerate) && !isEditingThisPost && (
+                            {(isOwn || isAdmin) && !isEditingThisPost && (
                               <div className="relative" onClick={e => e.stopPropagation()}>
-                                <button
-                                  onClick={() => setPostMenu(postMenu === post.id ? null : post.id)}
-                                  className="w-5 h-5 flex items-center justify-center text-[#DCCFBF] hover:text-[#6B6359] transition-colors"
-                                >
+                                <button onClick={() => setPostMenu(postMenu === post.id ? null : post.id)}
+                                  className="w-5 h-5 flex items-center justify-center text-[#DCCFBF] hover:text-[#6B6359]">
                                   <MoreHorizontal size={13} />
                                 </button>
                                 <AnimatePresence>
                                   {postMenu === post.id && (
-                                    <motion.div
-                                      initial={{ opacity: 0, scale: 0.9, y: -4 }}
-                                      animate={{ opacity: 1, scale: 1, y: 0 }}
-                                      exit={{ opacity: 0, scale: 0.9, y: -4 }}
-                                      className={`absolute top-6 z-20 bg-white rounded-xl shadow-lg border border-[#DCCFBF] overflow-hidden min-w-[150px] ${isOwn ? 'right-0' : 'left-0'}`}
-                                    >
+                                    <motion.div initial={{ opacity: 0, scale: 0.9, y: -4 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9 }}
+                                      className={`absolute top-6 z-20 bg-white rounded-xl shadow-lg border border-[#DCCFBF] overflow-hidden min-w-[150px] ${isOwn ? 'right-0' : 'left-0'}`}>
                                       {isOwn && (
                                         <button onClick={() => { setEditingPost(post.id); setEditPostContent(post.content); setPostMenu(null) }}
                                           className="w-full flex items-center gap-2 px-3 py-2 text-sm text-text hover:bg-bg-elevated text-left">
                                           <Pencil size={13} /> Modifier
                                         </button>
                                       )}
-                                      {canModerate && (
+                                      {isAdmin && (
                                         <button onClick={() => { togglePin(post.id, post.is_pinned); setPostMenu(null) }}
                                           className="w-full flex items-center gap-2 px-3 py-2 text-sm text-text hover:bg-bg-elevated text-left">
                                           {post.is_pinned ? <><PinOff size={13} /> Désépingler</> : <><Pin size={13} /> Épingler</>}
                                         </button>
                                       )}
-                                      {(isOwn || canModerate) && (
+                                      {(isOwn || isAdmin) && (
                                         <button onClick={() => { setDeletingPost(post.id); setPostMenu(null) }}
                                           className="w-full flex items-center gap-2 px-3 py-2 text-sm text-error hover:bg-error-light text-left">
                                           <Trash2 size={13} /> Supprimer
@@ -458,7 +626,6 @@ export default function CommunautePage() {
                             )}
                           </div>
 
-                          {/* Delete confirm */}
                           {isDeletingThisPost && (
                             <div className="bg-error-light rounded-xl p-3 flex items-center justify-between gap-3 w-full">
                               <p className="text-xs text-error">Supprimer ce message ?</p>
@@ -472,12 +639,8 @@ export default function CommunautePage() {
                           {/* Bubble */}
                           {isEditingThisPost ? (
                             <div className="w-full">
-                              <textarea
-                                value={editPostContent}
-                                onChange={e => setEditPostContent(e.target.value)}
-                                rows={3} autoFocus
-                                className="w-full resize-none bg-bg-elevated text-sm text-text rounded-xl px-3 py-2 focus:outline-none border border-border-light"
-                              />
+                              <textarea value={editPostContent} onChange={e => setEditPostContent(e.target.value)} rows={3} autoFocus
+                                className="w-full resize-none bg-bg-elevated text-sm text-text rounded-xl px-3 py-2 focus:outline-none border border-border-light" />
                               <div className="flex gap-2 mt-1.5 justify-end">
                                 <button onClick={() => { setEditingPost(null); setEditPostContent('') }}
                                   className="flex items-center gap-1 text-xs text-text-secondary px-2.5 py-1.5 rounded-full hover:bg-bg-elevated">
@@ -490,91 +653,64 @@ export default function CommunautePage() {
                               </div>
                             </div>
                           ) : (
-                            <div className={`rounded-2xl px-4 py-3 ${
-                              isOwn
-                                ? 'bg-[#F2E8DF] rounded-br-sm'
-                                : post.is_from_marjorie
-                                  ? 'bg-gradient-to-br from-[#FDF0EB] to-[#FAF6F1] border-2 border-[#C6684F]/30 rounded-bl-sm'
-                                  : 'bg-white border border-[#DCCFBF] rounded-bl-sm'
-                            }`}>
-                              <p className="text-sm text-[#2C2C2C] leading-relaxed whitespace-pre-wrap">{post.content}</p>
-
-                              {post.image_url && (
-                                <div className="mt-2 rounded-xl overflow-hidden">
-                                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                                  <img src={post.image_url} alt="" className="w-full object-cover max-h-60" />
-                                </div>
-                              )}
-
-                              {post.link_url && (
-                                <button onClick={() => openExternal(post.link_url!)}
-                                  className="mt-2 w-full flex items-center gap-2 bg-white/70 border border-[#DCCFBF] rounded-xl p-2.5 hover:border-[#C6684F]/50 transition-colors text-left">
-                                  <div className="w-7 h-7 rounded-lg bg-[#C6684F]/10 flex items-center justify-center flex-shrink-0">
-                                    <ExternalLink size={12} className="text-[#C6684F]" />
+                            <div className="relative">
+                              <div className={`rounded-2xl px-4 py-3 ${
+                                isOwn ? 'bg-[#F2E8DF] rounded-br-sm'
+                                : post.is_from_marjorie ? 'bg-gradient-to-br from-[#FDF0EB] to-[#FAF6F1] border-2 border-[#C6684F]/30 rounded-bl-sm'
+                                : 'bg-white border border-[#DCCFBF] rounded-bl-sm'
+                              }`}>
+                                <p className="text-sm text-[#2C2C2C] leading-relaxed whitespace-pre-wrap">{post.content}</p>
+                                {post.image_url && (
+                                  <div className="mt-2 rounded-xl overflow-hidden">
+                                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                                    <img src={post.image_url} alt="" className="w-full object-cover max-h-60" />
                                   </div>
-                                  <span className="text-xs font-medium text-[#2C2C2C] flex-1 leading-snug">
-                                    {post.link_label || post.link_url}
-                                  </span>
-                                  <ExternalLink size={11} className="text-[#C6684F] flex-shrink-0" />
-                                </button>
-                              )}
+                                )}
+                                {post.link_url && (
+                                  <button onClick={() => openExternal(post.link_url!)}
+                                    className="mt-2 w-full flex items-center gap-2 bg-white/70 border border-[#DCCFBF] rounded-xl p-2.5 hover:border-[#C6684F]/50 transition-colors text-left">
+                                    <div className="w-7 h-7 rounded-lg bg-[#C6684F]/10 flex items-center justify-center flex-shrink-0">
+                                      <ExternalLink size={12} className="text-[#C6684F]" />
+                                    </div>
+                                    <span className="text-xs font-medium text-[#2C2C2C] flex-1 leading-snug">{post.link_label || post.link_url}</span>
+                                    <ExternalLink size={11} className="text-[#C6684F] flex-shrink-0" />
+                                  </button>
+                                )}
+                              </div>
+                              {/* Floating reaction badge (Facebook Messenger style) */}
+                              <div className={`absolute -bottom-2.5 ${isOwn ? 'left-2' : 'right-2'}`}>
+                                <ReactionBadge post={post} />
+                              </div>
                             </div>
                           )}
 
-                          {/* Reactions + comment toggle */}
-                          <div className={`flex items-center gap-1 flex-wrap ${isOwn ? 'flex-row-reverse' : 'flex-row'}`}>
-                            {REACTIONS.map(({ type, icon }) => {
-                              const count = post.reaction_counts[type]
-                              const active = post.user_reactions.includes(type)
-                              if (count === 0 && !active) return null
-                              return (
-                                <button key={type} onClick={() => toggleReaction(post.id, type)}
-                                  className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs transition-all ${active ? 'bg-primary/10 text-primary font-medium' : 'text-text-muted bg-white border border-[#DCCFBF]'}`}>
-                                  {icon} <span>{count}</span>
-                                </button>
-                              )
-                            })}
-                            {/* Show add-reaction if no reactions yet */}
-                            {REACTIONS.every(({ type }) => post.reaction_counts[type] === 0) && (
-                              <div className={`flex items-center gap-0.5 ${isOwn ? 'flex-row-reverse' : 'flex-row'}`}>
-                                {REACTIONS.map(({ type, icon }) => (
-                                  <button key={type} onClick={() => toggleReaction(post.id, type)}
-                                    className="p-1.5 rounded-full text-[#DCCFBF] hover:text-primary hover:bg-primary/5 transition-all">
-                                    {icon}
-                                  </button>
-                                ))}
-                              </div>
-                            )}
+                          {/* Reaction + Comment actions (minimal, under bubble) */}
+                          <div className={`flex items-center gap-3 mt-0.5 ${isOwn ? 'flex-row-reverse' : 'flex-row'}`}>
+                            <ReactionButton post={post} myId={myId} onReact={toggleReaction} isOwn={isOwn} />
                             <button onClick={() => loadComments(post.id)}
-                              className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs transition-all ${openComments === post.id ? 'bg-primary/10 text-primary' : 'text-text-muted hover:bg-bg-elevated'}`}>
-                              <MessageCircle size={12} />
-                              {post.comment_count > 0 ? post.comment_count : 'Commenter'}
+                              className={`text-sm transition-all select-none ${openComments === post.id ? 'opacity-100' : 'opacity-50 hover:opacity-80'}`}>
+                              <MessageCircle size={14} />
                             </button>
+                            {post.comment_count > 0 && (
+                              <span className="text-[10px] text-[#6B6359]">{post.comment_count}</span>
+                            )}
                           </div>
                         </div>
                       </div>
 
-                      {/* Comments — full width below */}
+                      {/* Comments — full width */}
                       <AnimatePresence>
                         {openComments === post.id && (
-                          <motion.div
-                            initial={{ opacity: 0, height: 0 }}
-                            animate={{ opacity: 1, height: 'auto' }}
-                            exit={{ opacity: 0, height: 0 }}
-                            className={`mt-2 ml-9 space-y-2 ${isOwn ? 'mr-0 ml-9' : 'ml-9 mr-0'}`}
-                          >
+                          <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
+                            className="mt-2 ml-9 space-y-2">
                             {(post.comments ?? []).map(comment => {
                               const isMyComment = !!myId && myId === comment.user_id
-                              const isEditingThisComment = editingComment === comment.id
-
                               return (
                                 <div key={comment.id} className={`flex items-end gap-2 group ${isMyComment ? 'flex-row-reverse' : 'flex-row'}`}>
                                   <Avatar src={comment.profiles?.avatar_url} fallback={comment.profiles?.first_name} size="sm" />
                                   <div className={`flex-1 min-w-0 flex flex-col gap-0.5 ${isMyComment ? 'items-end' : 'items-start'}`}>
-                                    <span className="text-[10px] text-[#6B6359] px-1">
-                                      {isMyComment ? 'Toi' : comment.profiles?.first_name}
-                                    </span>
-                                    {isEditingThisComment ? (
+                                    <span className="text-[10px] text-[#6B6359] px-1">{isMyComment ? 'Toi' : comment.profiles?.first_name}</span>
+                                    {editingComment === comment.id ? (
                                       <div className="w-full">
                                         <input value={editCommentContent} onChange={e => setEditCommentContent(e.target.value)}
                                           onKeyDown={e => e.key === 'Enter' && !e.shiftKey && handleEditComment(post.id, comment.id)}
@@ -617,7 +753,6 @@ export default function CommunautePage() {
                                 </div>
                               )
                             })}
-
                             {profile && (
                               <div className="flex gap-2 items-center pt-1">
                                 <Avatar src={profile.avatar_url} fallback={profile.first_name} size="sm" />
@@ -625,9 +760,8 @@ export default function CommunautePage() {
                                   <input value={newComment} onChange={e => setNewComment(e.target.value)}
                                     onKeyDown={e => e.key === 'Enter' && !e.shiftKey && submitComment(post.id)}
                                     placeholder="Répondre..."
-                                    className="flex-1 bg-white border border-[#DCCFBF] text-xs text-text placeholder:text-text-muted rounded-full px-3 py-2 focus:outline-none focus:border-[#C6684F]" />
-                                  <button onClick={() => submitComment(post.id)} disabled={isCommenting || !newComment.trim()}
-                                    className="text-[#C6684F] disabled:opacity-40">
+                                    className="flex-1 bg-white border border-[#DCCFBF] text-xs placeholder:text-text-muted rounded-full px-3 py-2 focus:outline-none focus:border-[#C6684F]" />
+                                  <button onClick={() => submitComment(post.id)} disabled={isCommenting || !newComment.trim()} className="text-[#C6684F] disabled:opacity-40">
                                     <Send size={14} />
                                   </button>
                                 </div>
