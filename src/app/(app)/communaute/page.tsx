@@ -43,7 +43,7 @@ const DEMO_POSTS: PostWithMeta[] = [
   {
     id: 'demo-2', user_id: 'marjorie',
     content: 'Bonjour à toutes ! Un rappel bienveillant : même 15 minutes de pratique comptent. Votre corps vous dit merci 💛',
-    image_url: null, is_pinned: true, is_from_marjorie: true,
+    image_url: null, is_pinned: true, is_from_marjorie: true, is_automated: false,
     link_url: null, link_label: null, reply_to_id: null, reply_to_preview: null, reply_to_author: null, edited_at: null,
     created_at: new Date(Date.now() - 5 * 3600000).toISOString(),
     profiles: { username: 'Marjorie', avatar_url: null },
@@ -53,7 +53,7 @@ const DEMO_POSTS: PostWithMeta[] = [
   {
     id: 'demo-1', user_id: 'demo',
     content: 'Première séance du matin faite ! Je me sens tellement bien après. Merci Marjorie pour cette énergie 🌿',
-    image_url: null, is_pinned: false, is_from_marjorie: false,
+    image_url: null, is_pinned: false, is_from_marjorie: false, is_automated: false,
     link_url: null, link_label: null, reply_to_id: null, reply_to_preview: null, reply_to_author: null, edited_at: null,
     created_at: new Date(Date.now() - 2 * 3600000).toISOString(),
     profiles: { username: 'Sophie', avatar_url: null },
@@ -555,6 +555,85 @@ export default function CommunautePage() {
                   const isEditingThisPost = editingPost === post.id
                   const isDeletingThisPost = deletingPost === post.id
                   const authorName = post.is_from_marjorie ? 'Marjorie' : (isOwn ? 'Toi' : (post.profiles?.username || 'Membre'))
+
+                  // ── Celebration post (automated) ──
+                  if (post.is_automated) {
+                    const totalRxn = Object.values(post.reaction_counts).reduce((a, b) => a + b, 0)
+                    return (
+                      <motion.div key={post.id} id={`post-${post.id}`} initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }}>
+                        <div className="mx-2 my-1">
+                          <div className="relative bg-gradient-to-br from-[#FFF8F5] to-[#FFF0E8] border border-[#EDD5C5] rounded-2xl px-4 pt-5 pb-3 text-center shadow-sm">
+                            {/* sparkle badge */}
+                            <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 w-7 h-7 bg-[#C6684F] rounded-full flex items-center justify-center shadow-md">
+                              <span className="text-sm">✨</span>
+                            </div>
+                            <p className="text-sm text-[#2C2C2C] leading-relaxed">{post.content}</p>
+                            {/* reactions */}
+                            {totalRxn > 0 && (
+                              <div className="flex justify-center gap-1 mt-2 flex-wrap">
+                                {REACTIONS.filter(r => post.reaction_counts[r.type] > 0).map(r => (
+                                  <button key={r.type} onClick={() => toggleReaction(post.id, r.type)}
+                                    className={`flex items-center gap-0.5 px-2 py-0.5 rounded-full text-xs transition-all ${post.user_reactions.includes(r.type) ? 'bg-[#C6684F]/15 border border-[#C6684F]/30' : 'bg-white/70 border border-[#EDD5C5] hover:bg-white'}`}>
+                                    <span>{r.emoji}</span>
+                                    <span className="text-[#6B6359]">{post.reaction_counts[r.type]}</span>
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                            {/* add reaction + comment count */}
+                            <div className="flex items-center justify-center gap-3 mt-2">
+                              <button onClick={() => setContextMenu({ postId: post.id, isOwn: false, content: post.content, authorName })}
+                                className="flex items-center gap-1 text-xs text-[#A09488] hover:text-[#C6684F] transition-colors">
+                                <span>🙂</span> Réagir
+                              </button>
+                              <button onClick={() => setOpenComments(prev => prev === post.id ? null : post.id)}
+                                className="flex items-center gap-1 text-xs text-[#A09488] hover:text-[#C6684F] transition-colors">
+                                <span>💬</span>
+                                {post.comment_count > 0 ? `${post.comment_count} message${post.comment_count > 1 ? 's' : ''}` : 'Commenter'}
+                              </button>
+                            </div>
+                            {/* comments section */}
+                            {openComments === post.id && (
+                              <div className="mt-3 text-left border-t border-[#EDD5C5] pt-3">
+                                {(post.comments ?? []).map(comment => {
+                                  const isMyComment = !!myId && myId === comment.user_id
+                                  return (
+                                    <div key={comment.id} className={`flex items-end gap-2 mb-2 ${isMyComment ? 'flex-row-reverse' : 'flex-row'}`}>
+                                      <Avatar src={comment.profiles?.avatar_url} fallback={comment.profiles?.username} size="sm" />
+                                      <div className={`flex flex-col gap-0.5 ${isMyComment ? 'items-end' : 'items-start'}`}>
+                                        <span className="text-[10px] text-[#6B6359] px-1">{isMyComment ? 'Toi' : comment.profiles?.username}</span>
+                                        <div className={`px-3 py-1.5 rounded-xl text-xs text-[#2C2C2C] ${isMyComment ? 'bg-[#C6684F]/10' : 'bg-white border border-[#EDD5C5]'}`}>
+                                          {comment.content}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  )
+                                })}
+                                <div className="flex gap-2 items-center mt-2">
+                                  <Avatar src={profile?.avatar_url} fallback={profile?.username ?? '?'} size="sm" />
+                                  <div className="flex-1 flex gap-2">
+                                    <input
+                                      type="text"
+                                      placeholder="Félicite-la ! 🎉"
+                                      value={newComment}
+                                      onChange={e => setNewComment(e.target.value)}
+                                      onKeyDown={e => e.key === 'Enter' && submitComment(post.id)}
+                                      className="flex-1 text-xs border border-[#DCCFBF] rounded-full px-3 py-1.5 focus:outline-none focus:border-[#C6684F] bg-white"
+                                    />
+                                    <button onClick={() => submitComment(post.id)} disabled={!newComment.trim()}
+                                      className="w-7 h-7 rounded-full bg-[#C6684F] flex items-center justify-center text-white disabled:opacity-40">
+                                      <Send size={12} />
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                            <p className="text-[10px] text-[#DCCFBF] mt-2">{formatRelativeDate(post.created_at)}</p>
+                          </div>
+                        </div>
+                      </motion.div>
+                    )
+                  }
 
                   return (
                     <motion.div key={post.id} id={`post-${post.id}`} initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ delay: i < 5 ? i * 0.04 : 0 }}>

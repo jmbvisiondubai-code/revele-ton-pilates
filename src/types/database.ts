@@ -147,6 +147,7 @@ export interface CommunityPost {
   reply_to_author: string | null
   edited_at: string | null
   created_at: string
+  is_automated?: boolean
   profiles?: Pick<Profile, 'username' | 'avatar_url'>
 }
 
