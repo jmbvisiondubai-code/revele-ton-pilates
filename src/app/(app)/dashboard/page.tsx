@@ -9,7 +9,6 @@ import {
   ChevronRight,
   Sparkles,
   Users,
-  Video,
   Radio,
   ExternalLink,
   Dumbbell,
@@ -171,34 +170,36 @@ export default function DashboardPage() {
         {/* ── LEFT COLUMN (2/3) ── */}
         <div className="lg:col-span-2 space-y-4">
 
-          {/* Next session */}
-          <motion.div initial="hidden" animate="visible" custom={1} variants={fadeInUp}>
-            <Link href="/cours">
-              <Card hover className="relative overflow-hidden group lg:p-6">
-                <div className="absolute top-0 right-0 w-40 h-40 bg-primary/5 rounded-full -translate-y-1/2 translate-x-1/2" />
-                <div className="flex items-start justify-between relative">
-                  <div>
-                    <BadgePill variant="accent">
-                      <Calendar size={12} />
-                      Prochaine session
-                    </BadgePill>
-                    <h3 className="font-[family-name:var(--font-heading)] text-xl lg:text-2xl mt-2 text-text">
-                      Pilates Fondamentaux
-                    </h3>
-                    <p className="text-sm text-text-secondary mt-1">
-                      Renforcement doux &bull; 30 min
-                    </p>
-                    <p className="text-xs text-text-muted mt-2 hidden lg:block">
-                      Accède à tous tes cours VOD, lives et replays directement depuis l'app.
-                    </p>
+          {/* Next live */}
+          {nextLive && (
+            <motion.div initial="hidden" animate="visible" custom={1} variants={fadeInUp}>
+              <Link href="/cours">
+                <Card hover className="bg-primary/5 border-primary/20 lg:p-6">
+                  <div className="flex items-start gap-4">
+                    <div className="w-12 h-12 bg-[#C6684F]/10 rounded-xl flex items-center justify-center flex-shrink-0">
+                      <Radio size={20} className="text-[#C6684F]" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <BadgePill variant="accent">Prochain live collectif</BadgePill>
+                      </div>
+                      <h3 className="font-[family-name:var(--font-heading)] text-lg lg:text-xl text-text">
+                        {nextLive.title}
+                      </h3>
+                      <p className="text-sm text-text-secondary mt-1 capitalize">
+                        {format(new Date(nextLive.scheduled_at), "EEEE d MMMM 'à' HH'h'mm", { locale: fr })}
+                        &nbsp;&bull;&nbsp;{nextLive.duration_minutes} min
+                      </p>
+                      {nextLive.equipment && (
+                        <p className="text-xs text-text-muted mt-1">Matériel : {nextLive.equipment}</p>
+                      )}
+                    </div>
+                    <ChevronRight size={16} className="text-text-muted flex-shrink-0 mt-1" />
                   </div>
-                  <div className="mt-2 w-11 h-11 bg-primary rounded-full flex items-center justify-center shadow-sm group-hover:bg-primary-dark transition-colors flex-shrink-0">
-                    <ChevronRight size={20} className="text-white" />
-                  </div>
-                </div>
-              </Card>
-            </Link>
-          </motion.div>
+                </Card>
+              </Link>
+            </motion.div>
+          )}
 
           {/* Programme Hebdo */}
           {featured && (
@@ -256,37 +257,6 @@ export default function DashboardPage() {
                   )}
                 </Card>
               </button>
-            </motion.div>
-          )}
-
-          {/* Next live */}
-          {nextLive && (
-            <motion.div initial="hidden" animate="visible" custom={3} variants={fadeInUp}>
-              <Link href="/cours">
-                <Card hover className="bg-primary/5 border-primary/20 lg:p-6">
-                  <div className="flex items-start gap-4">
-                    <div className="w-12 h-12 bg-[#C6684F]/10 rounded-xl flex items-center justify-center flex-shrink-0">
-                      <Radio size={20} className="text-[#C6684F]" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <BadgePill variant="accent">Prochain live collectif</BadgePill>
-                      </div>
-                      <h3 className="font-[family-name:var(--font-heading)] text-lg lg:text-xl text-text">
-                        {nextLive.title}
-                      </h3>
-                      <p className="text-sm text-text-secondary mt-1 capitalize">
-                        {format(new Date(nextLive.scheduled_at), "EEEE d MMMM 'à' HH'h'mm", { locale: fr })}
-                        &nbsp;&bull;&nbsp;{nextLive.duration_minutes} min
-                      </p>
-                      {nextLive.equipment && (
-                        <p className="text-xs text-text-muted mt-1">Matériel : {nextLive.equipment}</p>
-                      )}
-                    </div>
-                    <ChevronRight size={16} className="text-text-muted flex-shrink-0 mt-1" />
-                  </div>
-                </Card>
-              </Link>
             </motion.div>
           )}
 
