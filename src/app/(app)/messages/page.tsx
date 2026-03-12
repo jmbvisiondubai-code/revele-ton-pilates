@@ -285,25 +285,24 @@ export default function MessagesPage() {
     touchStartRef.current = null
   }
 
-  // ── Toggle reaction ──────────────────────────────────────────────────────
+  // ── Toggle reaction (one reaction per user per message) ──────────────────
   async function toggleReaction(messageId: string, type: ReactionType) {
     if (!myId || !isSupabaseConfigured()) return
     const msg = messages.find(m => m.id === messageId)
-    const hasIt = msg?.user_reactions.includes(type) ?? false
+    const prevType = msg?.user_reactions[0] ?? null
+    const isSame = prevType === type
     setMessages(prev => prev.map(m => {
       if (m.id !== messageId) return m
-      return {
-        ...m,
-        reaction_counts: { ...m.reaction_counts, [type]: Math.max(0, m.reaction_counts[type] + (hasIt ? -1 : 1)) },
-        user_reactions: hasIt ? m.user_reactions.filter(r => r !== type) : [...m.user_reactions, type],
-      }
+      const counts = { ...m.reaction_counts }
+      if (prevType) counts[prevType] = Math.max(0, counts[prevType] - 1)
+      if (!isSame) counts[type] = counts[type] + 1
+      return { ...m, reaction_counts: counts, user_reactions: isSame ? [] : [type] }
     }))
     setShowReactionFor(null)
     setMsgMenu(null)
     const supabase = createClient()
-    if (hasIt) {
-      await supabase.from('direct_message_reactions').delete().eq('message_id', messageId).eq('user_id', myId).eq('reaction_type', type)
-    } else {
+    await supabase.from('direct_message_reactions').delete().eq('message_id', messageId).eq('user_id', myId)
+    if (!isSame) {
       await supabase.from('direct_message_reactions').insert({ message_id: messageId, user_id: myId, reaction_type: type })
     }
   }
