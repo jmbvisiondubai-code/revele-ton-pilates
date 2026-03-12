@@ -8,6 +8,7 @@ import { formatRelativeDate } from '@/lib/utils'
 import type { DirectMessage } from '@/types/database'
 import Link from 'next/link'
 import Image from 'next/image'
+import { useRouter } from 'next/navigation'
 
 type ConvProfile = {
   id: string
@@ -26,10 +27,12 @@ export default function MessagesPage() {
   const { profile } = useAuthStore()
   const myId = profile?.id
   const isAdmin = profile?.is_admin ?? false
+  const router = useRouter()
 
   const [convs, setConvs] = useState<ConversationPreview[]>([])
   const [activeId, setActiveId] = useState<string | null>(null)
   const [activeProfile, setActiveProfile] = useState<ConvProfile | null>(null)
+  const [showCommunaute, setShowCommunaute] = useState(false)
   const [messages, setMessages] = useState<DirectMessage[]>([])
   const [inputText, setInputText] = useState('')
   const [loadingConvs, setLoadingConvs] = useState(true)
@@ -207,6 +210,7 @@ export default function MessagesPage() {
   function openConversation(conv: ConversationPreview) {
     setActiveId(conv.partner.id)
     setActiveProfile(conv.partner)
+    setShowCommunaute(false)
     setShowList(false)
   }
 
@@ -256,9 +260,18 @@ export default function MessagesPage() {
         </div>
 
         {/* Communauté — always first */}
-        <Link
-          href="/communaute"
-          className="flex items-center gap-3 px-4 py-3 hover:bg-[#FAF6F1] transition-colors border-b border-[#EDE5DA] flex-shrink-0"
+        <button
+          onClick={() => {
+            if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+              router.push('/communaute')
+            } else {
+              setShowCommunaute(true)
+              setActiveId(null)
+              setActiveProfile(null)
+              setShowList(false)
+            }
+          }}
+          className={`w-full flex items-center gap-3 px-4 py-3 hover:bg-[#FAF6F1] transition-colors border-b border-[#EDE5DA] flex-shrink-0 text-left ${showCommunaute && !activeId ? 'bg-[#F2E8DF]' : ''}`}
         >
           <div className="w-12 h-12 rounded-full bg-[#F2E8DF] flex items-center justify-center flex-shrink-0">
             <MessageSquare size={22} className="text-[#C6684F]" />
@@ -267,7 +280,7 @@ export default function MessagesPage() {
             <p className="font-medium text-[#2C2C2C] text-sm">Communauté</p>
             <p className="text-xs text-[#A09488] truncate">Discussion de groupe</p>
           </div>
-        </Link>
+        </button>
 
         {/* DM list */}
         <div className="flex-1 overflow-y-auto">
@@ -318,10 +331,10 @@ export default function MessagesPage() {
       {/* ── Chat area ─────────────────────────────────────────────────────── */}
       <div className={`
         flex-col overflow-hidden
-        ${activeId || !showList ? 'flex flex-1' : 'hidden'}
+        ${activeId || showCommunaute || !showList ? 'flex flex-1' : 'hidden'}
         lg:flex lg:flex-1
       `}>
-        {!activeId ? (
+        {!activeId && !showCommunaute ? (
           /* Empty state — desktop only */
           <div className="flex-1 flex flex-col items-center justify-center text-center px-8 bg-[#FAF6F1]">
             <div className="w-16 h-16 rounded-2xl bg-[#F2E8DF] flex items-center justify-center mb-4">
@@ -330,12 +343,20 @@ export default function MessagesPage() {
             <p className="font-serif text-lg text-[#2C2C2C] font-semibold mb-1">Sélectionnez une conversation</p>
             <p className="text-sm text-[#A09488]">Choisissez une discussion dans la liste à gauche</p>
           </div>
+        ) : showCommunaute && !activeId ? (
+          /* Communauté embedded view — desktop */
+          <iframe
+            src="/communaute"
+            className="w-full min-h-0 border-0"
+            style={{ flex: 1 }}
+            title="Communauté"
+          />
         ) : (
           <>
             {/* Chat header */}
             <div className="flex items-center gap-3 px-4 py-3 bg-white border-b border-[#DCCFBF] flex-shrink-0">
               <button
-                onClick={() => { setShowList(true); setActiveId(null); setMessages([]) }}
+                onClick={() => { setShowList(true); setActiveId(null); setMessages([]); setShowCommunaute(false) }}
                 className="lg:hidden p-1.5 -ml-1 rounded-lg hover:bg-[#FAF6F1] transition-colors"
               >
                 <ArrowLeft size={20} className="text-[#6B6359]" />

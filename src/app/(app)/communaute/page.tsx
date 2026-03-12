@@ -367,7 +367,7 @@ export default function CommunautePage() {
       <div className="sticky top-0 z-30 -mx-4 lg:-mx-8 px-4 lg:px-8 pt-6 lg:pt-8 pb-4 mb-1 bg-[#FAF6F1]/95 backdrop-blur-sm">
         <Link
           href="/messages"
-          className="inline-flex items-center gap-1.5 text-sm text-text-muted hover:text-primary transition-colors mb-2"
+          className="lg:hidden inline-flex items-center gap-1.5 text-sm text-text-muted hover:text-primary transition-colors mb-2"
         >
           <ArrowLeft size={14} />
           Messages
@@ -392,7 +392,7 @@ export default function CommunautePage() {
 
           {/* ── Pinned messages from Marjorie — sticky at top ── */}
           {pinnedPosts.length > 0 && (
-            <div className="sticky top-0 z-20 space-y-3 -mx-4 lg:mx-0 px-4 lg:px-0 pt-2 pb-5 mb-4 bg-gradient-to-b from-[#FAF6F1]/95 via-[#FAF6F1]/80 to-transparent backdrop-blur-sm">
+            <div className="sticky top-[8.5rem] lg:top-[9rem] z-20 space-y-3 -mx-4 lg:mx-0 px-4 lg:px-0 pt-2 pb-5 mb-4 bg-gradient-to-b from-[#FAF6F1]/95 via-[#FAF6F1]/80 to-transparent backdrop-blur-sm">
               {pinnedPosts.map((post) => {
                 const pinnedAuthor = 'Marjorie'
                 const isPinnedOwn = !!myId && myId === post.user_id
