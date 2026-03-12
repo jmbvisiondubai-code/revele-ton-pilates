@@ -364,10 +364,10 @@ export default function CommunautePage() {
         <div className="fixed inset-0 z-10" onClick={() => { setPostMenu(null); setCommentMenu(null) }} />
       )}
 
-      <div className="mb-5">
+      <div className="sticky top-0 z-30 -mx-4 lg:-mx-8 px-4 lg:px-8 pt-6 lg:pt-8 pb-4 mb-1 bg-[#FAF6F1]/95 backdrop-blur-sm">
         <Link
           href="/messages"
-          className="inline-flex items-center gap-1.5 text-sm text-text-muted hover:text-primary transition-colors mb-3"
+          className="inline-flex items-center gap-1.5 text-sm text-text-muted hover:text-primary transition-colors mb-2"
         >
           <ArrowLeft size={14} />
           Messages
