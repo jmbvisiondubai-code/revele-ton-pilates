@@ -1019,70 +1019,85 @@ export default function MessagesPage() {
               <div ref={messagesEndRef} />
             </div>
 
-            {/* Context menu (mobile long press) */}
+            {/* Context menu (mobile long press) — community style */}
             <AnimatePresence>
               {msgMenu && (
-                <>
-                  <div className="fixed inset-0 z-40 bg-black/20" onClick={() => setMsgMenu(null)} />
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex flex-col items-center justify-center px-6"
+                  onClick={() => setMsgMenu(null)}
+                >
+                  {/* Emoji pill */}
                   <motion.div
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.9 }}
-                    style={{ top: msgMenu.y, left: msgMenu.x }}
-                    className="fixed z-50 bg-white rounded-2xl shadow-xl border border-[#EDE5DA] overflow-hidden min-w-[280px]"
+                    initial={{ opacity: 0, scale: 0.8, y: 10 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.8 }}
+                    transition={{ type: 'spring', stiffness: 400, damping: 28 }}
+                    className="bg-white rounded-full shadow-2xl px-4 py-2.5 flex gap-3 mb-3 w-full max-w-sm justify-around"
+                    onClick={e => e.stopPropagation()}
                   >
-                    {/* Reaction strip — community style */}
-                    <div className="flex items-center justify-around gap-1 px-3 py-3 border-b border-[#EDE5DA]">
-                      {REACTIONS.map(r => {
-                        const msgObj = messages.find(m => m.id === msgMenu.msgId)
-                        const selected = msgObj?.user_reactions.includes(r.type) ?? false
-                        return (
-                          <button key={r.type}
-                            onClick={() => { toggleReaction(msgMenu.msgId, r.type); setMsgMenu(null) }}
-                            className={`relative text-[26px] transition-transform active:scale-110 ${selected ? '-translate-y-1.5 drop-shadow-md' : ''}`}
-                          >
-                            {r.emoji}
-                            {selected && <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 bg-[#C6684F] rounded-full" />}
-                          </button>
-                        )
-                      })}
-                    </div>
-                    {/* Actions */}
-                    <div className="py-1">
-                      <button
-                        onClick={() => { setReplyingTo({ id: msgMenu.msgId, preview: msgMenu.content.substring(0, 80), author: msgMenu.isOwn ? (profile?.first_name ?? 'Toi') : activePartnerName }); setMsgMenu(null) }}
-                        className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-[#2C2C2C] hover:bg-[#FAF6F1] transition-colors"
-                      >
-                        <CornerUpLeft size={15} className="text-[#6B6359]" /> Répondre
-                      </button>
-                      {msgMenu.isOwn && (
-                        <>
-                          <button
-                            onClick={() => { const m = messages.find(x => x.id === msgMenu.msgId); if (m) { setEditingId(m.id); setEditText(m.content) } setMsgMenu(null) }}
-                            className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-[#2C2C2C] hover:bg-[#FAF6F1] transition-colors"
-                          >
-                            <Pencil size={15} className="text-[#6B6359]" /> Modifier
-                          </button>
-                          <button
-                            onClick={() => { setDeletingMsgId(msgMenu.msgId); setMsgMenu(null) }}
-                            className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-[#C94F4F] hover:bg-[#FAF6F1] transition-colors"
-                          >
-                            <Trash2 size={15} className="text-[#C94F4F]" /> Supprimer
-                          </button>
-                        </>
-                      )}
-                      {isAdmin && (
-                        <button
-                          onClick={() => togglePin(msgMenu.msgId, msgMenu.isPinned)}
-                          className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-[#2C2C2C] hover:bg-[#FAF6F1] transition-colors"
+                    {REACTIONS.map(r => {
+                      const msgObj = messages.find(m => m.id === msgMenu.msgId)
+                      const selected = msgObj?.user_reactions.includes(r.type) ?? false
+                      return (
+                        <button key={r.type}
+                          onClick={() => { toggleReaction(msgMenu.msgId, r.type); setMsgMenu(null) }}
+                          className={`relative text-[26px] transition-transform active:scale-110 ${selected ? '-translate-y-1.5 drop-shadow-md' : ''}`}
                         >
-                          {msgMenu.isPinned ? <PinOff size={15} className="text-[#C6684F]" /> : <Pin size={15} className="text-[#C6684F]" />}
-                          {msgMenu.isPinned ? 'Désépingler' : 'Épingler'}
+                          {r.emoji}
+                          {selected && <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 bg-[#C6684F] rounded-full" />}
                         </button>
-                      )}
-                    </div>
+                      )
+                    })}
                   </motion.div>
-                </>
+
+                  {/* Actions card */}
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.9, y: 8 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.9 }}
+                    transition={{ type: 'spring', stiffness: 400, damping: 28, delay: 0.04 }}
+                    className="w-full max-w-sm bg-white rounded-2xl shadow-2xl overflow-hidden"
+                    onClick={e => e.stopPropagation()}
+                  >
+                    <button
+                      onClick={() => { setReplyingTo({ id: msgMenu.msgId, preview: msgMenu.content.substring(0, 80), author: msgMenu.isOwn ? (profile?.first_name ?? 'Toi') : activePartnerName }); setMsgMenu(null) }}
+                      className="w-full flex items-center justify-between px-5 py-3.5 text-sm text-[#2C2C2C] border-b border-[#F5F0EB] active:bg-[#FAF6F1]"
+                    >
+                      <span>Répondre</span>
+                      <CornerUpLeft size={16} className="text-[#6B6359]" />
+                    </button>
+                    {msgMenu.isOwn && (
+                      <>
+                        <button
+                          onClick={() => { const m = messages.find(x => x.id === msgMenu.msgId); if (m) { setEditingId(m.id); setEditText(m.content) } setMsgMenu(null) }}
+                          className="w-full flex items-center justify-between px-5 py-3.5 text-sm text-[#2C2C2C] border-b border-[#F5F0EB] active:bg-[#FAF6F1]"
+                        >
+                          <span>Modifier</span>
+                          <Pencil size={16} className="text-[#6B6359]" />
+                        </button>
+                        <button
+                          onClick={() => { setDeletingMsgId(msgMenu.msgId); setMsgMenu(null) }}
+                          className="w-full flex items-center justify-between px-5 py-3.5 text-sm text-[#C94F4F] active:bg-[#FAF6F1]"
+                        >
+                          <span>Supprimer</span>
+                          <Trash2 size={16} className="text-[#C94F4F]" />
+                        </button>
+                      </>
+                    )}
+                    {isAdmin && (
+                      <button
+                        onClick={() => togglePin(msgMenu.msgId, msgMenu.isPinned)}
+                        className="w-full flex items-center justify-between px-5 py-3.5 text-sm text-[#2C2C2C] active:bg-[#FAF6F1]"
+                      >
+                        <span>{msgMenu.isPinned ? 'Désépingler' : 'Épingler'}</span>
+                        {msgMenu.isPinned ? <PinOff size={16} className="text-[#C6684F]" /> : <Pin size={16} className="text-[#C6684F]" />}
+                      </button>
+                    )}
+                  </motion.div>
+                </motion.div>
               )}
             </AnimatePresence>
 
