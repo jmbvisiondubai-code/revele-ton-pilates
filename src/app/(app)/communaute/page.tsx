@@ -118,6 +118,8 @@ export default function CommunautePage() {
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null)
   const touchStartRef = useRef<{ x: number; y: number } | null>(null)
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const messagesEndRef = useRef<HTMLDivElement>(null)
+  const isInitialLoad = useRef(true)
 
   const isAdmin = profile?.is_admin === true
   const myId = profile?.id ?? currentUserId
@@ -167,6 +169,12 @@ export default function CommunautePage() {
       .subscribe()
     return () => { channelRef.current?.unsubscribe() }
   }, [profile?.id]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (posts.length === 0) return
+    messagesEndRef.current?.scrollIntoView({ behavior: isInitialLoad.current ? 'instant' : 'smooth' })
+    isInitialLoad.current = false
+  }, [posts.length])
 
   function resetPostForm() {
     setNewPost(''); setPostImageUrl(''); setPostLinkUrl(''); setPostLinkLabel('')
@@ -321,10 +329,10 @@ export default function CommunautePage() {
   }
 
   const pinnedPosts = posts.filter(p => p.is_pinned && p.is_from_marjorie)
-  const feedPosts = posts.filter(p => !p.is_pinned || !p.is_from_marjorie)
+  const feedPosts = posts.filter(p => !p.is_pinned || !p.is_from_marjorie).slice().reverse()
 
   return (
-    <div className="px-4 pt-6 pb-24 lg:px-8 lg:pt-8 max-w-5xl mx-auto">
+    <div className="px-4 pt-6 pb-[220px] lg:pb-8 lg:px-8 lg:pt-8 max-w-5xl mx-auto">
       {(postMenu || commentMenu || bubblePickerOpen) && (
         <div className="fixed inset-0 z-10" onClick={() => { setPostMenu(null); setCommentMenu(null); setBubblePickerOpen(null) }} />
       )}
@@ -335,8 +343,8 @@ export default function CommunautePage() {
       </div>
 
       <div className="lg:grid lg:grid-cols-3 lg:gap-6">
-        {/* Sidebar compose */}
-        <div className="lg:col-span-1 lg:order-2 space-y-4 mb-6 lg:mb-0">
+        {/* Sidebar compose — desktop only */}
+        <div className="hidden lg:block lg:col-span-1 lg:order-2 space-y-4">
           <Card>
             <div className="flex gap-3">
               <Avatar src={profile?.avatar_url} fallback={profile?.first_name} size="md" />
@@ -845,8 +853,81 @@ export default function CommunautePage() {
               </AnimatePresence>
             </div>
           )}
+          <div ref={messagesEndRef} className="h-1" />
         </div>
       </div>
+
+      {/* ── Mobile fixed compose bar ── */}
+      {profile && (
+        <div className="fixed bottom-0 left-0 right-0 z-40 lg:hidden bg-[#FAF6F1]/97 backdrop-blur-md border-t border-[#DCCFBF]">
+          <div className="px-3 pt-2 pb-[68px]">
+            {replyingTo && (
+              <div className="flex items-start gap-2 border-l-2 border-[#C6684F] pl-2 py-1 mb-1.5 bg-[#C6684F]/5 rounded-r-lg">
+                <div className="flex-1 min-w-0">
+                  <p className="text-[10px] font-semibold text-[#C6684F]">↩ {replyingTo.authorName}</p>
+                  <p className="text-xs text-[#6B6359] line-clamp-1">{replyingTo.content}</p>
+                </div>
+                <button onClick={() => setReplyingTo(null)} className="text-[#DCCFBF] hover:text-[#C6684F] flex-shrink-0 mt-0.5">
+                  <X size={12} />
+                </button>
+              </div>
+            )}
+            {isAdmin && (showImageInput || showLinkInput) && (
+              <div className="mb-1.5 space-y-1.5">
+                {showImageInput && (
+                  <div className="flex items-center gap-2">
+                    <ImageIcon size={12} className="text-[#6B6359] flex-shrink-0" />
+                    <input type="url" placeholder="URL de l'image..." value={postImageUrl} onChange={e => setPostImageUrl(e.target.value)}
+                      className="flex-1 text-xs border border-[#DCCFBF] rounded-lg px-2 py-1.5 focus:outline-none focus:border-[#C6684F] bg-white" />
+                    <button onClick={() => { setShowImageInput(false); setPostImageUrl('') }} className="text-[#DCCFBF]"><X size={12} /></button>
+                  </div>
+                )}
+                {showLinkInput && (
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <LinkIcon size={12} className="text-[#6B6359] flex-shrink-0" />
+                      <input type="url" placeholder="URL du lien..." value={postLinkUrl} onChange={e => setPostLinkUrl(e.target.value)}
+                        className="flex-1 text-xs border border-[#DCCFBF] rounded-lg px-2 py-1.5 focus:outline-none focus:border-[#C6684F] bg-white" />
+                      <button onClick={() => { setShowLinkInput(false); setPostLinkUrl(''); setPostLinkLabel('') }} className="text-[#DCCFBF]"><X size={12} /></button>
+                    </div>
+                    {postLinkUrl && (
+                      <input type="text" placeholder="Texte du bouton..." value={postLinkLabel} onChange={e => setPostLinkLabel(e.target.value)}
+                        className="w-full text-xs border border-[#DCCFBF] rounded-lg px-2 py-1.5 focus:outline-none focus:border-[#C6684F] bg-white" />
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+            <div className="flex items-end gap-2">
+              <Avatar src={profile.avatar_url} fallback={profile.first_name} size="sm" />
+              <div className="flex-1 flex items-end gap-1 bg-white border border-[#DCCFBF] rounded-2xl px-3 py-2 focus-within:border-[#C6684F] transition-colors">
+                {isAdmin && (
+                  <div className="flex gap-0.5 self-end mb-0.5 mr-1">
+                    <button onClick={() => setShowImageInput(v => !v)}
+                      className={`p-1 rounded transition-colors ${showImageInput ? 'text-[#C6684F]' : 'text-[#DCCFBF] hover:text-[#C6684F]/60'}`}>
+                      <ImageIcon size={14} />
+                    </button>
+                    <button onClick={() => setShowLinkInput(v => !v)}
+                      className={`p-1 rounded transition-colors ${showLinkInput ? 'text-[#C6684F]' : 'text-[#DCCFBF] hover:text-[#C6684F]/60'}`}>
+                      <LinkIcon size={14} />
+                    </button>
+                  </div>
+                )}
+                <textarea
+                  placeholder={isAdmin ? 'Écris un message...' : 'Partage ton expérience...'}
+                  value={newPost} onChange={e => setNewPost(e.target.value)} rows={1}
+                  onKeyDown={e => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), handlePost())}
+                  className="flex-1 resize-none bg-transparent text-sm text-text placeholder:text-text-muted focus:outline-none leading-5 max-h-28 overflow-y-auto"
+                />
+              </div>
+              <button onClick={handlePost} disabled={isPosting || !newPost.trim()}
+                className="flex-shrink-0 w-9 h-9 rounded-full bg-[#C6684F] flex items-center justify-center text-white disabled:opacity-40 transition-opacity">
+                <Send size={16} />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
