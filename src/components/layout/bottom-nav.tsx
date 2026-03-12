@@ -41,9 +41,17 @@ export function BottomNav() {
 
     const channel = supabase.channel(`nav-dm-${profile.id}`)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'direct_messages', filter: `receiver_id=eq.${profile.id}` },
-        () => { setUnreadDms(prev => prev + 1) })
+        () => {
+          if (!window.location.pathname.startsWith('/messages')) {
+            setUnreadDms(prev => prev + 1)
+          }
+        })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'direct_messages', filter: `receiver_id=eq.${profile.id}` },
-        () => { fetchUnreadDms() })
+        () => {
+          if (!window.location.pathname.startsWith('/messages')) {
+            fetchUnreadDms()
+          }
+        })
       .subscribe()
 
     return () => { supabase.removeChannel(channel) }
