@@ -565,29 +565,37 @@ export default function MessagesPage() {
                         </button>
                         <AnimatePresence>
                           {convMenuId === conv.partner.id && (
-                            <motion.div
-                              initial={{ opacity: 0, scale: 0.9, y: -4 }}
-                              animate={{ opacity: 1, scale: 1, y: 0 }}
-                              exit={{ opacity: 0, scale: 0.9, y: -4 }}
-                              transition={{ type: 'spring', stiffness: 400, damping: 25 }}
-                              className="absolute right-0 top-full mt-1 z-50 bg-white rounded-xl shadow-lg border border-[#EDE5DA] overflow-hidden min-w-[180px]"
-                            >
-                              <button
-                                onClick={() => isUnread ? markConvAsRead(conv.partner.id) : markConvAsUnread(conv.partner.id)}
-                                className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-[#2C2C2C] hover:bg-[#FAF6F1] transition-colors"
+                            <>
+                              <div className="fixed inset-0 z-40" onClick={() => setConvMenuId(null)} />
+                              <motion.div
+                                initial={{ opacity: 0, scale: 0.95, y: -6 }}
+                                animate={{ opacity: 1, scale: 1, y: 0 }}
+                                exit={{ opacity: 0, scale: 0.95, y: -6 }}
+                                transition={{ type: 'spring', stiffness: 400, damping: 28 }}
+                                className="absolute right-0 top-full mt-1 z-50 bg-white rounded-2xl shadow-xl border border-[#EDE5DA] overflow-hidden min-w-[220px]"
                               >
-                                {isUnread ? <Eye size={14} className="text-[#5B8DEF]" /> : <EyeOff size={14} className="text-[#5B8DEF]" />}
-                                {isUnread ? 'Marquer comme lu' : 'Marquer comme non lu'}
-                              </button>
-                              {isAdmin && (
                                 <button
-                                  onClick={() => archiveConversation(conv.partner.id)}
-                                  className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-[#2C2C2C] hover:bg-[#FAF6F1] transition-colors border-t border-[#EDE5DA]"
+                                  onClick={() => isUnread ? markConvAsRead(conv.partner.id) : markConvAsUnread(conv.partner.id)}
+                                  className="w-full flex items-center gap-3 px-4 py-3 text-sm text-[#2C2C2C] hover:bg-[#FAF6F1] transition-colors"
                                 >
-                                  <Archive size={14} className="text-[#A09488]" /> Archiver
+                                  <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${isUnread ? 'bg-[#5B8DEF]/10' : 'bg-[#F2E8DF]'}`}>
+                                    {isUnread ? <Eye size={15} className="text-[#5B8DEF]" /> : <EyeOff size={15} className="text-[#A09488]" />}
+                                  </div>
+                                  <span>{isUnread ? 'Marquer comme lu' : 'Marquer comme non lu'}</span>
                                 </button>
-                              )}
-                            </motion.div>
+                                {isAdmin && (
+                                  <button
+                                    onClick={() => archiveConversation(conv.partner.id)}
+                                    className="w-full flex items-center gap-3 px-4 py-3 text-sm text-[#2C2C2C] hover:bg-[#FAF6F1] transition-colors border-t border-[#F0EAE2]"
+                                  >
+                                    <div className="w-8 h-8 rounded-full bg-[#F2E8DF] flex items-center justify-center flex-shrink-0">
+                                      <Archive size={15} className="text-[#A09488]" />
+                                    </div>
+                                    <span>Archiver la discussion</span>
+                                  </button>
+                                )}
+                              </motion.div>
+                            </>
                           )}
                         </AnimatePresence>
                       </div>

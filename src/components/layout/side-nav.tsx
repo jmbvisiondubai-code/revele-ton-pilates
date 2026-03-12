@@ -25,7 +25,7 @@ export function SideNav() {
             <Image src="/icon-192.png" alt="RTP" width={40} height={40} className="w-full h-full object-cover" />
           </div>
           <div>
-            <p className="font-serif text-sm font-semibold text-[#2C2C2C] leading-tight">Révèle Ton</p>
+            <p className="font-serif text-sm font-semibold text-[#2C2C2C] leading-tight">Révèle ton</p>
             <p className="font-serif text-sm font-semibold text-[#C6684F] leading-tight">Pilates</p>
           </div>
         </div>
