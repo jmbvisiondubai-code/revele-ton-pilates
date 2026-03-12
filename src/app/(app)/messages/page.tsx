@@ -317,8 +317,9 @@ export default function MessagesPage() {
 
       {/* ── Chat area ─────────────────────────────────────────────────────── */}
       <div className={`
-        flex-1 flex flex-col overflow-hidden
-        ${!showList || activeId ? 'flex' : 'hidden lg:flex'}
+        flex-col overflow-hidden
+        ${activeId || !showList ? 'flex flex-1' : 'hidden'}
+        lg:flex lg:flex-1
       `}>
         {!activeId ? (
           /* Empty state — desktop only */

@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Heart, MessageCircle, Send, Pin, PinOff, MoreHorizontal, Pencil, Trash2, Check, X, Link as LinkIcon, Image as ImageIcon, ExternalLink, CornerUpLeft, Smile, ChevronDown } from 'lucide-react'
+import { Heart, MessageCircle, Send, Pin, PinOff, MoreHorizontal, Pencil, Trash2, Check, X, Link as LinkIcon, Image as ImageIcon, ExternalLink, CornerUpLeft, Smile, ChevronDown, ArrowLeft } from 'lucide-react'
+import Link from 'next/link'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/client'
 import { useAuthStore } from '@/stores/auth-store'
 import { Card, Avatar, Button } from '@/components/ui'
@@ -364,6 +365,13 @@ export default function CommunautePage() {
       )}
 
       <div className="mb-5">
+        <Link
+          href="/messages"
+          className="inline-flex items-center gap-1.5 text-sm text-text-muted hover:text-primary transition-colors mb-3"
+        >
+          <ArrowLeft size={14} />
+          Messages
+        </Link>
         <h1 className="font-[family-name:var(--font-heading)] text-3xl text-text">Communauté</h1>
         <p className="text-text-secondary mt-1">Partage, inspire et célèbre ensemble</p>
       </div>
