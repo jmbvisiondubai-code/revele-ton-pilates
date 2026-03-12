@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import {
   Send, ArrowLeft, MessageSquare, Smile, Pencil, Trash2,
-  Pin, PinOff, CornerUpLeft, X, Paperclip, FileText, Check,
+  Pin, PinOff, CornerUpLeft, X, Paperclip, FileText, Check, MoreHorizontal,
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/client'
@@ -90,6 +90,8 @@ export default function MessagesPage() {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editText, setEditText] = useState('')
   const [swipingMsg, setSwipingMsg] = useState<{ msgId: string; deltaX: number } | null>(null)
+  const [showDotMenu, setShowDotMenu] = useState<string | null>(null)
+  const [deletingMsgId, setDeletingMsgId] = useState<string | null>(null)
 
   // Refs
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -479,8 +481,8 @@ export default function MessagesPage() {
         ) : (
           <>
             {/* Context menu / reaction backdrop */}
-            {(msgMenu || showReactionFor) && (
-              <div className="fixed inset-0 z-40" onClick={() => { setMsgMenu(null); setShowReactionFor(null) }} />
+            {(msgMenu || showReactionFor || showDotMenu) && (
+              <div className="fixed inset-0 z-40" onClick={() => { setMsgMenu(null); setShowReactionFor(null); setShowDotMenu(null) }} />
             )}
 
             {/* Chat header */}
@@ -577,7 +579,7 @@ export default function MessagesPage() {
                         )}
 
                         {/* Desktop hover actions */}
-                        <div className={`hidden md:flex flex-row items-center gap-0.5 self-end mb-1 transition-opacity duration-150 ${isMe ? 'order-first mr-1' : 'order-last ml-1'} ${hoverMsg === msg.id || showReactionFor === msg.id ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
+                        <div className={`hidden md:flex flex-row items-center gap-0.5 self-end mb-1 transition-opacity duration-150 ${isMe ? 'order-first mr-1' : 'order-last ml-1'} ${hoverMsg === msg.id || showReactionFor === msg.id || showDotMenu === msg.id ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
                           {/* Reaction */}
                           <div className="relative">
                             <button
@@ -597,31 +599,53 @@ export default function MessagesPage() {
                           >
                             <CornerUpLeft size={13} className="text-[#6B6359]" />
                           </button>
-                          {/* Edit / Delete (own) */}
-                          {isMe && (
-                            <>
+                          {/* Three-dot menu (own or admin) */}
+                          {(isMe || isAdmin) && (
+                            <div className="relative">
                               <button
-                                onClick={() => { setEditingId(msg.id); setEditText(msg.content) }}
+                                onClick={() => setShowDotMenu(showDotMenu === msg.id ? null : msg.id)}
                                 className="w-7 h-7 rounded-full bg-white border border-[#EDE5DA] flex items-center justify-center hover:bg-[#F2E8DF] shadow-sm transition-colors"
                               >
-                                <Pencil size={13} className="text-[#6B6359]" />
+                                <MoreHorizontal size={13} className="text-[#6B6359]" />
                               </button>
-                              <button
-                                onClick={() => deleteMessage(msg.id)}
-                                className="w-7 h-7 rounded-full bg-white border border-[#EDE5DA] flex items-center justify-center hover:bg-[#FAEAE8] shadow-sm transition-colors"
-                              >
-                                <Trash2 size={13} className="text-[#C94F4F]" />
-                              </button>
-                            </>
-                          )}
-                          {/* Pin (admin) */}
-                          {isAdmin && (
-                            <button
-                              onClick={() => togglePin(msg.id, msg.is_pinned ?? false)}
-                              className="w-7 h-7 rounded-full bg-white border border-[#EDE5DA] flex items-center justify-center hover:bg-[#F2E8DF] shadow-sm transition-colors"
-                            >
-                              {msg.is_pinned ? <PinOff size={13} className="text-[#C6684F]" /> : <Pin size={13} className="text-[#6B6359]" />}
-                            </button>
+                              <AnimatePresence>
+                                {showDotMenu === msg.id && (
+                                  <motion.div
+                                    initial={{ opacity: 0, scale: 0.9, y: 4 }}
+                                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                                    exit={{ opacity: 0, scale: 0.9, y: 4 }}
+                                    transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+                                    className={`absolute bottom-full mb-1 z-50 bg-white rounded-xl shadow-lg border border-[#EDE5DA] overflow-hidden min-w-[150px] ${isMe ? 'right-0' : 'left-0'}`}
+                                  >
+                                    {isMe && (
+                                      <button
+                                        onClick={() => { setEditingId(msg.id); setEditText(msg.content); setShowDotMenu(null) }}
+                                        className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-[#2C2C2C] hover:bg-[#FAF6F1] transition-colors"
+                                      >
+                                        <Pencil size={13} className="text-[#6B6359]" /> Modifier
+                                      </button>
+                                    )}
+                                    {isAdmin && (
+                                      <button
+                                        onClick={() => { togglePin(msg.id, msg.is_pinned ?? false); setShowDotMenu(null) }}
+                                        className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-[#2C2C2C] hover:bg-[#FAF6F1] transition-colors"
+                                      >
+                                        {msg.is_pinned ? <PinOff size={13} className="text-[#C6684F]" /> : <Pin size={13} className="text-[#6B6359]" />}
+                                        {msg.is_pinned ? 'Désépingler' : 'Épingler'}
+                                      </button>
+                                    )}
+                                    {isMe && (
+                                      <button
+                                        onClick={() => { setDeletingMsgId(msg.id); setShowDotMenu(null) }}
+                                        className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-[#C94F4F] hover:bg-[#FAF6F1] transition-colors border-t border-[#EDE5DA]"
+                                      >
+                                        <Trash2 size={13} className="text-[#C94F4F]" /> Supprimer
+                                      </button>
+                                    )}
+                                  </motion.div>
+                                )}
+                              </AnimatePresence>
+                            </div>
                           )}
                         </div>
 
@@ -750,7 +774,7 @@ export default function MessagesPage() {
                             <Pencil size={15} className="text-[#6B6359]" /> Modifier
                           </button>
                           <button
-                            onClick={() => deleteMessage(msgMenu.msgId)}
+                            onClick={() => { setDeletingMsgId(msgMenu.msgId); setMsgMenu(null) }}
                             className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-[#C94F4F] hover:bg-[#FAF6F1] transition-colors"
                           >
                             <Trash2 size={15} className="text-[#C94F4F]" /> Supprimer
@@ -766,6 +790,44 @@ export default function MessagesPage() {
                           {msgMenu.isPinned ? 'Désépingler' : 'Épingler'}
                         </button>
                       )}
+                    </div>
+                  </motion.div>
+                </>
+              )}
+            </AnimatePresence>
+
+            {/* Delete confirmation */}
+            <AnimatePresence>
+              {deletingMsgId && (
+                <>
+                  <div className="fixed inset-0 z-[60] bg-black/40" onClick={() => setDeletingMsgId(null)} />
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.92, y: 16 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.92, y: 16 }}
+                    transition={{ type: 'spring', stiffness: 400, damping: 28 }}
+                    className="fixed inset-x-4 bottom-8 z-[61] bg-white rounded-2xl shadow-xl border border-[#EDE5DA] overflow-hidden max-w-sm mx-auto"
+                  >
+                    <div className="px-5 py-5 text-center">
+                      <div className="w-11 h-11 rounded-full bg-[#F9E0E0] flex items-center justify-center mx-auto mb-3">
+                        <Trash2 size={18} className="text-[#C94F4F]" />
+                      </div>
+                      <p className="font-medium text-[#2C2C2C] mb-1">Supprimer ce message ?</p>
+                      <p className="text-sm text-[#A09488] mb-4">Cette action est irréversible.</p>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => setDeletingMsgId(null)}
+                          className="flex-1 py-2.5 rounded-xl border border-[#DCCFBF] text-sm text-[#6B6359] hover:bg-[#FAF6F1] transition-colors"
+                        >
+                          Annuler
+                        </button>
+                        <button
+                          onClick={() => { deleteMessage(deletingMsgId); setDeletingMsgId(null) }}
+                          className="flex-1 py-2.5 rounded-xl bg-[#C94F4F] text-sm text-white hover:bg-[#A83E3E] transition-colors"
+                        >
+                          Supprimer
+                        </button>
+                      </div>
                     </div>
                   </motion.div>
                 </>

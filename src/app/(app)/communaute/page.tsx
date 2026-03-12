@@ -121,7 +121,7 @@ export default function CommunautePage() {
   const [highlightPost, setHighlightPost] = useState<string | null>(null)
   const [hoverReactionPost, setHoverReactionPost] = useState<string | null>(null)
 
-  const { profile } = useAuthStore()
+  const { profile, setProfile } = useAuthStore()
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const supabase = createClient()
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null)
@@ -135,7 +135,14 @@ export default function CommunautePage() {
   const myId = profile?.id ?? currentUserId
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => { if (user) setCurrentUserId(user.id) })
+    supabase.auth.getUser().then(async ({ data: { user } }) => {
+      if (!user) return
+      setCurrentUserId(user.id)
+      if (!profile) {
+        const { data } = await supabase.from('profiles').select('*').eq('id', user.id).single()
+        if (data) setProfile(data)
+      }
+    })
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function loadPosts() {
