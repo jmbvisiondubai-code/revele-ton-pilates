@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { sendWebPush } from '@/lib/webpush'
 
 export const runtime = 'nodejs'
 
@@ -21,43 +22,25 @@ export async function POST(req: NextRequest) {
 
   if (!subs?.length) return NextResponse.json({ ok: true, sent: 0 })
 
-  // Dynamic import to avoid Turbopack/bundler issues with CJS module
-  const webpush = (await import('web-push')).default
-  webpush.setVapidDetails(
-    `mailto:${process.env.VAPID_EMAIL}`,
-    process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!,
-    process.env.VAPID_PRIVATE_KEY!
-  )
-
-  const payload = JSON.stringify({
-    title,
-    body: body ?? '',
-    url: url ?? '/dashboard',
-    tag: tag ?? 'rtp',
-  })
+  const vapidPublicKey  = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!
+  const vapidPrivateKey = process.env.VAPID_PRIVATE_KEY!
+  const vapidSubject    = `mailto:${process.env.VAPID_EMAIL}`
+  const payload         = JSON.stringify({ title, body: body ?? '', url: url ?? '/dashboard', tag: tag ?? 'rtp' })
 
   const results = await Promise.allSettled(
-    subs.map((s) =>
-      webpush.sendNotification(
-        { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } },
-        payload
-      )
-    )
+    subs.map((s) => sendWebPush(s, payload, vapidPublicKey, vapidPrivateKey, vapidSubject))
   )
 
   // Clean up expired subscriptions (410 Gone)
   for (let i = 0; i < results.length; i++) {
     const r = results[i]
-    if (r.status === 'rejected') {
-      const err = r.reason as { statusCode?: number }
-      if (err?.statusCode === 410) {
-        await supabase.from('push_subscriptions').delete().eq('endpoint', subs[i].endpoint)
-      }
+    if (r.status === 'fulfilled' && r.value.status === 410) {
+      await supabase.from('push_subscriptions').delete().eq('endpoint', subs[i].endpoint)
     }
   }
 
   return NextResponse.json({
     ok: true,
-    sent: results.filter((r) => r.status === 'fulfilled').length,
+    sent: results.filter((r) => r.status === 'fulfilled' && r.value.ok).length,
   })
 }
