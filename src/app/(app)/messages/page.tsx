@@ -701,7 +701,7 @@ export default function MessagesPage() {
       </div>
 
       {/* ── Chat area ─────────────────────────────────────────────────── */}
-      <div className={`flex-col overflow-hidden ${activeId || showCommunaute || !showList ? 'flex flex-1' : 'hidden'} lg:flex lg:flex-1`}>
+      <div className={`flex-col overflow-hidden bg-[#FAF6F1] ${activeId || showCommunaute || !showList ? 'flex flex-1' : 'hidden'} lg:flex lg:flex-1`}>
 
         {!activeId && !showCommunaute ? (
           <div className="flex-1 flex flex-col items-center justify-center text-center px-8 bg-[#FAF6F1]">
