@@ -358,7 +358,7 @@ export default function CommunautePage() {
   const contextPost = contextMenu ? posts.find(p => p.id === contextMenu.postId) ?? null : null
 
   return (
-    <div className="px-4 pt-6 pb-28 lg:pb-20 lg:px-8 lg:pt-8 max-w-5xl mx-auto">
+    <div className="px-4 pt-6 pb-compose lg:px-8 lg:pt-8 max-w-5xl mx-auto">
       {(postMenu || commentMenu) && (
         <div className="fixed inset-0 z-10" onClick={() => { setPostMenu(null); setCommentMenu(null) }} />
       )}

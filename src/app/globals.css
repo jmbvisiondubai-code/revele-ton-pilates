@@ -110,6 +110,11 @@ h1, h2, h3, h4 {
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
+/* Bottom padding to clear the fixed compose bar, including iOS safe area */
+.pb-compose {
+  padding-bottom: calc(4rem + env(safe-area-inset-bottom, 0px));
+}
+
 /* Animations */
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(8px); }
