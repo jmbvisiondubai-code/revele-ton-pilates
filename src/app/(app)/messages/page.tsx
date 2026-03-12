@@ -325,6 +325,14 @@ export default function MessagesPage() {
     if (!isSame) {
       await supabase.from('direct_message_reactions').insert({ message_id: messageId, user_id: myId, reaction_type: type })
     }
+    // Reconcile counts from DB to prevent any drift
+    const { data: freshRxns } = await supabase.from('direct_message_reactions').select('user_id, reaction_type').eq('message_id', messageId)
+    if (freshRxns) {
+      const counts = { ...EMPTY_REACTIONS }
+      freshRxns.forEach(r => { if (r.reaction_type in counts) counts[r.reaction_type as ReactionType]++ })
+      const myReactions = freshRxns.filter(r => r.user_id === myId).map(r => r.reaction_type as ReactionType)
+      setMessages(prev => prev.map(m => m.id === messageId ? { ...m, reaction_counts: counts, user_reactions: myReactions } : m))
+    }
   }
 
   // ── Edit message ─────────────────────────────────────────────────────────
@@ -935,11 +943,11 @@ export default function MessagesPage() {
                               {msg.reply_to_preview && msg.reply_to_id && (
                                 <button
                                   onClick={() => scrollToMsg(msg.reply_to_id!)}
-                                  className={`w-full text-left px-3.5 pt-2.5 pb-1.5 border-b transition-colors ${isMe ? 'border-white/20 hover:bg-white/10 active:bg-white/15' : 'border-[#EDE5DA] hover:bg-[#C6684F]/5 active:bg-[#C6684F]/10'}`}
+                                  className={`w-full text-left px-3 pt-2.5 pb-2 border-b transition-colors ${isMe ? 'bg-black/20 border-white/15 hover:bg-black/25' : 'bg-[#FAF6F1] border-[#EDE5DA] hover:bg-[#F2E8DF]'}`}
                                 >
-                                  <div className={`border-l-2 pl-2 py-0.5 ${isMe ? 'border-white/60' : 'border-[#C6684F]/60'}`}>
-                                    <p className={`text-[10px] font-semibold ${isMe ? 'text-white/80' : 'text-[#C6684F]'}`}>{msg.reply_to_author}</p>
-                                    <p className={`text-xs line-clamp-1 ${isMe ? 'text-white/65' : 'text-[#6B6359]'}`}>{msg.reply_to_preview}</p>
+                                  <div className={`border-l-[3px] pl-2.5 ${isMe ? 'border-white/70' : 'border-[#C6684F]'}`}>
+                                    <p className={`text-[10px] font-semibold mb-0.5 ${isMe ? 'text-white/90' : 'text-[#C6684F]'}`}>{msg.reply_to_author}</p>
+                                    <p className={`text-xs line-clamp-2 ${isMe ? 'text-white/70' : 'text-[#6B6359]'}`}>{msg.reply_to_preview}</p>
                                   </div>
                                 </button>
                               )}
@@ -976,20 +984,23 @@ export default function MessagesPage() {
                           {/* Reaction counts */}
                           {totalReactions > 0 && (
                             <div className={`flex flex-wrap gap-1 mt-1 ${isMe ? 'justify-end' : 'justify-start'}`}>
-                              {REACTIONS.filter(r => (msg.reaction_counts[r.type] ?? 0) > 0).map(r => (
-                                <button
-                                  key={r.type}
-                                  onClick={() => toggleReaction(msg.id, r.type)}
-                                  className={`flex items-center gap-0.5 text-[11px] px-1.5 py-0.5 rounded-full border transition-colors ${
-                                    msg.user_reactions.includes(r.type)
-                                      ? 'bg-[#C6684F]/10 border-[#C6684F]/30 text-[#C6684F]'
-                                      : 'bg-white border-[#EDE5DA] text-[#6B6359] hover:bg-[#F2E8DF]'
-                                  }`}
-                                >
-                                  <span>{r.emoji}</span>
-                                  <span className="font-medium">{msg.reaction_counts[r.type]}</span>
-                                </button>
-                              ))}
+                              {REACTIONS.filter(r => (msg.reaction_counts[r.type] ?? 0) > 0).map(r => {
+                                const isMine = msg.user_reactions.includes(r.type)
+                                return (
+                                  <button
+                                    key={r.type}
+                                    onClick={() => toggleReaction(msg.id, r.type)}
+                                    className={`flex items-center gap-0.5 text-[11px] px-1.5 py-0.5 rounded-full border transition-colors ${
+                                      isMine
+                                        ? 'bg-[#C6684F]/10 border-[#C6684F]/30 text-[#C6684F]'
+                                        : 'bg-white border-[#EDE5DA] text-[#6B6359] hover:bg-[#F2E8DF]'
+                                    }`}
+                                  >
+                                    <span>{r.emoji}</span>
+                                    <span className="font-medium">{msg.reaction_counts[r.type]}</span>
+                                  </button>
+                                )
+                              })}
                             </div>
                           )}
                         </div>
