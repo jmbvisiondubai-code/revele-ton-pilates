@@ -87,6 +87,7 @@ export default function MessagesPage() {
   const [hoverReaction,  setHoverReaction]  = useState<string | null>(null)
   const [pinnedExpanded, setPinnedExpanded] = useState(false)
   const [swipingMsg,     setSwipingMsg]     = useState<{ msgId: string; deltaX: number } | null>(null)
+  const [doubleTapHeart, setDoubleTapHeart] = useState<string | null>(null)
 
   // Refs
   const messagesEndRef  = useRef<HTMLDivElement>(null)
@@ -281,9 +282,12 @@ export default function MessagesPage() {
       setReplyingTo({ id: msgId, preview: content.substring(0, 80), author })
     } else if (wasQuickTap) {
       const now = Date.now()
-      if (lastTapRef.current?.msgId === msgId && now - lastTapRef.current.time < 300) {
+      if (lastTapRef.current?.msgId === msgId && now - lastTapRef.current.time < 350) {
         lastTapRef.current = null
-        toggleReaction(msgId, 'coeur')
+        const msg = messages.find(m => m.id === msgId)
+        if (!msg?.user_reactions.includes('coeur')) toggleReaction(msgId, 'coeur')
+        setDoubleTapHeart(msgId)
+        setTimeout(() => setDoubleTapHeart(null), 700)
       } else {
         lastTapRef.current = { msgId, time: now }
       }
@@ -729,7 +733,12 @@ export default function MessagesPage() {
                       <div
                         className={`flex items-end gap-1.5 ${isMe ? 'justify-end' : 'justify-start'} mb-0.5 relative select-none group`}
                         onContextMenu={e => e.preventDefault()}
-                        onDoubleClick={() => toggleReaction(msg.id, 'coeur')}
+                        onDoubleClick={() => {
+                          const alreadyLiked = msg.user_reactions.includes('coeur')
+                          if (!alreadyLiked) toggleReaction(msg.id, 'coeur')
+                          setDoubleTapHeart(msg.id)
+                          setTimeout(() => setDoubleTapHeart(null), 700)
+                        }}
                         onTouchStart={e => startGesture(msg.id, isMe, msg.content, msg.is_pinned ?? false, e.touches[0].clientX, e.touches[0].clientY)}
                         onTouchMove={e => moveGesture(msg.id, e.touches[0].clientX, e.touches[0].clientY)}
                         onTouchEnd={() => endGesture(msg.id, msg.content, isMe)}
@@ -820,7 +829,21 @@ export default function MessagesPage() {
                         </div>
 
                         {/* Bubble */}
-                        <div className="max-w-[75%]">
+                        <div className="max-w-[75%] relative">
+                          {/* Double-tap heart animation */}
+                          <AnimatePresence>
+                            {doubleTapHeart === msg.id && (
+                              <motion.div
+                                initial={{ opacity: 0, scale: 0.4 }}
+                                animate={{ opacity: 1, scale: 1.4 }}
+                                exit={{ opacity: 0, scale: 1.8 }}
+                                transition={{ duration: 0.25 }}
+                                className="absolute inset-0 flex items-center justify-center pointer-events-none z-30"
+                              >
+                                <span className="text-5xl drop-shadow-xl">❤️</span>
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
                           {isEditing ? (
                             <div className="flex items-end gap-1">
                               <textarea
