@@ -372,6 +372,9 @@ export default function CommunautePage() {
 
   return (
     <div className="px-4 pt-6 pb-compose lg:px-8 lg:pt-8 max-w-5xl mx-auto">
+      {/* Full-page background */}
+      <div aria-hidden="true" className="fixed inset-0 -z-10 bg-[url('/fond-mobile.png')] md:bg-[url('/fond-desktop.png')] bg-cover bg-center opacity-[0.28] pointer-events-none" />
+
       {(postMenu || commentMenu) && (
         <div className="fixed inset-0 z-10" onClick={() => { setPostMenu(null); setCommentMenu(null) }} />
       )}
@@ -399,9 +402,6 @@ export default function CommunautePage() {
 
         {/* Feed column */}
         <div className="relative lg:col-span-2 lg:order-1 min-h-dvh">
-          {/* Background pattern — fills full viewport height */}
-          <div aria-hidden="true" className="absolute inset-y-0 -left-3 -right-3 lg:-left-5 lg:-right-5 bg-[url('/fond-mobile.png')] md:bg-[url('/fond-desktop.png')] bg-cover bg-center bg-scroll opacity-[0.28] pointer-events-none" />
-
           {/* ── Pinned messages from Marjorie — sticky at top ── */}
           {pinnedPosts.length > 0 && (
             <div className="sticky top-[8.5rem] lg:top-[9rem] z-20 space-y-3 -mx-4 lg:mx-0 px-4 lg:px-0 pt-2 pb-5 mb-4 bg-gradient-to-b from-[#FAF6F1]/95 via-[#FAF6F1]/80 to-transparent backdrop-blur-sm">
