@@ -358,7 +358,6 @@ export default function CommunautePage() {
   const contextPost = contextMenu ? posts.find(p => p.id === contextMenu.postId) ?? null : null
 
   return (
-    <div className="min-h-screen bg-[url('/fond-mobile.png')] md:bg-[url('/fond-desktop.png')] bg-cover bg-center bg-fixed">
     <div className="px-4 pt-6 pb-[220px] lg:pb-28 lg:px-8 lg:pt-8 max-w-5xl mx-auto">
       {(postMenu || commentMenu) && (
         <div className="fixed inset-0 z-10" onClick={() => { setPostMenu(null); setCommentMenu(null) }} />
@@ -379,11 +378,13 @@ export default function CommunautePage() {
         </div>
 
         {/* Feed column */}
-        <div className="lg:col-span-2 lg:order-1">
+        <div className="relative isolate lg:col-span-2 lg:order-1">
+          {/* Background pattern — reduced opacity, only behind messages */}
+          <div aria-hidden="true" className="absolute inset-0 bg-[url('/fond-mobile.png')] md:bg-[url('/fond-desktop.png')] bg-cover bg-center bg-scroll opacity-[0.28] -z-10" />
 
           {/* ── Pinned messages from Marjorie — sticky at top ── */}
           {pinnedPosts.length > 0 && (
-            <div className="sticky top-0 z-20 space-y-3 -mx-4 lg:mx-0 px-4 lg:px-0 pt-2 pb-4 mb-4 bg-[#FAF6F1]/95 backdrop-blur-sm border-b border-[#C6684F]/15">
+            <div className="sticky top-0 z-20 space-y-3 -mx-4 lg:mx-0 px-4 lg:px-0 pt-2 pb-5 mb-4 bg-gradient-to-b from-[#FAF6F1]/95 via-[#FAF6F1]/80 to-transparent backdrop-blur-sm">
               {pinnedPosts.map((post) => (
                 <div key={post.id} className="relative rounded-2xl bg-gradient-to-br from-[#FDF0EB] to-[#FAF6F1] border-2 border-[#C6684F]/30 px-4 py-3 shadow-sm">
                   {/* Pin badge */}
@@ -653,7 +654,7 @@ export default function CommunautePage() {
                                   <CornerUpLeft size={16} className="text-[#C6684F]" />
                                 </div>
                               )}
-                              <div className={`rounded-2xl px-4 py-3 transition-colors duration-300 ${
+                              <div className={`rounded-2xl px-4 py-3 shadow-sm transition-colors duration-300 ${
                                 highlightPost === post.id ? 'ring-2 ring-[#C6684F] ring-offset-1 bg-[#FDF0EB]!'
                                 : isOwn ? 'bg-[#F2E8DF] rounded-br-sm'
                                 : post.is_from_marjorie ? 'bg-gradient-to-br from-[#FDF0EB] to-[#FAF6F1] border-2 border-[#C6684F]/30 rounded-bl-sm'
@@ -994,7 +995,6 @@ export default function CommunautePage() {
           </div>
         </div>
       )}
-    </div>
     </div>
   )
 }
