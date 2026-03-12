@@ -142,8 +142,10 @@ export default function CommunautePage() {
       const reaction_counts: Record<ReactionType, number> = { pouce: 0, coeur: 0, applaudissement: 0, priere: 0, muscle: 0, fete: 0, feu: 0 }
       pr.forEach((r: { reaction_type: string }) => { reaction_counts[r.reaction_type as ReactionType]++ })
       const user_reactions = pr.filter((r: { user_id: string }) => r.user_id === profile?.id).map((r: { reaction_type: string }) => r.reaction_type as ReactionType)
-      const reaction_users: ReactionUser[] = pr.map((r: { reaction_type: string; user_id: string; profiles?: { first_name: string } | null }) => ({
-        user_id: r.user_id, reaction_type: r.reaction_type as ReactionType, first_name: r.profiles?.first_name ?? 'Membre',
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const reaction_users: ReactionUser[] = pr.map((r: any) => ({
+        user_id: r.user_id, reaction_type: r.reaction_type as ReactionType,
+        first_name: (Array.isArray(r.profiles) ? r.profiles[0]?.first_name : r.profiles?.first_name) ?? 'Membre',
       }))
       const comment_count = comments?.filter((c: { post_id: string }) => c.post_id === post.id).length ?? 0
       return { ...post, reaction_counts, user_reactions, reaction_users, comment_count }
