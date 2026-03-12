@@ -1,17 +1,33 @@
-// Splits text into plain segments and URL segments for rendering clickable links
-const URL_REGEX = /(https?:\/\/[^\s]+|www\.[^\s]+)/gi
-export function parseTextWithLinks(text: string): { type: 'text' | 'url'; value: string }[] {
-  const result: { type: 'text' | 'url'; value: string }[] = []
+// Splits text into plain segments, URL segments, and @mention segments
+const PARTS_REGEX = /(https?:\/\/[^\s]+|www\.[^\s]+|@[a-zA-Z0-9_-]+)/gi
+
+export type TextPart = { type: 'text' | 'url' | 'mention'; value: string }
+
+function splitTextParts(text: string, regex: RegExp): TextPart[] {
+  const result: TextPart[] = []
   let lastIndex = 0
   let match: RegExpExecArray | null
-  URL_REGEX.lastIndex = 0
-  while ((match = URL_REGEX.exec(text)) !== null) {
+  regex.lastIndex = 0
+  while ((match = regex.exec(text)) !== null) {
     if (match.index > lastIndex) result.push({ type: 'text', value: text.slice(lastIndex, match.index) })
-    result.push({ type: 'url', value: match[0] })
+    const val = match[0]
+    if (val.startsWith('@')) result.push({ type: 'mention', value: val })
+    else result.push({ type: 'url', value: val })
     lastIndex = match.index + match[0].length
   }
   if (lastIndex < text.length) result.push({ type: 'text', value: text.slice(lastIndex) })
   return result
+}
+
+// With URL + mention detection (community posts)
+export function parseTextParts(text: string): TextPart[] {
+  return splitTextParts(text, new RegExp(PARTS_REGEX.source, 'gi'))
+}
+
+// URL only (private messages)
+const URL_REGEX = /(https?:\/\/[^\s]+|www\.[^\s]+)/gi
+export function parseTextWithLinks(text: string): TextPart[] {
+  return splitTextParts(text, new RegExp(URL_REGEX.source, 'gi'))
 }
 
 export function safeUrl(url: string): string {

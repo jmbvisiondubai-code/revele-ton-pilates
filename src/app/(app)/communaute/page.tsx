@@ -7,7 +7,7 @@ import Link from 'next/link'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/client'
 import { useAuthStore } from '@/stores/auth-store'
 import { Card, Avatar, Button } from '@/components/ui'
-import { formatRelativeDate, parseTextWithLinks, safeUrl } from '@/lib/utils'
+import { formatRelativeDate, parseTextParts, safeUrl } from '@/lib/utils'
 import type { CommunityPost, ReactionType } from '@/types/database'
 
 const REACTIONS: { type: ReactionType; emoji: string; label: string }[] = [
@@ -100,8 +100,11 @@ export default function CommunautePage() {
   const [imagePreview, setImagePreview] = useState<string | null>(null)
   const [pendingDocName, setPendingDocName] = useState<string | null>(null)
   const [liveNewCount, setLiveNewCount] = useState(0)
+  const [mentionQuery, setMentionQuery] = useState<string | null>(null)
+  const [mentionSuggestions, setMentionSuggestions] = useState<{ id: string; username: string; avatar_url: string | null }[]>([])
   const fileInputRef = useRef<HTMLInputElement>(null)
   const docInputRef = useRef<HTMLInputElement>(null)
+  const communityTextareaRef = useRef<HTMLTextAreaElement>(null)
   const isAtBottomRef = useRef(true)
   const [isPosting, setIsPosting] = useState(false)
   const [openComments, setOpenComments] = useState<string | null>(null)
@@ -250,6 +253,48 @@ export default function CommunautePage() {
     setPostImageUrl(''); setPendingDocName(null)
     if (fileInputRef.current) fileInputRef.current.value = ''
     if (docInputRef.current) docInputRef.current.value = ''
+  }
+
+  async function handleTextareaChange(e: React.ChangeEvent<HTMLTextAreaElement>) {
+    const val = e.target.value
+    setNewPost(val)
+    const cursor = e.target.selectionStart ?? val.length
+    const textUpToCursor = val.slice(0, cursor)
+    const match = textUpToCursor.match(/@([a-zA-Z0-9_-]*)$/)
+    if (match) {
+      setMentionQuery(match[1])
+      if (isSupabaseConfigured()) {
+        const q = match[1]
+        const { data } = await supabase.from('profiles').select('id, username, avatar_url')
+          .ilike('username', `${q}%`).limit(6)
+        setMentionSuggestions(data ?? [])
+      }
+    } else {
+      setMentionQuery(null)
+      setMentionSuggestions([])
+    }
+  }
+
+  function insertMention(username: string) {
+    const textarea = communityTextareaRef.current
+    const cursor = textarea?.selectionStart ?? newPost.length
+    const textUpToCursor = newPost.slice(0, cursor)
+    const match = textUpToCursor.match(/@([a-zA-Z0-9_-]*)$/)
+    if (match) {
+      const before = newPost.slice(0, cursor - match[0].length)
+      const after = newPost.slice(cursor)
+      const inserted = `@${username} `
+      setNewPost(before + inserted + after)
+      setTimeout(() => {
+        if (textarea) {
+          const pos = before.length + inserted.length
+          textarea.setSelectionRange(pos, pos)
+          textarea.focus()
+        }
+      }, 0)
+    }
+    setMentionQuery(null)
+    setMentionSuggestions([])
   }
 
   function normalizeUrl(url: string): string {
@@ -536,7 +581,7 @@ export default function CommunautePage() {
                             <span className="text-[10px] text-[#DCCFBF]">{formatRelativeDate(post.created_at)}</span>
                             {post.edited_at && <span className="text-[10px] text-[#DCCFBF]">(modifié)</span>}
                           </div>
-                          <p className="text-sm text-[#2C2C2C] leading-relaxed whitespace-pre-wrap">{parseTextWithLinks(post.content).map((part, i) => part.type === 'url' ? (<button key={i} onClick={e => { e.stopPropagation(); window.open(safeUrl(part.value), '_blank', 'noopener,noreferrer') }} className="text-[#C6684F] underline underline-offset-2 break-all">{part.value}</button>) : part.value)}</p>
+                          <p className="text-sm text-[#2C2C2C] leading-relaxed whitespace-pre-wrap">{parseTextParts(post.content).map((part, i) => part.type === 'url' ? (<button key={i} onClick={e => { e.stopPropagation(); window.open(safeUrl(part.value), '_blank', 'noopener,noreferrer') }} className="text-[#C6684F] underline underline-offset-2 break-all">{part.value}</button>) : part.type === 'mention' ? (<span key={i} className="font-semibold text-[#C6684F]">{part.value}</span>) : part.value)}</p>
                           {post.image_url && (
                             <div className="mt-2 rounded-xl overflow-hidden">
                               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -880,7 +925,7 @@ export default function CommunautePage() {
                                     <p className="text-xs text-[#6B6359] line-clamp-1">{post.reply_to_preview}</p>
                                   </button>
                                 )}
-                                <p className="text-sm text-[#2C2C2C] leading-relaxed whitespace-pre-wrap">{parseTextWithLinks(post.content).map((part, i) => part.type === 'url' ? (<button key={i} onClick={e => { e.stopPropagation(); window.open(safeUrl(part.value), '_blank', 'noopener,noreferrer') }} className="text-[#C6684F] underline underline-offset-2 break-all">{part.value}</button>) : part.value)}</p>
+                                <p className="text-sm text-[#2C2C2C] leading-relaxed whitespace-pre-wrap">{parseTextParts(post.content).map((part, i) => part.type === 'url' ? (<button key={i} onClick={e => { e.stopPropagation(); window.open(safeUrl(part.value), '_blank', 'noopener,noreferrer') }} className="text-[#C6684F] underline underline-offset-2 break-all">{part.value}</button>) : part.type === 'mention' ? (<span key={i} className="font-semibold text-[#C6684F]">{part.value}</span>) : part.value)}</p>
                                 {post.image_url && (
                                   <div className="mt-2 rounded-xl overflow-hidden">
                                     {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -1203,6 +1248,29 @@ export default function CommunautePage() {
                 )}
               </div>
             )}
+            {/* @mention suggestions */}
+            <AnimatePresence>
+              {mentionSuggestions.length > 0 && mentionQuery !== null && (
+                <motion.div
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 8 }}
+                  className="mb-2 bg-white border border-[#DCCFBF] rounded-2xl shadow-lg overflow-hidden"
+                >
+                  {mentionSuggestions.map(user => (
+                    <button
+                      key={user.id}
+                      onMouseDown={e => { e.preventDefault(); insertMention(user.username) }}
+                      className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-[#FAF6F1] active:bg-[#F2E8DF] transition-colors"
+                    >
+                      <Avatar src={user.avatar_url} fallback={user.username} size="sm" />
+                      <span className="text-sm font-medium text-[#2C2C2C]">@{user.username}</span>
+                    </button>
+                  ))}
+                </motion.div>
+              )}
+            </AnimatePresence>
+
             <div className="flex items-end gap-2">
               <Avatar src={profile.avatar_url} fallback={profile.username} size="sm" />
               <div className="flex-1 flex items-end gap-1 bg-white border border-[#DCCFBF] rounded-2xl px-3 py-2 focus-within:border-[#C6684F] transition-colors">
@@ -1228,9 +1296,13 @@ export default function CommunautePage() {
                   </div>
                 )}
                 <textarea
-                  placeholder={isAdmin ? 'Écris un message...' : 'Partage ton expérience...'}
-                  value={newPost} onChange={e => setNewPost(e.target.value)} rows={1}
-                  onKeyDown={e => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), handlePost())}
+                  ref={communityTextareaRef}
+                  placeholder={isAdmin ? 'Écris un message... (@ pour mentionner)' : 'Partage ton expérience... (@ pour mentionner)'}
+                  value={newPost} onChange={handleTextareaChange} rows={1}
+                  onKeyDown={e => {
+                    if (e.key === 'Escape' && mentionSuggestions.length > 0) { setMentionQuery(null); setMentionSuggestions([]); return }
+                    if (e.key === 'Enter' && !e.shiftKey && mentionSuggestions.length === 0) { e.preventDefault(); handlePost() }
+                  }}
                   className="flex-1 resize-none bg-transparent text-sm text-text placeholder:text-text-muted focus:outline-none leading-5 max-h-28 overflow-y-auto"
                 />
               </div>
