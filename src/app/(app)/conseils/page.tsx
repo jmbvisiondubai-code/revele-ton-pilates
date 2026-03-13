@@ -390,54 +390,30 @@ export default function ConseilsPage() {
       ) : (
         <div className="space-y-6">
 
-              {/* Récent */}
+              {/* Récent — blocs compacts */}
               {recentArticles.length > 0 && (
                 <div>
                   <h2 className="font-[family-name:var(--font-heading)] text-lg text-[#2C2C2C] mb-3">Récent</h2>
-                  <div className="space-y-3">
-                    {recentArticles.map((article, i) => (
-                      <motion.button key={article.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: i * 0.04 }}
-                        onClick={() => handleOpenArticle(article)}
-                        className="w-full text-left"
-                      >
-                        <Card hover className="p-0 overflow-hidden">
-                          <div className="flex gap-0">
-                            {article.thumbnail_url ? (
-                              <div className="w-24 lg:w-32 flex-shrink-0">
-                                {/* eslint-disable-next-line @next/next/no-img-element */}
-                                <img src={article.thumbnail_url} alt={article.title} className="w-full h-full object-cover rounded-l-[var(--radius-lg)]" style={{ minHeight: 90 }} />
-                              </div>
-                            ) : (
-                              <div className="w-24 lg:w-28 flex-shrink-0 bg-[#F2E8DF] flex items-center justify-center rounded-l-[var(--radius-lg)]" style={{ minHeight: 90 }}>
-                                <span className="text-2xl">{ARTICLE_CATS[article.category]?.emoji}</span>
-                              </div>
-                            )}
-                            <div className="flex-1 p-4">
-                              <div className="flex items-center gap-2 mb-1.5">
-                                <BadgePill variant="accent">
-                                  {ARTICLE_CATS[article.category]?.emoji} {ARTICLE_CATS[article.category]?.label}
-                                </BadgePill>
-                                {article.reading_time_minutes && (
-                                  <span className="text-xs text-text-muted flex items-center gap-1 flex-shrink-0">
-                                    <Clock size={11} />{article.reading_time_minutes} min
-                                  </span>
-                                )}
-                              </div>
-                              <h3 className="font-[family-name:var(--font-heading)] text-base text-text leading-snug">{article.title}</h3>
-                              {article.published_at && (
-                                <p className="text-[10px] text-[#DCCFBF] mt-1">
-                                  {new Date(article.published_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
-                                </p>
-                              )}
+                  <div className="space-y-2">
+                    {recentArticles.map((article, i) => {
+                      const cat = ARTICLE_CATS[article.category]
+                      return (
+                        <motion.button key={article.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: i * 0.03 }}
+                          onClick={() => handleOpenArticle(article)}
+                          className="w-full text-left"
+                        >
+                          <div className="flex items-center gap-3 bg-white border border-[#DCCFBF] rounded-xl px-4 py-3 hover:border-[#C6684F]/40 transition-colors">
+                            <span className="text-base flex-shrink-0">{cat?.emoji}</span>
+                            <div className="flex-1 min-w-0">
+                              <h3 className="text-sm font-medium text-[#2C2C2C] truncate">{article.title}</h3>
+                              <p className="text-[11px] text-[#A09488]">{cat?.label}</p>
                             </div>
-                            <div className="flex items-center pr-3">
-                              <ChevronRight size={14} className="text-[#DCCFBF]" />
-                            </div>
+                            <ChevronRight size={14} className="text-[#DCCFBF] flex-shrink-0" />
                           </div>
-                        </Card>
-                      </motion.button>
-                    ))}
+                        </motion.button>
+                      )
+                    })}
                   </div>
                 </div>
               )}
