@@ -571,14 +571,14 @@ export default function MessagesPage() {
 
   if (!isSupabaseConfigured()) {
     return (
-      <div className="flex items-center justify-center h-[calc(100dvh-5rem)] lg:h-[calc(100dvh-2rem)]">
+      <div className="flex items-center justify-center h-[calc(100dvh-6.5rem)] lg:h-[calc(100dvh-2rem)]">
         <p className="text-sm text-[#A09488]">Configurez Supabase pour activer la messagerie.</p>
       </div>
     )
   }
 
   return (
-    <div className="flex h-[calc(100dvh-5rem)] lg:h-[calc(100dvh-2rem)] overflow-hidden">
+    <div className="flex h-[calc(100dvh-6.5rem)] lg:h-[calc(100dvh-2rem)] overflow-hidden">
 
       {/* ── Conversation list ──────────────────────────────────────────── */}
       <div className={`flex flex-col border-r border-[#EDE5DA] bg-white w-full lg:w-80 flex-shrink-0 ${showList ? 'flex' : 'hidden'} lg:flex`}>

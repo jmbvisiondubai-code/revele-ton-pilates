@@ -1437,7 +1437,7 @@ export default function CommunautePage() {
 
       {/* ── Fixed compose bar (all screens) ── */}
       {profile && (
-        <div className={`fixed right-0 z-[45] bg-[#FAF6F1]/97 backdrop-blur-md border-t border-[#DCCFBF] safe-bottom ${isEmbedded ? 'bottom-0 left-0' : 'bottom-16 lg:bottom-0 left-0 lg:left-[272px]'}`}>
+        <div className={`fixed right-0 z-[45] bg-[#FAF6F1]/97 backdrop-blur-md border-t border-[#DCCFBF] safe-bottom ${isEmbedded ? 'bottom-0 left-0' : 'bottom-[5.5rem] lg:bottom-0 left-0 lg:left-[272px]'}`}>
           <div className="px-3 lg:px-8 pt-2 pb-3">
             {replyingTo && (
               <div className="flex items-start gap-2 border-l-2 border-[#C6684F] pl-2 py-1 mb-1.5 bg-[#C6684F]/5 rounded-r-lg">
