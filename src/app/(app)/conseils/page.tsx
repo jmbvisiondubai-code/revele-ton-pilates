@@ -265,6 +265,9 @@ export default function ConseilsPage() {
               </div>
             )}
 
+            {/* Version check */}
+            <p className="text-[10px] text-[#DCCFBF] mb-2">v2 — userId: {currentUserId ? 'ok' : 'non connecté'}</p>
+
             {/* Comment input */}
             <div className="flex gap-3 items-end">
               <textarea
@@ -277,7 +280,7 @@ export default function ConseilsPage() {
                 onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); postComment() } }}
               />
               <button
-                onClick={postComment}
+                onClick={() => { postComment() }}
                 disabled={postingComment || !commentText.trim()}
                 className="w-10 h-10 bg-[#C6684F] rounded-full flex items-center justify-center text-white hover:bg-[#b05a42] disabled:opacity-40 transition-colors flex-shrink-0 mb-0.5"
               >
