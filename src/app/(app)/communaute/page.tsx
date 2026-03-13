@@ -1139,7 +1139,7 @@ export default function CommunautePage() {
                                         {(isMyComment || isAdmin) && (
                                           <div className="relative inline-block ml-1" onClick={e => e.stopPropagation()}>
                                             <button onClick={() => setCommentMenu(commentMenu === comment.id ? null : comment.id)}
-                                              className="opacity-0 group-hover:opacity-100 transition-opacity text-[#DCCFBF] hover:text-[#6B6359]">
+                                              className="text-[#DCCFBF] hover:text-[#6B6359] transition-colors">
                                               <MoreHorizontal size={11} />
                                             </button>
                                             <AnimatePresence>
