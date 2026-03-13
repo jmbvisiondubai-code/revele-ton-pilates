@@ -772,10 +772,27 @@ export default function CommunautePage() {
                     return (
                       <motion.div key={post.id} id={`post-${post.id}`} initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }}>
                         <div className="mx-2 my-1">
-                          <div className="relative bg-gradient-to-br from-[#FFF8F5] to-[#FFF0E8] border border-[#EDD5C5] rounded-2xl px-4 pt-5 pb-3 text-center shadow-sm">
-                            {/* sparkle badge */}
-                            <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 w-7 h-7 bg-[#C6684F] rounded-full flex items-center justify-center shadow-md">
-                              <span className="text-sm">✨</span>
+                          <div className="relative bg-gradient-to-br from-[#FFF8F5] via-[#FFF0E8] to-[#FDEEE6] border border-[#EDD5C5] rounded-2xl px-4 pt-4 pb-3 shadow-sm overflow-hidden">
+                            {/* decorative confetti dots */}
+                            <div className="absolute top-2 left-3 text-[10px] opacity-40">🎊</div>
+                            <div className="absolute top-2 right-3 text-[10px] opacity-40">🎊</div>
+                            {/* Marjorie header */}
+                            <div className="flex items-center gap-2 mb-2.5">
+                              <div className="relative">
+                                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#C6684F] to-[#E8926F] flex items-center justify-center text-white text-xs font-bold">M</div>
+                                <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-[#C6684F] rounded-full flex items-center justify-center border-2 border-white">
+                                  <span className="text-[7px]">✨</span>
+                                </div>
+                              </div>
+                              <div className="flex-1">
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-xs font-semibold text-[#2C2C2C]">Marjorie</span>
+                                  <span className="text-[9px] bg-[#C6684F]/15 text-[#C6684F] px-1.5 py-0.5 rounded-full font-medium">Coach</span>
+                                </div>
+                              </div>
+                              <div className="w-7 h-7 bg-[#C6684F] rounded-full flex items-center justify-center shadow-md">
+                                <span className="text-sm">🏆</span>
+                              </div>
                             </div>
                             <p className="text-sm text-[#2C2C2C] leading-relaxed">{post.content}</p>
                             {/* reactions */}
