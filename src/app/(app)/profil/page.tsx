@@ -34,7 +34,7 @@ import {
 } from '@/components/ui'
 import { GOAL_LABELS, LEVEL_LABELS, formatDuration } from '@/lib/utils'
 import { DEMO_PROFILE } from '@/lib/demo-data'
-import { getLevelProgress, BADGE_CATEGORIES, LEVEL_UP_MESSAGES } from '@/lib/badges'
+import { getLevelProgress, BADGE_CATEGORIES } from '@/lib/badges'
 import type { Profile, Badge, Goal } from '@/types/database'
 
 const ALL_GOALS: { value: Goal; label: string }[] = Object.entries(GOAL_LABELS).map(([value, label]) => ({ value: value as Goal, label }))
@@ -108,8 +108,6 @@ export default function ProfilPage() {
   const [zoom, setZoom] = useState(1)
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null)
   const [badgeFilter, setBadgeFilter] = useState<string>('all')
-  const [levelUpData, setLevelUpData] = useState<{ title: string; message: string; emoji: string } | null>(null)
-  const [editLevel, setEditLevel] = useState<string>('debutante')
   const supabase = createClient()
 
   const onCropComplete = useCallback((_: Area, croppedPixels: Area) => {
@@ -228,7 +226,6 @@ export default function ProfilPage() {
     setEditUsername(profile.username)
     setEditFirstName(profile.first_name)
     setEditLastName(profile.last_name)
-    setEditLevel(profile.practice_level || 'debutante')
     setInfoError('')
     setEditingInfo(true)
   }
@@ -257,16 +254,10 @@ export default function ProfilPage() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
       const { error } = await supabase.from('profiles')
-        .update({ username: trimmedUsername, first_name: trimmedFirst, last_name: trimmedLast, practice_level: editLevel })
+        .update({ username: trimmedUsername, first_name: trimmedFirst, last_name: trimmedLast })
         .eq('id', user.id)
       if (error) throw error
-      // Show celebration if leveling up
-      const levels = ['debutante', 'intermediaire', 'avancee']
-      if (levels.indexOf(editLevel) > levels.indexOf(profile.practice_level || 'debutante')) {
-        const msg = LEVEL_UP_MESSAGES[editLevel]
-        if (msg) setLevelUpData(msg)
-      }
-      setProfile({ ...profile, username: trimmedUsername, first_name: trimmedFirst, last_name: trimmedLast, practice_level: editLevel as Profile['practice_level'] })
+      setProfile({ ...profile, username: trimmedUsername, first_name: trimmedFirst, last_name: trimmedLast })
       setEditingInfo(false)
     } catch (err) {
       setInfoError(err instanceof Error ? err.message : 'Erreur lors de la sauvegarde')
@@ -353,32 +344,6 @@ export default function ProfilPage() {
           </div>
         </div>
       )}
-      {/* Level-up celebration modal */}
-      {levelUpData && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-6">
-          <motion.div
-            initial={{ scale: 0.8, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ type: 'spring', stiffness: 300, damping: 25 }}
-            className="bg-white rounded-3xl p-8 max-w-sm w-full text-center shadow-2xl"
-          >
-            <div className="text-6xl mb-4">{levelUpData.emoji}</div>
-            <h2 className="font-[family-name:var(--font-heading)] text-2xl text-text mb-3">
-              {levelUpData.title}
-            </h2>
-            <p className="text-sm text-text-secondary leading-relaxed mb-6">
-              {levelUpData.message}
-            </p>
-            <button
-              onClick={() => setLevelUpData(null)}
-              className="w-full py-3 rounded-xl bg-primary text-white font-semibold text-sm hover:bg-primary-dark transition-colors"
-            >
-              Continuer
-            </button>
-          </motion.div>
-        </div>
-      )}
-
       {/* Layout desktop 2 colonnes */}
       <div className="lg:grid lg:grid-cols-3 lg:gap-8">
       <div className="lg:col-span-1">
@@ -480,19 +445,6 @@ export default function ProfilPage() {
                       onChange={e => setEditUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ''))}
                     />
                     <p className="text-xs text-text-muted mt-1 ml-1">Visible publiquement</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-text-muted mb-2 ml-1">Niveau de pratique</p>
-                    <div className="flex gap-2">
-                      {(['debutante', 'intermediaire', 'avancee'] as const).map(lvl => (
-                        <button key={lvl} type="button" onClick={() => setEditLevel(lvl)}
-                          className={`flex-1 py-2 rounded-lg text-xs font-medium transition-all ${
-                            editLevel === lvl ? 'bg-primary text-white' : 'bg-bg-elevated text-text-secondary hover:bg-secondary/40'
-                          }`}>
-                          {LEVEL_LABELS[lvl]}
-                        </button>
-                      ))}
-                    </div>
                   </div>
                   {infoError && <p className="text-xs text-error bg-error-light px-3 py-2 rounded-lg">{infoError}</p>}
                   <div className="flex gap-2 pt-1">
@@ -807,10 +759,10 @@ export default function ProfilPage() {
                         <span className="text-2xl mt-0.5">🎉</span>
                         <div className="flex-1">
                           <p className="text-sm font-semibold text-text">
-                            Ta progression te permet de passer en {LEVEL_LABELS[levelInfo.suggestedLevel]} !
+                            Bravo, tu progresses ! 🎉
                           </p>
                           <p className="text-xs text-text-secondary mt-0.5 leading-relaxed">
-                            Avec {earnedCount} badges, tu as atteint le niveau requis. Tu peux modifier ton niveau dans tes informations personnelles.
+                            Avec {earnedCount} badges débloqués, ta progression correspond au niveau {LEVEL_LABELS[levelInfo.suggestedLevel]}. Contacte Marjorie pour faire évoluer ton niveau.
                           </p>
                         </div>
                       </div>
