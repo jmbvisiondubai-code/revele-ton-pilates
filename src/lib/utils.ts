@@ -87,6 +87,7 @@ export const LEVEL_LABELS: Record<string, string> = {
   initiee: 'Initiée',
   intermediaire: 'Intermédiaire',
   avancee: 'Avancée',
+  coach: 'Coach',
   tous_niveaux: 'Tous niveaux',
 }
 

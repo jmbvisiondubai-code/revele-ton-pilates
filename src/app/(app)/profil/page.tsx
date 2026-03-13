@@ -155,7 +155,9 @@ export default function ProfilPage() {
         .from('user_badges').select('badge_id, earned_at').eq('user_id', user.id)
 
       if (allBadges) {
+        const isAdminUser = profileData?.is_admin === true
         const enriched: AllBadge[] = allBadges.map(b => {
+          if (isAdminUser) return { ...b, earned: true, earned_at: new Date().toISOString() }
           const ub = userBadges?.find(ub => ub.badge_id === b.id)
           return { ...b, earned: !!ub, earned_at: ub?.earned_at }
         })
@@ -379,7 +381,7 @@ export default function ProfilPage() {
             </span>
           )}
           <BadgePill variant="accent">
-            {LEVEL_LABELS[profile.practice_level || ''] || 'Niveau'}
+            {profile.is_admin ? '🎓 Coach' : (LEVEL_LABELS[profile.practice_level || ''] || 'Niveau')}
           </BadgePill>
         </div>
       </div>
@@ -714,6 +716,7 @@ export default function ProfilPage() {
             {/* Level progression card */}
             {profile && (() => {
               const earnedCount = badges.filter(b => b.earned).length
+              const isCoach = profile.is_admin
               const levelInfo = getLevelProgress(profile.practice_level || 'debutante', earnedCount)
               return (
                 <>
@@ -721,11 +724,11 @@ export default function ProfilPage() {
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
                         <span className="text-lg">
-                          {levelInfo.currentLevel === 'avancee' ? '👑' : levelInfo.currentLevel === 'intermediaire' ? '💎' : levelInfo.currentLevel === 'initiee' ? '🌿' : '🌱'}
+                          {isCoach ? '🎓' : levelInfo.currentLevel === 'avancee' ? '👑' : levelInfo.currentLevel === 'intermediaire' ? '💎' : levelInfo.currentLevel === 'initiee' ? '🌿' : '🌱'}
                         </span>
                         <div>
                           <p className="text-sm font-semibold text-text">
-                            {LEVEL_LABELS[levelInfo.currentLevel] || levelInfo.currentLevel}
+                            {isCoach ? 'Coach' : (LEVEL_LABELS[levelInfo.currentLevel] || levelInfo.currentLevel)}
                           </p>
                           <p className="text-[11px] text-text-muted">
                             {earnedCount} badge{earnedCount > 1 ? 's' : ''} débloqué{earnedCount > 1 ? 's' : ''}
@@ -738,7 +741,7 @@ export default function ProfilPage() {
                         </span>
                       )}
                     </div>
-                    {levelInfo.nextLevel && (
+                    {!isCoach && levelInfo.nextLevel && (
                       <div>
                         <div className="flex items-center justify-between text-[11px] text-text-muted mb-1.5">
                           <span>Prochain : {LEVEL_LABELS[levelInfo.nextLevel]}</span>
@@ -747,13 +750,16 @@ export default function ProfilPage() {
                         <ProgressBar value={levelInfo.progress} size="sm" color="primary" />
                       </div>
                     )}
-                    {!levelInfo.nextLevel && (
+                    {!isCoach && !levelInfo.nextLevel && (
                       <p className="text-xs text-success font-medium mt-1">Niveau maximum atteint !</p>
+                    )}
+                    {isCoach && (
+                      <p className="text-xs text-primary font-medium mt-1">Tous les badges sont débloqués</p>
                     )}
                   </Card>
 
-                  {/* Suggestion banner if badges qualify for higher level */}
-                  {levelInfo.canLevelUp && (
+                  {/* Suggestion banner if badges qualify for higher level (not for coach) */}
+                  {!isCoach && levelInfo.canLevelUp && (
                     <Card className="border border-primary/20 bg-[#FFF8F5]">
                       <div className="flex items-start gap-3">
                         <span className="text-2xl mt-0.5">🎉</span>
