@@ -387,7 +387,7 @@ export default function SuiviPage() {
                         <div key={day} className={`flex-1 py-2.5 rounded-xl text-center text-sm font-semibold transition-all ${
                           isPreferred
                             ? 'bg-[#C6684F] text-white shadow-sm shadow-[#C6684F]/25'
-                            : 'bg-[#F2E8DF] text-[#A09488]'
+                            : 'bg-[#F2E8DF] text-[#A09488] opacity-35'
                         }`}>
                           {DAY_LABELS[day] ?? day.slice(0, 3)}
                         </div>
