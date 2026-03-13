@@ -799,7 +799,8 @@ export default function CommunautePage() {
                   if (post.is_automated) {
                     const totalReactions = Object.values(post.reaction_counts).reduce((a, b) => a + b, 0)
                     return (
-                      <motion.div key={post.id} id={`post-${post.id}`} initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }}>
+                      <motion.div key={post.id} id={`post-${post.id}`} initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }}
+                        className="lg:max-w-xl lg:mx-auto">
                         <div className="mx-2 my-1"
                           data-celebration-id={post.id}
                           ref={(el) => {
