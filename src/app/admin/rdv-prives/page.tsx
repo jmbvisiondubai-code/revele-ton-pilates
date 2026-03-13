@@ -146,7 +146,7 @@ export default function AdminRdvPrivesPage() {
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
-        <h2 className="font-serif text-2xl text-[#2C2C2C]">RDV Prives</h2>
+        <h2 className="font-serif text-2xl text-[#2C2C2C]">RDV Privés</h2>
         <button onClick={openNew} className="flex items-center gap-2 bg-[#C6684F] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#A8543D] transition-colors">
           <Plus size={16} /> Nouveau RDV
         </button>
@@ -156,7 +156,7 @@ export default function AdminRdvPrivesPage() {
       <div className="space-y-3 mb-8">
         {upcoming.length === 0 && (
           <div className="text-center py-12 text-[#A09488] bg-white rounded-xl border border-[#DCCFBF]">
-            Aucun rendez-vous a venir.
+            Aucun rendez-vous à venir.
           </div>
         )}
         {upcoming.map(appt => (
@@ -167,7 +167,7 @@ export default function AdminRdvPrivesPage() {
       {/* Past */}
       {past.length > 0 && (
         <>
-          <h3 className="font-medium text-[#A09488] text-sm mb-3 uppercase tracking-wide">Passes / Annules</h3>
+          <h3 className="font-medium text-[#A09488] text-sm mb-3 uppercase tracking-wide">Passés / Annulés</h3>
           <div className="space-y-3 opacity-60">
             {past.map(appt => (
               <AppointmentCard key={appt.id} appt={appt} onEdit={openEdit} onDelete={deleteAppt} onMessage={(id) => router.push(`/messages?to=${id}`)} />
@@ -181,7 +181,7 @@ export default function AdminRdvPrivesPage() {
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between p-6 border-b border-[#DCCFBF]">
-              <h3 className="font-serif text-xl text-[#2C2C2C]">{editing ? 'Modifier le RDV' : 'Nouveau RDV prive'}</h3>
+              <h3 className="font-serif text-xl text-[#2C2C2C]">{editing ? 'Modifier le RDV' : 'Nouveau RDV privé'}</h3>
               <button onClick={() => setShowForm(false)}><X size={20} className="text-[#C6684F]" /></button>
             </div>
             <div className="p-6 space-y-4">
@@ -204,7 +204,7 @@ export default function AdminRdvPrivesPage() {
                     />
                     {search.trim() && (
                       <div className="mt-1 max-h-40 overflow-y-auto border border-[#DCCFBF] rounded-lg bg-white">
-                        {filteredClients.length === 0 && <p className="text-xs text-[#A09488] p-2">Aucun resultat</p>}
+                        {filteredClients.length === 0 && <p className="text-xs text-[#A09488] p-2">Aucun résultat</p>}
                         {filteredClients.map(c => (
                           <button
                             key={c.id}
@@ -226,7 +226,7 @@ export default function AdminRdvPrivesPage() {
                 <label className="block text-sm font-medium text-[#6B6359] mb-1">Titre *</label>
                 <input value={form.title} onChange={e => setForm(p => ({ ...p, title: e.target.value }))}
                   className="w-full border border-[#DCCFBF] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#C6684F]"
-                  placeholder="Cours prive Pilates, Bilan posture..." />
+                  placeholder="Cours privé Pilates, Bilan posture..." />
               </div>
 
               {/* Date */}
@@ -238,7 +238,7 @@ export default function AdminRdvPrivesPage() {
 
               {/* Duration */}
               <div>
-                <label className="block text-sm font-medium text-[#6B6359] mb-1">Duree (min)</label>
+                <label className="block text-sm font-medium text-[#6B6359] mb-1">Durée (min)</label>
                 <input type="number" value={form.duration_minutes} onChange={e => setForm(p => ({ ...p, duration_minutes: parseInt(e.target.value) || 60 }))}
                   className="w-full border border-[#DCCFBF] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#C6684F]" />
               </div>
@@ -301,7 +301,7 @@ export default function AdminRdvPrivesPage() {
                 <label className="block text-sm font-medium text-[#6B6359] mb-1">Description</label>
                 <textarea value={form.description} onChange={e => setForm(p => ({ ...p, description: e.target.value }))} rows={3}
                   className="w-full border border-[#DCCFBF] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#C6684F] resize-none"
-                  placeholder="Details du rendez-vous..." />
+                  placeholder="Détails du rendez-vous..." />
               </div>
             </div>
 
@@ -309,7 +309,7 @@ export default function AdminRdvPrivesPage() {
               <button onClick={() => setShowForm(false)} className="flex-1 border border-[#DCCFBF] text-[#6B6359] py-2 rounded-lg text-sm font-medium">Annuler</button>
               <button onClick={save} disabled={saving || !form.title || !form.scheduled_at || !form.client_id}
                 className="flex-1 bg-[#C6684F] text-white py-2 rounded-lg text-sm font-medium disabled:opacity-50 hover:bg-[#A8543D] transition-colors">
-                {saving ? 'Enregistrement...' : editing ? 'Mettre a jour' : 'Programmer'}
+                {saving ? 'Enregistrement...' : editing ? 'Mettre à jour' : 'Programmer'}
               </button>
             </div>
           </div>

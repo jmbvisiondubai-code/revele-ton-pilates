@@ -69,7 +69,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <Users size={16} /> Clientes
           </Link>
           <Link href="/admin/rdv-prives" className="flex items-center gap-3 px-3 py-2 rounded-lg text-[#6B6359] hover:bg-[#F2E8DF] text-sm font-medium">
-            <CalendarClock size={16} /> RDV Prives
+            <CalendarClock size={16} /> RDV Privés
           </Link>
           <Link href="/admin/parametres" className="flex items-center gap-3 px-3 py-2 rounded-lg text-[#6B6359] hover:bg-[#F2E8DF] text-sm font-medium">
             <Settings size={16} /> Paramètres

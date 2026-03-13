@@ -19,6 +19,21 @@ import { COLOR_CLASSES } from '@/app/admin/cours/page'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
 
+function getApptCalendarUrl(appt: PrivateAppointment) {
+  const start = new Date(appt.scheduled_at)
+  const end = new Date(start.getTime() + appt.duration_minutes * 60000)
+  const fmt = (d: Date) => d.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '')
+  const details = [appt.description, appt.meeting_url ? `Lien visio : ${appt.meeting_url}` : ''].filter(Boolean).join('\n')
+  const params = new URLSearchParams({
+    action: 'TEMPLATE',
+    text: `RDV privé — ${appt.title}`,
+    dates: `${fmt(start)}/${fmt(end)}`,
+    details,
+  })
+  if (appt.meeting_url) params.set('location', appt.meeting_url)
+  return `https://calendar.google.com/calendar/render?${params}`
+}
+
 function getCalendarUrl(live: LiveSession, meetingUrl: string | null) {
   const start = new Date(live.scheduled_at)
   const end = new Date(start.getTime() + live.duration_minutes * 60000)
@@ -368,7 +383,7 @@ export default function CoursPage() {
           {/* Private appointments */}
           {privateAppts.length > 0 && (
             <div className="mt-6 space-y-3">
-              <h3 className="font-[family-name:var(--font-heading)] text-lg text-text">Tes RDV prives</h3>
+              <h3 className="font-[family-name:var(--font-heading)] text-lg text-text">Tes RDV privés</h3>
               {privateAppts.map(appt => (
                 <Card key={appt.id} className="bg-[#7C3AED]/5 border-[#7C3AED]/20">
                   <div className="flex items-start gap-3">
@@ -395,6 +410,25 @@ export default function CoursPage() {
                           Rejoindre la visio
                         </a>
                       )}
+                      {/* Calendar buttons */}
+                      <div className="flex gap-2 mt-3">
+                        <a
+                          href={getApptCalendarUrl(appt)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center justify-center gap-2 flex-1 py-2.5 rounded-xl border border-[#7C3AED]/20 text-sm font-medium text-[#6B6359] hover:border-[#7C3AED] hover:text-[#7C3AED] active:bg-[#7C3AED]/5 transition-colors"
+                        >
+                          <CalendarPlus size={14} />
+                          Google Agenda
+                        </a>
+                        <a
+                          href={`/api/calendar/rdv?id=${appt.id}`}
+                          className="flex items-center justify-center gap-2 flex-1 py-2.5 rounded-xl border border-[#7C3AED]/20 text-sm font-medium text-[#6B6359] hover:border-[#7C3AED] hover:text-[#7C3AED] active:bg-[#7C3AED]/5 transition-colors"
+                        >
+                          <CalendarPlus size={14} />
+                          Autre agenda
+                        </a>
+                      </div>
                     </div>
                   </div>
                 </Card>
