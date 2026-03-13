@@ -43,6 +43,7 @@ export default function AdminRdvPrivesPage() {
   const [form, setForm] = useState(EMPTY_FORM)
   const [saving, setSaving] = useState(false)
   const [search, setSearch] = useState('')
+  const [defaultZoomUrl, setDefaultZoomUrl] = useState('')
 
   const supabase = createClient()
 
@@ -73,11 +74,20 @@ export default function AdminRdvPrivesPage() {
     if (data) setClients(data as ClientOption[])
   }
 
-  useEffect(() => { loadAppointments(); loadClients() }, [])
+  async function loadZoomUrl() {
+    const { data } = await supabase
+      .from('app_settings')
+      .select('value')
+      .eq('key', 'collective_zoom_url')
+      .single()
+    if (data?.value) setDefaultZoomUrl(data.value)
+  }
+
+  useEffect(() => { loadAppointments(); loadClients(); loadZoomUrl() }, [])
 
   function openNew() {
     setEditing(null)
-    setForm(EMPTY_FORM)
+    setForm({ ...EMPTY_FORM, meeting_url: defaultZoomUrl })
     setSearch('')
     setShowForm(true)
   }
