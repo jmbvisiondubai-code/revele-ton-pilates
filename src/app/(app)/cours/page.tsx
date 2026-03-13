@@ -19,8 +19,19 @@ import { COLOR_CLASSES } from '@/app/admin/cours/page'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
 
-function getCalendarUrl(liveId: string) {
-  return `/api/calendar?id=${liveId}`
+function getGoogleCalendarUrl(live: LiveSession) {
+  const start = new Date(live.scheduled_at)
+  const end = new Date(start.getTime() + live.duration_minutes * 60000)
+  const fmt = (d: Date) => d.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '')
+  const typeLabel = SESSION_TYPE_LABELS[live.session_type]?.label ?? 'Live'
+  const details = [live.description, live.equipment ? `Matériel : ${live.equipment}` : ''].filter(Boolean).join('\n')
+  const params = new URLSearchParams({
+    action: 'TEMPLATE',
+    text: `${typeLabel} — ${live.title}`,
+    dates: `${fmt(start)}/${fmt(end)}`,
+    details,
+  })
+  return `https://calendar.google.com/calendar/render?${params}`
 }
 
 type Tab = 'lives' | 'vod' | 'replays'
@@ -315,7 +326,7 @@ export default function CoursPage() {
 
               {/* Add to calendar */}
               <button
-                onClick={() => { window.location.href = getCalendarUrl(nextLive.id) }}
+                onClick={() => window.open(getGoogleCalendarUrl(nextLive), '_blank', 'noopener')}
                 className="flex items-center justify-center gap-2 w-full mt-3 py-2.5 rounded-xl border border-[#DCCFBF] text-sm font-medium text-[#6B6359] hover:border-[#C6684F] hover:text-[#C6684F] active:bg-[#F2E8DF] transition-colors"
               >
                 <CalendarPlus size={14} />
