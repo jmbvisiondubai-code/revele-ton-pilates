@@ -101,7 +101,6 @@ export default function CoursPage() {
   const [isRegistered, setIsRegistered] = useState(false)
   const [registering, setRegistering] = useState(false)
   const [regError, setRegError] = useState<string | null>(null)
-  const [showCalMenu, setShowCalMenu] = useState(false)
   const { profile } = useAuthStore()
   const supabase = createClient()
 
@@ -361,35 +360,21 @@ export default function CoursPage() {
               </div>
 
               {/* Add to calendar */}
-              <div className="relative mt-3">
+              <div className="flex gap-2 mt-3">
                 <button
-                  onClick={() => setShowCalMenu(v => !v)}
-                  className="flex items-center gap-2 w-full justify-center py-2.5 rounded-xl border border-[#DCCFBF] text-sm font-medium text-[#6B6359] hover:border-[#C6684F] hover:text-[#C6684F] active:bg-[#F2E8DF] transition-colors"
+                  onClick={() => openExternal(buildGoogleCalendarUrl(nextLive))}
+                  className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl border border-[#DCCFBF] text-sm font-medium text-[#6B6359] hover:border-[#C6684F] hover:text-[#C6684F] active:bg-[#F2E8DF] transition-colors"
                 >
-                  <CalendarPlus size={15} />
-                  Ajouter à mon agenda
+                  <CalendarPlus size={14} />
+                  Google Agenda
                 </button>
-                {showCalMenu && (
-                  <>
-                    <div className="fixed inset-0 z-40" onClick={() => setShowCalMenu(false)} />
-                    <div className="absolute left-0 right-0 top-full mt-1 z-50 bg-white rounded-xl border border-[#DCCFBF] shadow-lg overflow-hidden">
-                      <button
-                        onClick={() => { openExternal(buildGoogleCalendarUrl(nextLive)); setShowCalMenu(false) }}
-                        className="flex items-center gap-3 w-full px-4 py-3 text-sm text-[#2C2C2C] hover:bg-[#F2E8DF] transition-colors"
-                      >
-                        <span className="text-base">📅</span>
-                        Google Agenda
-                      </button>
-                      <button
-                        onClick={() => { downloadIcs(nextLive); setShowCalMenu(false) }}
-                        className="flex items-center gap-3 w-full px-4 py-3 text-sm text-[#2C2C2C] hover:bg-[#F2E8DF] transition-colors border-t border-[#DCCFBF]/50"
-                      >
-                        <span className="text-base">🍎</span>
-                        Apple / Outlook (.ics)
-                      </button>
-                    </div>
-                  </>
-                )}
+                <button
+                  onClick={() => downloadIcs(nextLive)}
+                  className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl border border-[#DCCFBF] text-sm font-medium text-[#6B6359] hover:border-[#C6684F] hover:text-[#C6684F] active:bg-[#F2E8DF] transition-colors"
+                >
+                  <CalendarPlus size={14} />
+                  Apple / Outlook
+                </button>
               </div>
 
               {/* Zoom link */}
@@ -420,10 +405,6 @@ export default function CoursPage() {
             </div>
           )}
 
-          <div className="rounded-xl bg-[#F2E8DF] p-4 text-sm text-[#6B6359]">
-            <p className="font-medium text-[#2C2C2C] mb-1">Cours privés en visio</p>
-            <p>Les liens de tes cours individuels te sont envoyés séparément par Marjorie.</p>
-          </div>
         </motion.div>
       )}
 
