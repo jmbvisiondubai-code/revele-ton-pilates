@@ -9,7 +9,7 @@ import { fr } from 'date-fns/locale'
 
 const EMPTY_FORM = {
   title: '', description: '', scheduled_at: '', duration_minutes: 60,
-  meeting_url: '', max_participants: 20, equipment: '', is_collective: true,
+  meeting_url: '', max_participants: 20, is_unlimited: false, equipment: '', is_collective: true,
 }
 
 export default function AdminLivesPage() {
@@ -79,6 +79,7 @@ export default function AdminLivesPage() {
       duration_minutes: live.duration_minutes,
       meeting_url: live.meeting_url ?? '',
       max_participants: live.max_participants ?? 20,
+      is_unlimited: live.max_participants === null,
       equipment: live.equipment ?? '',
       is_collective: live.is_collective ?? true,
     })
@@ -93,7 +94,7 @@ export default function AdminLivesPage() {
       scheduled_at: new Date(form.scheduled_at).toISOString(),
       duration_minutes: form.duration_minutes,
       meeting_url: form.meeting_url || null,
-      max_participants: form.max_participants,
+      max_participants: form.is_unlimited ? null : form.max_participants,
       equipment: form.equipment || null,
       is_collective: form.is_collective,
     }
@@ -191,9 +192,16 @@ export default function AdminLivesPage() {
               <p className="text-sm text-[#C6684F]">
                 {format(new Date(live.scheduled_at), 'EEEE d MMMM à HH:mm', { locale: fr })} · {live.duration_minutes} min
               </p>
-              {live.equipment && (
-                <p className="text-xs text-[#6B6359] mt-0.5">Matériel : {live.equipment}</p>
-              )}
+              <div className="flex items-center gap-3 mt-0.5">
+                {live.max_participants ? (
+                  <span className="text-xs text-[#6B6359]">{live.registered_count}/{live.max_participants} places</span>
+                ) : (
+                  <span className="text-xs text-[#A09488]">Places illimitées</span>
+                )}
+                {live.equipment && (
+                  <span className="text-xs text-[#6B6359]">· Matériel : {live.equipment}</span>
+                )}
+              </div>
             </div>
             <div className="flex items-center gap-2">
               <button onClick={() => openEdit(live)} className="p-2 text-[#C6684F] hover:text-[#2C2C2C]"><Pencil size={16} /></button>
@@ -236,17 +244,39 @@ export default function AdminLivesPage() {
                 <input type="datetime-local" value={form.scheduled_at} onChange={e => setForm(p => ({ ...p, scheduled_at: e.target.value }))}
                   className="w-full border border-[#DCCFBF] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#C6684F]" />
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-sm font-medium text-[#6B6359] mb-1">Durée (min)</label>
-                  <input type="number" value={form.duration_minutes} onChange={e => setForm(p => ({ ...p, duration_minutes: parseInt(e.target.value) || 60 }))}
-                    className="w-full border border-[#DCCFBF] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#C6684F]" />
+              <div>
+                <label className="block text-sm font-medium text-[#6B6359] mb-1">Durée (min)</label>
+                <input type="number" value={form.duration_minutes} onChange={e => setForm(p => ({ ...p, duration_minutes: parseInt(e.target.value) || 60 }))}
+                  className="w-full border border-[#DCCFBF] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#C6684F]" />
+              </div>
+
+              {/* Places */}
+              <div>
+                <label className="block text-sm font-medium text-[#6B6359] mb-2">Nombre de places</label>
+                <div className="flex gap-2 mb-2">
+                  <button
+                    type="button"
+                    onClick={() => setForm(p => ({ ...p, is_unlimited: true }))}
+                    className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors ${form.is_unlimited ? 'bg-[#C6684F] text-white border-[#C6684F]' : 'border-[#DCCFBF] text-[#6B6359] hover:border-[#C6684F]'}`}
+                  >
+                    Illimité
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setForm(p => ({ ...p, is_unlimited: false }))}
+                    className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors ${!form.is_unlimited ? 'bg-[#C6684F] text-white border-[#C6684F]' : 'border-[#DCCFBF] text-[#6B6359] hover:border-[#C6684F]'}`}
+                  >
+                    Limité
+                  </button>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-[#6B6359] mb-1">Places max</label>
-                  <input type="number" value={form.max_participants} onChange={e => setForm(p => ({ ...p, max_participants: parseInt(e.target.value) || 0 }))}
+                {!form.is_unlimited && (
+                  <input type="number" value={form.max_participants} onChange={e => setForm(p => ({ ...p, max_participants: parseInt(e.target.value) || 1 }))}
+                    min={1} placeholder="Nombre de places"
                     className="w-full border border-[#DCCFBF] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#C6684F]" />
-                </div>
+                )}
+                {!form.is_unlimited && (
+                  <p className="text-xs text-[#A09488] mt-1">Les clientes pourront réserver et annuler leur place.</p>
+                )}
               </div>
               <div>
                 <label className="block text-sm font-medium text-[#6B6359] mb-1">Matériel nécessaire</label>

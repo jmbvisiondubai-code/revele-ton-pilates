@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { Clock, Monitor, Video, ExternalLink, Radio, Film, X, ChevronRight, Play } from 'lucide-react'
+import { Clock, Monitor, Video, ExternalLink, Radio, Film, X, ChevronRight, Play, UserCheck, UserMinus } from 'lucide-react'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/client'
+import { useAuthStore } from '@/stores/auth-store'
 import { Card, Button } from '@/components/ui'
 import type { LiveSession, VodCategory } from '@/types/database'
 import { COLOR_CLASSES } from '@/app/admin/cours/page'
@@ -38,6 +39,9 @@ export default function CoursPage() {
   const [zoomUrl, setZoomUrl] = useState<string | null>(null)
   const [linkCopied, setLinkCopied] = useState<string | null>(null)
   const [iosPrompt, setIosPrompt] = useState<string | null>(null)
+  const [isRegistered, setIsRegistered] = useState(false)
+  const [registering, setRegistering] = useState(false)
+  const { profile } = useAuthStore()
   const supabase = createClient()
 
   useEffect(() => {
@@ -59,7 +63,20 @@ export default function CoursPage() {
         .order('scheduled_at', { ascending: true })
         .limit(1)
         .single()
-      if (liveData) setNextLive(liveData as LiveSession)
+      if (liveData) {
+        setNextLive(liveData as LiveSession)
+        // Check if user is registered
+        const { data: { user } } = await supabase.auth.getUser()
+        if (user) {
+          const { data: reg } = await supabase
+            .from('live_registrations')
+            .select('id')
+            .eq('user_id', user.id)
+            .eq('live_session_id', liveData.id)
+            .maybeSingle()
+          setIsRegistered(!!reg)
+        }
+      }
 
       const { data: settings } = await supabase
         .from('app_settings')
@@ -107,6 +124,34 @@ export default function CoursPage() {
       a.click()
       document.body.removeChild(a)
     }
+  }
+
+  async function registerForLive() {
+    if (!nextLive || !profile) return
+    setRegistering(true)
+    const { error } = await supabase
+      .from('live_registrations')
+      .insert({ user_id: profile.id, live_session_id: nextLive.id })
+    if (!error) {
+      setIsRegistered(true)
+      setNextLive(prev => prev ? { ...prev, registered_count: prev.registered_count + 1 } : prev)
+    }
+    setRegistering(false)
+  }
+
+  async function unregisterFromLive() {
+    if (!nextLive || !profile) return
+    setRegistering(true)
+    const { error } = await supabase
+      .from('live_registrations')
+      .delete()
+      .eq('user_id', profile.id)
+      .eq('live_session_id', nextLive.id)
+    if (!error) {
+      setIsRegistered(false)
+      setNextLive(prev => prev ? { ...prev, registered_count: Math.max(0, prev.registered_count - 1) } : prev)
+    }
+    setRegistering(false)
   }
 
   const tabs: { key: Tab; label: string; icon: React.ReactNode }[] = [
@@ -188,16 +233,58 @@ export default function CoursPage() {
                     <span>Matériel : {nextLive.equipment}</span>
                   </div>
                 )}
-                {nextLive.max_participants && (
+                {nextLive.max_participants ? (
                   <div className="flex items-center gap-2">
                     <span className="text-[#C6684F] text-xs font-medium w-[13px] text-center">👥</span>
                     <span>{nextLive.registered_count}/{nextLive.max_participants} places</span>
+                    {nextLive.registered_count >= nextLive.max_participants && !isRegistered && (
+                      <span className="text-[10px] font-semibold text-red-500 bg-red-50 px-1.5 py-0.5 rounded">Complet</span>
+                    )}
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <span className="text-[#C6684F] text-xs font-medium w-[13px] text-center">👥</span>
+                    <span>Places illimitées · {nextLive.registered_count} inscrite{nextLive.registered_count !== 1 ? 's' : ''}</span>
                   </div>
                 )}
               </div>
-              <div className="flex gap-2 mt-4">
+
+              {/* Registration */}
+              {nextLive.max_participants !== null && (
+                <div className="mt-4">
+                  {isRegistered ? (
+                    <div className="flex items-center gap-3">
+                      <div className="flex-1 flex items-center gap-2 bg-emerald-50 text-emerald-700 rounded-xl px-3 py-2.5 text-sm font-medium">
+                        <UserCheck size={15} />
+                        Place réservée
+                      </div>
+                      <button
+                        onClick={unregisterFromLive}
+                        disabled={registering}
+                        className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl border border-red-200 text-red-500 text-sm font-medium hover:bg-red-50 transition-colors disabled:opacity-50"
+                      >
+                        <UserMinus size={14} />
+                        Annuler
+                      </button>
+                    </div>
+                  ) : (
+                    <Button
+                      size="sm"
+                      fullWidth
+                      onClick={registerForLive}
+                      disabled={registering || (nextLive.max_participants !== null && nextLive.registered_count >= nextLive.max_participants)}
+                    >
+                      <UserCheck size={14} />
+                      {nextLive.registered_count >= (nextLive.max_participants ?? Infinity) ? 'Complet' : 'Réserver ma place'}
+                    </Button>
+                  )}
+                </div>
+              )}
+
+              {/* Zoom link */}
+              <div className="flex gap-2 mt-3">
                 {zoomUrl ? (
-                  <Button size="sm" className="flex-1" onClick={() => openExternal(zoomUrl)}>
+                  <Button size="sm" variant={isRegistered || !nextLive.max_participants ? 'primary' : 'outline'} className="flex-1" onClick={() => openExternal(zoomUrl)}>
                     <Video size={14} />
                     Rejoindre sur Zoom
                   </Button>
