@@ -608,10 +608,10 @@ export default function CommunautePage() {
         )}
       </AnimatePresence>
 
-      <div className="sticky top-14 lg:top-0 z-30 px-4 lg:px-6 pt-2 lg:pt-4 pb-2 bg-[#FAF6F1]/95 backdrop-blur-sm">
+      <div className="sticky top-14 lg:top-0 z-30 px-4 lg:px-6 pt-3 lg:pt-5 pb-3 bg-[#FAF6F1]/95 backdrop-blur-sm">
         <div className="flex items-center justify-between">
-          <h1 className="font-[family-name:var(--font-heading)] text-xl text-text">Communauté</h1>
-          <p className="text-xs text-text-muted">Partage, inspire et célèbre</p>
+          <h1 className="font-[family-name:var(--font-heading)] text-2xl text-text">Communauté</h1>
+          <p className="text-sm text-text-muted">Partage, inspire et célèbre</p>
         </div>
       </div>
 
