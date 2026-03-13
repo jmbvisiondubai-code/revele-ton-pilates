@@ -5,7 +5,6 @@ import { motion } from 'framer-motion'
 import {
   Calendar,
   CalendarClock,
-  CalendarPlus,
   Clock,
   Trophy,
   ChevronRight,
@@ -24,7 +23,7 @@ import { useRouter } from 'next/navigation'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/client'
 import { useAuthStore } from '@/stores/auth-store'
 import { Card, ProgressBar, StreakBadge, BadgePill } from '@/components/ui'
-import { downloadIcs } from '@/lib/download-ics'
+import { AddToCalendar } from '@/components/add-to-calendar'
 import { getGreeting, formatDuration } from '@/lib/utils'
 import type { Profile, DailyInspiration, LiveSession, LiveSessionType, PrivateAppointment } from '@/types/database'
 
@@ -350,25 +349,19 @@ export default function DashboardPage() {
                         Rejoindre la visio
                       </a>
                     )}
-                    {/* Calendar buttons */}
-                    <div className="flex gap-2 mt-3">
-                      <a
-                        href={getApptCalendarUrl(privateAppt)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center justify-center gap-2 flex-1 py-2.5 rounded-xl border border-[#7C3AED]/20 text-sm font-medium text-[#6B6359] hover:border-[#7C3AED] hover:text-[#7C3AED] active:bg-[#7C3AED]/5 transition-colors"
-                        onClick={e => e.stopPropagation()}
-                      >
-                        <CalendarPlus size={14} />
-                        Google Agenda
-                      </a>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); downloadIcs(`/api/calendar/rdv?id=${privateAppt.id}`, 'rdv.ics') }}
-                        className="flex items-center justify-center gap-2 flex-1 py-2.5 rounded-xl border border-[#7C3AED]/20 text-sm font-medium text-[#6B6359] hover:border-[#7C3AED] hover:text-[#7C3AED] active:bg-[#7C3AED]/5 transition-colors"
-                      >
-                        <CalendarPlus size={14} />
-                        Autre agenda
-                      </button>
+                    {/* Calendar picker */}
+                    <div className="mt-3" onClick={e => e.stopPropagation()}>
+                      <AddToCalendar
+                        event={{
+                          title: `RDV privé — ${privateAppt.title}`,
+                          description: [privateAppt.description, privateAppt.meeting_url ? `Lien visio : ${privateAppt.meeting_url}` : ''].filter(Boolean).join('\n'),
+                          location: privateAppt.meeting_url || undefined,
+                          start: new Date(privateAppt.scheduled_at),
+                          end: new Date(new Date(privateAppt.scheduled_at).getTime() + privateAppt.duration_minutes * 60000),
+                        }}
+                        filename="rdv.ics"
+                        accent="purple"
+                      />
                     </div>
                   </div>
                 </div>
