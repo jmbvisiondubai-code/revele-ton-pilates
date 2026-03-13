@@ -1208,12 +1208,10 @@ export default function MessagesPage() {
                 <textarea
                   ref={textareaRef}
                   value={inputText}
-                  onChange={e => setInputText(e.target.value)}
-                  onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage() } }}
+                  onChange={e => { setInputText(e.target.value); e.target.style.height = 'auto'; e.target.style.height = `${Math.min(e.target.scrollHeight, 200)}px` }}
                   placeholder="Écrire un message..."
-                  rows={1}
-                  className="flex-1 bg-[#FAF6F1] border border-[#EDE5DA] rounded-2xl px-4 py-2.5 text-sm text-[#2C2C2C] placeholder-[#A09488] focus:outline-none focus:border-[#C6684F] resize-none"
-                  style={{ maxHeight: 120, overflowY: 'auto' }}
+                  rows={2}
+                  className="flex-1 bg-[#FAF6F1] border border-[#EDE5DA] rounded-2xl px-4 py-2.5 text-sm text-[#2C2C2C] placeholder-[#A09488] focus:outline-none focus:border-[#C6684F] resize-none max-h-[200px] overflow-y-auto"
                 />
                 <button
                   onClick={sendMessage}
