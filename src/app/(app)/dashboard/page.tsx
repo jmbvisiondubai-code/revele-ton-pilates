@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import {
   Calendar,
@@ -24,9 +24,6 @@ import { createClient, isSupabaseConfigured } from '@/lib/supabase/client'
 import { useAuthStore } from '@/stores/auth-store'
 import { Card, ProgressBar, StreakBadge, BadgePill } from '@/components/ui'
 import { getGreeting, formatDuration } from '@/lib/utils'
-import { PracticeLogModal } from '@/components/practice-log-modal'
-import { PracticeCelebration } from '@/components/practice-celebration'
-import type { PracticeLogResult } from '@/lib/practice-log'
 import type { Profile, DailyInspiration, LiveSession, LiveSessionType, PrivateAppointment } from '@/types/database'
 
 const SESSION_TYPE_LABELS: Record<LiveSessionType, string> = {
@@ -83,14 +80,6 @@ export default function DashboardPage() {
   const [replayImage, setReplayImage] = useState<string | null>(null)
   const [codeCopied, setCodeCopied] = useState(false)
   const [privateAppt, setPrivateAppt] = useState<PrivateAppointment | null>(null)
-  const [showLogModal, setShowLogModal] = useState(false)
-  const [celebrationResult, setCelebrationResult] = useState<PracticeLogResult | null>(null)
-  const handleLogSuccess = useCallback((result: PracticeLogResult) => {
-    setCelebrationResult(result)
-  }, [])
-  const handleDismissCelebration = useCallback(() => {
-    setCelebrationResult(null)
-  }, [])
   function openExternal(url: string) {
     const a = document.createElement('a')
     a.href = url; a.target = '_blank'; a.rel = 'noopener noreferrer'
@@ -546,29 +535,6 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* FAB: Log practice */}
-      <motion.button
-        onClick={() => setShowLogModal(true)}
-        className="fixed bottom-[5.5rem] right-5 lg:bottom-8 lg:right-8 z-40 w-14 h-14 rounded-full bg-[#C6684F] text-white shadow-lg shadow-[#C6684F]/30 flex items-center justify-center hover:bg-[#b05a42] active:scale-95 transition-all"
-        whileHover={{ scale: 1.05 }}
-        whileTap={{ scale: 0.95 }}
-        title="Enregistrer une session"
-      >
-        <Check size={24} strokeWidth={2.5} />
-      </motion.button>
-
-      {/* Practice log modal */}
-      <PracticeLogModal
-        open={showLogModal}
-        onClose={() => setShowLogModal(false)}
-        onSuccess={handleLogSuccess}
-      />
-
-      {/* Celebration overlay */}
-      <PracticeCelebration
-        result={celebrationResult}
-        onDismiss={handleDismissCelebration}
-      />
     </div>
   )
 }
