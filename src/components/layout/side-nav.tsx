@@ -18,7 +18,7 @@ const topItems = [
 ]
 
 const bottomItems = [
-  { href: '/communaute', label: 'Communauté',   icon: Users },
+  { href: '/communaute', label: 'Social',        icon: Users },
   { href: '/conseils',   label: 'Articles',     icon: BookOpen },
 ]
 
