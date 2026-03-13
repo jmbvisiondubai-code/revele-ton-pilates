@@ -51,6 +51,7 @@ export default function DashboardPage() {
   const [featured, setFeatured] = useState<FeaturedCard | null>(null)
   const [replayUrl, setReplayUrl] = useState<string | null>(null)
   const [replayCode, setReplayCode] = useState<string | null>(null)
+  const [replayImage, setReplayImage] = useState<string | null>(null)
   const [codeCopied, setCodeCopied] = useState(false)
   const [iosPrompt, setIosPrompt] = useState(false)
 
@@ -112,7 +113,7 @@ export default function DashboardPage() {
       const { data: settings } = await supabase
         .from('app_settings')
         .select('key, value')
-        .in('key', ['featured_title', 'featured_description', 'featured_url', 'featured_image', 'vimeo_replay_url', 'vimeo_replay_code'])
+        .in('key', ['featured_title', 'featured_description', 'featured_url', 'featured_image', 'vimeo_replay_url', 'vimeo_replay_code', 'vimeo_replay_image'])
       if (settings && settings.length > 0) {
         const get = (k: string) => settings.find((s: { key: string; value: string | null }) => s.key === k)?.value ?? null
         const url = get('featured_url')
@@ -126,8 +127,10 @@ export default function DashboardPage() {
         }
         const replay = get('vimeo_replay_url')
         const code = get('vimeo_replay_code')
+        const rImg = get('vimeo_replay_image')
         if (replay) setReplayUrl(replay)
         if (code) setReplayCode(code)
+        if (rImg) setReplayImage(rImg)
       }
     }
 
@@ -249,35 +252,44 @@ export default function DashboardPage() {
             {/* Replay */}
             {replayUrl && (
               <button onClick={() => openExternal(replayUrl)} className="w-full text-left">
-                <Card hover className="h-full border-[#7C3AED]/10 bg-[#7C3AED]/[0.03]">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-[#7C3AED]/10 rounded-xl flex items-center justify-center flex-shrink-0">
-                      <Play size={18} className="text-[#7C3AED] ml-0.5" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-text">Replay</p>
-                      {replayCode ? (
-                        <p className="text-xs text-text-secondary">
-                          Mot de passe : <span className="font-mono font-bold text-[#7C3AED]">{replayCode}</span>
-                        </p>
-                      ) : (
-                        <p className="text-xs text-text-secondary">Dernier cours collectif</p>
-                      )}
-                    </div>
-                    {replayCode && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          navigator.clipboard.writeText(replayCode)
-                          setCodeCopied(true)
-                          setTimeout(() => setCodeCopied(false), 2000)
-                        }}
-                        className="p-1.5 rounded-lg bg-[#7C3AED]/10 hover:bg-[#7C3AED]/20 transition-colors text-[#7C3AED] flex-shrink-0"
-                      >
-                        {codeCopied ? <Check size={14} /> : <Copy size={14} />}
-                      </button>
+                <Card hover className="h-full p-0 overflow-hidden border-[#7C3AED]/10 bg-[#7C3AED]/[0.03]">
+                  <div className="flex items-stretch">
+                    {replayImage ? (
+                      <div className="w-24 flex-shrink-0 rounded-l-2xl overflow-hidden">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={replayImage} alt="Replay" className="w-full h-full object-contain bg-[#F2E8DF]/50" />
+                      </div>
+                    ) : (
+                      <div className="w-16 flex-shrink-0 bg-[#7C3AED]/10 flex items-center justify-center">
+                        <Play size={20} className="text-[#7C3AED] ml-0.5" />
+                      </div>
                     )}
-                    <ExternalLink size={14} className="text-[#7C3AED] flex-shrink-0" />
+                    <div className="flex-1 min-w-0 px-3 py-2.5 flex items-center gap-2">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-text">Replay</p>
+                        {replayCode ? (
+                          <p className="text-xs text-text-secondary">
+                            Mot de passe : <span className="font-mono font-bold text-[#7C3AED]">{replayCode}</span>
+                          </p>
+                        ) : (
+                          <p className="text-xs text-text-secondary">Dernier cours collectif</p>
+                        )}
+                      </div>
+                      {replayCode && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            navigator.clipboard.writeText(replayCode)
+                            setCodeCopied(true)
+                            setTimeout(() => setCodeCopied(false), 2000)
+                          }}
+                          className="p-1.5 rounded-lg bg-[#7C3AED]/10 hover:bg-[#7C3AED]/20 transition-colors text-[#7C3AED] flex-shrink-0"
+                        >
+                          {codeCopied ? <Check size={14} /> : <Copy size={14} />}
+                        </button>
+                      )}
+                      <ExternalLink size={14} className="text-[#7C3AED] flex-shrink-0" />
+                    </div>
                   </div>
                 </Card>
               </button>
