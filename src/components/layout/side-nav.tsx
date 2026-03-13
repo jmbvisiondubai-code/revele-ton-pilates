@@ -9,13 +9,58 @@ import Image from 'next/image'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/client'
 import { useAuthStore } from '@/stores/auth-store'
 
-const navItems = [
-  { href: '/dashboard',  label: 'Accueil',     icon: Home,       emoji: '🏠' },
-  { href: '/cours',      label: 'Cours',        icon: Play,       emoji: '▶️' },
-  { href: '/suivi',      label: 'Mon suivi',    icon: TrendingUp, emoji: '📈' },
-  { href: '/communaute', label: 'Communauté',   icon: Users,      emoji: '💬' },
-  { href: '/conseils',   label: 'Articles',     icon: BookOpen,   emoji: '📖' },
+const topItems = [
+  { href: '/dashboard',  label: 'Accueil',     icon: Home },
+  { href: '/cours',      label: 'Cours',        icon: Play },
 ]
+
+const bottomItems = [
+  { href: '/communaute', label: 'Communauté',   icon: Users },
+  { href: '/conseils',   label: 'Articles',     icon: BookOpen },
+]
+
+const suiviItem = { href: '/suivi', label: 'Mon suivi', icon: TrendingUp }
+
+function NavItem({ href, icon: Icon, label, isActive, badge }: {
+  href: string; icon: React.ComponentType<{ size?: number; strokeWidth?: number; className?: string }>
+  label: string; isActive: boolean; badge: number
+}) {
+  return (
+    <Link href={href} className="relative block">
+      <div className={`relative flex items-center gap-3 px-4 py-3 rounded-2xl text-[13px] font-medium transition-all duration-300 ${
+        isActive ? 'text-[#C6684F]' : 'text-[#6B6359] hover:text-[#2C2C2C]'
+      }`}>
+        {isActive && (
+          <motion.div
+            layoutId="sidenav-active"
+            className="absolute inset-0 bg-gradient-to-r from-[#C6684F]/10 to-[#E8926F]/5 rounded-2xl border border-[#C6684F]/15 shadow-sm"
+            transition={{ type: 'spring', stiffness: 350, damping: 30 }}
+          />
+        )}
+        <div className={`relative z-10 w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-300 ${
+          isActive ? 'bg-gradient-to-br from-[#C6684F] to-[#E8926F] shadow-md shadow-[#C6684F]/25' : 'bg-[#F2E8DF]/70'
+        }`}>
+          <Icon size={17} strokeWidth={isActive ? 2.5 : 1.8} className={isActive ? 'text-white' : ''} />
+        </div>
+        <span className={`relative z-10 flex-1 transition-all duration-200 ${isActive ? 'font-semibold tracking-wide' : ''}`}>
+          {label}
+        </span>
+        {badge > 0 && (
+          <motion.span initial={{ scale: 0 }} animate={{ scale: 1 }}
+            className="relative z-10 min-w-[22px] h-[22px] px-1.5 bg-gradient-to-br from-[#C6684F] to-[#D4785F] text-white text-[10px] font-bold rounded-full flex items-center justify-center leading-none shadow-sm shadow-[#C6684F]/30">
+            {badge > 99 ? '99+' : badge}
+          </motion.span>
+        )}
+        {isActive && (
+          <motion.div layoutId="sidenav-accent"
+            className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-gradient-to-b from-[#C6684F] to-[#E8926F] rounded-r-full"
+            transition={{ type: 'spring', stiffness: 350, damping: 30 }}
+          />
+        )}
+      </div>
+    </Link>
+  )
+}
 
 export function SideNav() {
   const pathname = usePathname()
@@ -97,8 +142,8 @@ export function SideNav() {
             </div>
           </div>
           <div>
-            <p className="font-[family-name:var(--font-heading)] text-[15px] font-semibold text-[#2C2C2C] leading-tight tracking-wide">Révèle ton</p>
-            <p className="font-[family-name:var(--font-heading)] text-[15px] font-semibold text-[#C6684F] leading-tight tracking-wide">Pilates</p>
+            <p className="font-[family-name:var(--font-heading)] text-lg font-bold text-[#2C2C2C] leading-tight tracking-wide">Révèle ton</p>
+            <p className="font-[family-name:var(--font-heading)] text-lg font-bold text-[#C6684F] leading-tight tracking-wide">Pilates</p>
           </div>
         </Link>
       </div>
@@ -109,68 +154,85 @@ export function SideNav() {
       </div>
 
       {/* ── Navigation ── */}
-      <nav className="flex-1 px-4 py-3 space-y-1">
-        {navItems.map((item) => {
-          const isActive = pathname === item.href || pathname.startsWith(item.href + '/')
-          const Icon = item.icon
-          const badge = item.href === '/suivi' ? unreadDms : item.href === '/communaute' ? unreadCommunity : 0
+      <nav className="flex-1 px-4 py-3 flex flex-col">
+        {/* Top nav items */}
+        <div className="space-y-1">
+          {topItems.map((item) => {
+            const isActive = pathname === item.href || pathname.startsWith(item.href + '/')
+            const Icon = item.icon
+            return (
+              <NavItem key={item.href} href={item.href} icon={Icon} label={item.label} isActive={isActive} badge={0} />
+            )
+          })}
+        </div>
+
+        {/* ── Mon suivi — featured card ── */}
+        {(() => {
+          const isSuiviActive = pathname === suiviItem.href || pathname.startsWith(suiviItem.href + '/')
           return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className="relative block"
-            >
-              <div className={`relative flex items-center gap-3 px-4 py-3 rounded-2xl text-[13px] font-medium transition-all duration-300 ${
-                isActive
-                  ? 'text-[#C6684F]'
-                  : 'text-[#6B6359] hover:text-[#2C2C2C]'
-              }`}>
-                {/* Active background pill */}
-                {isActive && (
-                  <motion.div
-                    layoutId="sidenav-active"
-                    className="absolute inset-0 bg-gradient-to-r from-[#C6684F]/10 to-[#E8926F]/5 rounded-2xl border border-[#C6684F]/15 shadow-sm"
-                    transition={{ type: 'spring', stiffness: 350, damping: 30 }}
-                  />
-                )}
-
-                {/* Icon container */}
-                <div className={`relative z-10 w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-300 ${
-                  isActive
-                    ? 'bg-gradient-to-br from-[#C6684F] to-[#E8926F] shadow-md shadow-[#C6684F]/25'
-                    : 'bg-[#F2E8DF]/70 group-hover:bg-[#F2E8DF]'
+            <Link href={suiviItem.href} className="block my-3">
+              <motion.div
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                className={`relative overflow-hidden rounded-2xl p-[1px] transition-shadow duration-300 ${
+                  isSuiviActive
+                    ? 'shadow-lg shadow-[#C6684F]/20'
+                    : 'shadow-md shadow-[#C6684F]/10 hover:shadow-lg hover:shadow-[#C6684F]/20'
+                }`}
+              >
+                {/* Gradient border */}
+                <div className="absolute inset-0 bg-gradient-to-br from-[#C6684F] via-[#E8926F] to-[#C6684F] rounded-2xl" />
+                {/* Inner content */}
+                <div className={`relative rounded-[15px] px-4 py-3.5 flex items-center gap-3 transition-all duration-300 ${
+                  isSuiviActive
+                    ? 'bg-gradient-to-br from-[#C6684F] to-[#D4785F]'
+                    : 'bg-gradient-to-br from-[#FFFAF7] to-[#FFF0E8] hover:from-[#FFF0E8] hover:to-[#FDEEE6]'
                 }`}>
-                  <Icon size={17} strokeWidth={isActive ? 2.5 : 1.8} className={isActive ? 'text-white' : ''} />
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-300 ${
+                    isSuiviActive
+                      ? 'bg-white/20'
+                      : 'bg-gradient-to-br from-[#C6684F] to-[#E8926F] shadow-sm shadow-[#C6684F]/25'
+                  }`}>
+                    <TrendingUp size={19} strokeWidth={2.2} className={isSuiviActive ? 'text-white' : 'text-white'} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <span className={`text-[13px] font-bold tracking-wide ${isSuiviActive ? 'text-white' : 'text-[#C6684F]'}`}>
+                      {suiviItem.label}
+                    </span>
+                    <p className={`text-[10px] mt-0.5 ${isSuiviActive ? 'text-white/70' : 'text-[#A09488]'}`}>
+                      Progression & messages
+                    </p>
+                  </div>
+                  {unreadDms > 0 && (
+                    <motion.span
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      className={`min-w-[22px] h-[22px] px-1.5 text-[10px] font-bold rounded-full flex items-center justify-center leading-none ${
+                        isSuiviActive
+                          ? 'bg-white text-[#C6684F]'
+                          : 'bg-gradient-to-br from-[#C6684F] to-[#D4785F] text-white shadow-sm shadow-[#C6684F]/30'
+                      }`}
+                    >
+                      {unreadDms > 99 ? '99+' : unreadDms}
+                    </motion.span>
+                  )}
                 </div>
-
-                {/* Label */}
-                <span className={`relative z-10 flex-1 transition-all duration-200 ${isActive ? 'font-semibold tracking-wide' : ''}`}>
-                  {item.label}
-                </span>
-
-                {/* Badge */}
-                {badge > 0 && (
-                  <motion.span
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    className="relative z-10 min-w-[22px] h-[22px] px-1.5 bg-gradient-to-br from-[#C6684F] to-[#D4785F] text-white text-[10px] font-bold rounded-full flex items-center justify-center leading-none shadow-sm shadow-[#C6684F]/30"
-                  >
-                    {badge > 99 ? '99+' : badge}
-                  </motion.span>
-                )}
-
-                {/* Active accent bar */}
-                {isActive && (
-                  <motion.div
-                    layoutId="sidenav-accent"
-                    className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-gradient-to-b from-[#C6684F] to-[#E8926F] rounded-r-full"
-                    transition={{ type: 'spring', stiffness: 350, damping: 30 }}
-                  />
-                )}
-              </div>
+              </motion.div>
             </Link>
           )
-        })}
+        })()}
+
+        {/* Bottom nav items */}
+        <div className="space-y-1">
+          {bottomItems.map((item) => {
+            const isActive = pathname === item.href || pathname.startsWith(item.href + '/')
+            const Icon = item.icon
+            const badge = item.href === '/communaute' ? unreadCommunity : 0
+            return (
+              <NavItem key={item.href} href={item.href} icon={Icon} label={item.label} isActive={isActive} badge={badge} />
+            )
+          })}
+        </div>
       </nav>
 
       {/* ── Decorative divider ── */}
