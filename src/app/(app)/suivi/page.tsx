@@ -381,10 +381,10 @@ export default function SuiviPage() {
                     {ALL_DAYS.map(day => {
                       const isPreferred = userProfile.preferred_days.includes(day)
                       return (
-                        <div key={day} className={`flex-1 py-2 rounded-lg text-center text-xs font-medium transition-all ${
+                        <div key={day} className={`flex-1 py-2.5 rounded-xl text-center text-sm font-semibold transition-all ${
                           isPreferred
-                            ? 'bg-[#C6684F]/10 text-[#C6684F] border border-[#C6684F]/20'
-                            : 'bg-[#F8F4F0] text-[#BFAE9F]'
+                            ? 'bg-[#C6684F] text-white shadow-sm shadow-[#C6684F]/25'
+                            : 'bg-[#F2E8DF] text-[#A09488]'
                         }`}>
                           {DAY_LABELS[day] ?? day.slice(0, 3)}
                         </div>
