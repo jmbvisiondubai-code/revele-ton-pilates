@@ -117,7 +117,7 @@ export default function ConseilsPage() {
 
   async function postComment() {
     if (!commentText.trim() || !openArticle || !currentUserId) {
-      console.warn('[postComment] guard failed:', { text: !!commentText.trim(), article: !!openArticle, userId: currentUserId })
+      alert(`Impossible d'envoyer : texte=${!!commentText.trim()}, article=${!!openArticle}, userId=${currentUserId}`)
       return
     }
     setPostingComment(true)
@@ -127,7 +127,9 @@ export default function ConseilsPage() {
       .select('*')
       .single()
     if (error) {
-      console.error('[postComment] error:', error)
+      alert(`Erreur commentaire : ${error.message} (code: ${error.code})`)
+      setPostingComment(false)
+      return
     }
     if (data) {
       const { data: prof } = await supabase.from('profiles').select('username, avatar_url').eq('id', currentUserId).single()
