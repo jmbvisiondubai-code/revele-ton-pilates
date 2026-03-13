@@ -34,6 +34,7 @@ import {
 } from '@/components/ui'
 import { GOAL_LABELS, LEVEL_LABELS, formatDuration } from '@/lib/utils'
 import { DEMO_PROFILE } from '@/lib/demo-data'
+import { getLevelProgress, BADGE_CATEGORIES, LEVEL_UP_MESSAGES } from '@/lib/badges'
 import type { Profile, Badge, Goal } from '@/types/database'
 
 const ALL_GOALS: { value: Goal; label: string }[] = Object.entries(GOAL_LABELS).map(([value, label]) => ({ value: value as Goal, label }))
@@ -106,6 +107,8 @@ export default function ProfilPage() {
   const [crop, setCrop] = useState({ x: 0, y: 0 })
   const [zoom, setZoom] = useState(1)
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null)
+  const [badgeFilter, setBadgeFilter] = useState<string>('all')
+  const [levelUpData, setLevelUpData] = useState<{ title: string; message: string; emoji: string } | null>(null)
   const supabase = createClient()
 
   const onCropComplete = useCallback((_: Area, croppedPixels: Area) => {
@@ -157,7 +160,31 @@ export default function ProfilPage() {
           const ub = userBadges?.find(ub => ub.badge_id === b.id)
           return { ...b, earned: !!ub, earned_at: ub?.earned_at }
         })
-        setBadges(enriched.sort((a, b) => (b.earned ? 1 : 0) - (a.earned ? 1 : 0)))
+        // Sort: earned first (by date desc), then locked
+        setBadges(enriched.sort((a, b) => {
+          if (a.earned && !b.earned) return -1
+          if (!a.earned && b.earned) return 1
+          if (a.earned && b.earned) return new Date(b.earned_at!).getTime() - new Date(a.earned_at!).getTime()
+          return 0
+        }))
+
+        // Check for level-up
+        const earnedCount = enriched.filter(b => b.earned).length
+        const currentProfile = profileData as Profile
+        const startLevel = currentProfile.start_level || currentProfile.practice_level || 'debutante'
+        const levelInfo = getLevelProgress(
+          currentProfile.practice_level || 'debutante',
+          earnedCount,
+          startLevel
+        )
+        if (levelInfo.shouldLevelUp && levelInfo.newLevel) {
+          // Update practice_level in DB
+          await supabase.from('profiles').update({ practice_level: levelInfo.newLevel }).eq('id', user.id)
+          setProfile({ ...currentProfile, practice_level: levelInfo.newLevel as Profile['practice_level'] })
+          // Show level-up modal
+          const msg = LEVEL_UP_MESSAGES[levelInfo.newLevel]
+          if (msg) setLevelUpData(msg)
+        }
       }
 
     }
@@ -336,6 +363,32 @@ export default function ProfilPage() {
           </div>
         </div>
       )}
+      {/* Level-up celebration modal */}
+      {levelUpData && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-6">
+          <motion.div
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+            className="bg-white rounded-3xl p-8 max-w-sm w-full text-center shadow-2xl"
+          >
+            <div className="text-6xl mb-4">{levelUpData.emoji}</div>
+            <h2 className="font-[family-name:var(--font-heading)] text-2xl text-text mb-3">
+              {levelUpData.title}
+            </h2>
+            <p className="text-sm text-text-secondary leading-relaxed mb-6">
+              {levelUpData.message}
+            </p>
+            <button
+              onClick={() => setLevelUpData(null)}
+              className="w-full py-3 rounded-xl bg-primary text-white font-semibold text-sm hover:bg-primary-dark transition-colors"
+            >
+              Continuer
+            </button>
+          </motion.div>
+        </div>
+      )}
+
       {/* Layout desktop 2 colonnes */}
       <div className="lg:grid lg:grid-cols-3 lg:gap-8">
       <div className="lg:col-span-1">
@@ -698,7 +751,82 @@ export default function ProfilPage() {
         )}
 
         {activeTab === 'badges' && (
-          <div>
+          <div className="space-y-4">
+            {/* Level progression card */}
+            {profile && (() => {
+              const earnedCount = badges.filter(b => b.earned).length
+              const startLevel = profile.start_level || profile.practice_level || 'debutante'
+              const levelInfo = getLevelProgress(profile.practice_level || 'debutante', earnedCount, startLevel)
+              return (
+                <Card>
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-lg">
+                        {levelInfo.currentLevel === 'avancee' ? '👑' : levelInfo.currentLevel === 'intermediaire' ? '💎' : '🌱'}
+                      </span>
+                      <div>
+                        <p className="text-sm font-semibold text-text">
+                          {LEVEL_LABELS[levelInfo.currentLevel] || levelInfo.currentLevel}
+                        </p>
+                        <p className="text-[11px] text-text-muted">
+                          {earnedCount} badge{earnedCount > 1 ? 's' : ''} débloqué{earnedCount > 1 ? 's' : ''}
+                        </p>
+                      </div>
+                    </div>
+                    {profile.is_teacher && (
+                      <span className="flex items-center gap-1 px-2.5 py-1 bg-[#F2E8DF] rounded-full text-xs font-semibold text-[#A8543D]">
+                        🎓 Professeur
+                      </span>
+                    )}
+                  </div>
+                  {levelInfo.nextLevel && (
+                    <div>
+                      <div className="flex items-center justify-between text-[11px] text-text-muted mb-1.5">
+                        <span>Prochain : {LEVEL_LABELS[levelInfo.nextLevel]}</span>
+                        <span>{earnedCount}/{levelInfo.badgesForNext} badges</span>
+                      </div>
+                      <ProgressBar value={levelInfo.progress} size="sm" color="primary" />
+                    </div>
+                  )}
+                  {!levelInfo.nextLevel && (
+                    <p className="text-xs text-success font-medium mt-1">Niveau maximum atteint !</p>
+                  )}
+                </Card>
+              )
+            })()}
+
+            {/* Category filter */}
+            <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-hide">
+              <button
+                onClick={() => setBadgeFilter('all')}
+                className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+                  badgeFilter === 'all' ? 'bg-primary text-white' : 'bg-bg-elevated text-text-secondary hover:bg-secondary/40'
+                }`}
+              >
+                Tous ({badges.length})
+              </button>
+              {BADGE_CATEGORIES.filter(cat => {
+                // Only show teacher category if user is teacher or admin
+                if (cat.key === 'teacher' && !profile?.is_teacher && !profile?.is_admin) return false
+                return badges.some(b => b.category === cat.key)
+              }).map(cat => {
+                const count = badges.filter(b => b.category === cat.key).length
+                const earned = badges.filter(b => b.category === cat.key && b.earned).length
+                return (
+                  <button
+                    key={cat.key}
+                    onClick={() => setBadgeFilter(cat.key)}
+                    className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-all whitespace-nowrap ${
+                      badgeFilter === cat.key ? 'bg-primary text-white' : 'bg-bg-elevated text-text-secondary hover:bg-secondary/40'
+                    }`}
+                  >
+                    {cat.emoji} {cat.label} ({earned}/{count})
+                  </button>
+                )
+              })}
+            </div>
+
+            {/* Badge grid */}
             {badges.length === 0 ? (
               <div className="text-center py-12">
                 <Award size={40} className="mx-auto text-text-muted mb-3" />
@@ -707,13 +835,18 @@ export default function ProfilPage() {
               </div>
             ) : (
               <div className="grid grid-cols-3 gap-3">
-                {badges.map(badge => (
-                  <Card key={badge.id} padding="sm" className={`text-center transition-opacity ${badge.earned ? '' : 'opacity-40'}`}>
+                {badges
+                  .filter(b => badgeFilter === 'all' || b.category === badgeFilter)
+                  .map(badge => (
+                  <Card key={badge.id} padding="sm" className={`text-center transition-all ${badge.earned ? '' : 'opacity-40'}`}>
                     <div className={`text-3xl mb-1 ${badge.earned ? '' : 'grayscale'}`}>{badge.icon}</div>
                     <p className="text-xs font-medium text-text leading-tight">{badge.name}</p>
+                    {badge.description && (
+                      <p className="text-[10px] text-text-muted mt-0.5 leading-tight line-clamp-2">{badge.description}</p>
+                    )}
                     {badge.earned && badge.earned_at && (
-                      <p className="text-[10px] text-text-muted mt-1">
-                        {new Date(badge.earned_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
+                      <p className="text-[10px] text-success font-medium mt-1">
+                        ✓ {new Date(badge.earned_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
                       </p>
                     )}
                     {!badge.earned && (

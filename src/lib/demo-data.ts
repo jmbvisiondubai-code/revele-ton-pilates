@@ -22,6 +22,8 @@ export const DEMO_PROFILE: Profile = {
   total_sessions: 47,
   total_practice_minutes: 1410,
   is_admin: false,
+  is_teacher: false,
+  start_level: 'intermediaire',
   created_at: new Date().toISOString(),
   updated_at: new Date().toISOString(),
 }

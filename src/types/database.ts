@@ -5,7 +5,7 @@ export type CourseFocus = 'programme' | 'full_body' | 'reformer' | 'perfect_time
 export type Equipment = 'tapis' | 'swiss_ball' | 'elastique' | 'foam_roller'
 export type ArticleCategory = 'pratique' | 'nutrition' | 'bien_etre' | 'recuperation'
 export type ReactionType = 'pouce' | 'coeur' | 'applaudissement' | 'priere' | 'muscle' | 'fete' | 'feu'
-export type BadgeCategory = 'regularity' | 'milestone' | 'exploration' | 'community'
+export type BadgeCategory = 'regularity' | 'milestone' | 'exploration' | 'community' | 'wellness' | 'challenge' | 'social' | 'teacher'
 export type NotificationType = 'reminder' | 'badge' | 'live' | 'streak' | 'weekly_recap' | 'message'
 
 export type Goal =
@@ -41,6 +41,8 @@ export interface Profile {
   total_sessions: number
   total_practice_minutes: number
   is_admin: boolean
+  is_teacher: boolean
+  start_level: PracticeLevel | null
   created_at: string
   updated_at: string
 }
