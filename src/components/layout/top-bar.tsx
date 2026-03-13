@@ -57,7 +57,7 @@ export function TopBar() {
           <div className="w-9 h-9 rounded-xl overflow-hidden flex-shrink-0 shadow-sm shadow-[#C6684F]/10 ring-1 ring-[#EDD5C5]/40">
             <Image src="/icon-192.png" alt="RTP" width={36} height={36} className="w-full h-full object-cover" />
           </div>
-          <p className="font-[family-name:var(--font-heading)] text-[15px] font-bold tracking-wide">
+          <p className="font-[family-name:var(--font-heading)] text-lg font-bold tracking-wide">
             <span className="text-[#2C2C2C]">Révèle ton </span>
             <span className="text-[#C6684F]">Pilates</span>
           </p>
