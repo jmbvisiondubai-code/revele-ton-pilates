@@ -250,41 +250,44 @@ export default function CoursPage() {
               </div>
 
               {/* Registration */}
-              {nextLive.max_participants !== null && (
-                <div className="mt-4">
-                  {isRegistered ? (
-                    <div className="flex items-center gap-3">
-                      <div className="flex-1 flex items-center gap-2 bg-emerald-50 text-emerald-700 rounded-xl px-3 py-2.5 text-sm font-medium">
-                        <UserCheck size={15} />
-                        Place réservée
-                      </div>
-                      <button
-                        onClick={unregisterFromLive}
-                        disabled={registering}
-                        className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl border border-red-200 text-red-500 text-sm font-medium hover:bg-red-50 transition-colors disabled:opacity-50"
-                      >
-                        <UserMinus size={14} />
-                        Annuler
-                      </button>
+              <div className="mt-4">
+                {isRegistered ? (
+                  <div className="flex items-center gap-2 sm:gap-3">
+                    <div className="flex-1 flex items-center gap-2 bg-emerald-50 text-emerald-700 rounded-xl px-3 py-2.5 text-sm font-medium min-w-0">
+                      <UserCheck size={15} className="flex-shrink-0" />
+                      <span className="truncate">{nextLive.max_participants ? 'Place réservée' : 'Présente'}</span>
                     </div>
-                  ) : (
-                    <Button
-                      size="sm"
-                      fullWidth
-                      onClick={registerForLive}
-                      disabled={registering || (nextLive.max_participants !== null && nextLive.registered_count >= nextLive.max_participants)}
+                    <button
+                      onClick={unregisterFromLive}
+                      disabled={registering}
+                      className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl border border-red-200 text-red-500 text-sm font-medium hover:bg-red-50 active:bg-red-50 transition-colors disabled:opacity-50 flex-shrink-0"
                     >
-                      <UserCheck size={14} />
-                      {nextLive.registered_count >= (nextLive.max_participants ?? Infinity) ? 'Complet' : 'Réserver ma place'}
-                    </Button>
-                  )}
-                </div>
-              )}
+                      <UserMinus size={14} />
+                      Annuler
+                    </button>
+                  </div>
+                ) : (
+                  <Button
+                    size="sm"
+                    fullWidth
+                    onClick={registerForLive}
+                    disabled={registering || (nextLive.max_participants !== null && nextLive.registered_count >= nextLive.max_participants)}
+                    className="py-3"
+                  >
+                    <UserCheck size={14} />
+                    {nextLive.max_participants !== null && nextLive.registered_count >= nextLive.max_participants
+                      ? 'Complet'
+                      : nextLive.max_participants
+                        ? 'Réserver ma place'
+                        : 'Je serai présente'}
+                  </Button>
+                )}
+              </div>
 
               {/* Zoom link */}
               <div className="flex gap-2 mt-3">
                 {zoomUrl ? (
-                  <Button size="sm" variant={isRegistered || !nextLive.max_participants ? 'primary' : 'outline'} className="flex-1" onClick={() => openExternal(zoomUrl)}>
+                  <Button size="sm" variant={isRegistered ? 'primary' : 'outline'} className="flex-1" onClick={() => openExternal(zoomUrl)}>
                     <Video size={14} />
                     Rejoindre sur Zoom
                   </Button>
