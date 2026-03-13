@@ -206,33 +206,51 @@ export default function DashboardPage() {
         {/* ── LEFT COLUMN (2/3) ── */}
         <div className="lg:col-span-2 space-y-4">
 
-          {/* Next live */}
+          {/* Next live — premium card */}
           {nextLive && (
             <motion.div initial="hidden" animate="visible" custom={1} variants={fadeInUp}>
               <Link href="/cours">
-                <Card hover className="bg-primary/5 border-primary/20 lg:p-6">
-                  <div className="flex items-start gap-4">
-                    <div className="w-12 h-12 bg-[#C6684F]/10 rounded-xl flex items-center justify-center flex-shrink-0">
-                      <Radio size={20} className="text-[#C6684F]" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <BadgePill variant="accent">{SESSION_TYPE_LABELS[nextLive.session_type] ?? 'Prochain live'}</BadgePill>
+                <div className="relative group">
+                  {/* Soft glow behind the card */}
+                  <div className="absolute -inset-0.5 bg-gradient-to-r from-[#C6684F]/20 via-[#D4956B]/20 to-[#C6684F]/20 rounded-2xl blur-sm opacity-60 group-hover:opacity-100 transition-opacity duration-700" />
+                  <div className="relative bg-gradient-to-br from-white via-white to-[#FDF8F4] rounded-2xl border border-[#C6684F]/15 p-5 lg:p-6 shadow-sm hover:shadow-md transition-shadow duration-300">
+                    <div className="flex items-start gap-4">
+                      {/* Animated icon */}
+                      <div className="relative w-12 h-12 flex-shrink-0">
+                        <motion.div
+                          className="absolute inset-0 bg-[#C6684F]/8 rounded-xl"
+                          animate={{ scale: [1, 1.15, 1] }}
+                          transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+                        />
+                        <div className="relative w-full h-full bg-gradient-to-br from-[#C6684F]/10 to-[#C6684F]/20 rounded-xl flex items-center justify-center">
+                          <Radio size={20} className="text-[#C6684F]" />
+                        </div>
                       </div>
-                      <h3 className="font-[family-name:var(--font-heading)] text-lg lg:text-xl text-text">
-                        {nextLive.title}
-                      </h3>
-                      <p className="text-sm text-text-secondary mt-1 capitalize">
-                        {format(new Date(nextLive.scheduled_at), "EEEE d MMMM 'à' HH'h'mm", { locale: fr })}
-                        &nbsp;&bull;&nbsp;{nextLive.duration_minutes} min
-                      </p>
-                      {nextLive.equipment && (
-                        <p className="text-xs text-text-muted mt-1">Matériel : {nextLive.equipment}</p>
-                      )}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1.5">
+                          <span className="inline-flex items-center gap-1 text-[11px] font-semibold tracking-wide uppercase text-[#C6684F] bg-[#C6684F]/8 px-2.5 py-1 rounded-full">
+                            <span className="relative flex h-1.5 w-1.5">
+                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#C6684F] opacity-50" />
+                              <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-[#C6684F]" />
+                            </span>
+                            {SESSION_TYPE_LABELS[nextLive.session_type] ?? 'Prochain live'}
+                          </span>
+                        </div>
+                        <h3 className="font-[family-name:var(--font-heading)] text-lg lg:text-xl text-text">
+                          {nextLive.title}
+                        </h3>
+                        <p className="text-sm text-text-secondary mt-1 capitalize">
+                          {format(new Date(nextLive.scheduled_at), "EEEE d MMMM 'à' HH'h'mm", { locale: fr })}
+                          &nbsp;&bull;&nbsp;{nextLive.duration_minutes} min
+                        </p>
+                        {nextLive.equipment && (
+                          <p className="text-xs text-text-muted mt-1">Matériel : {nextLive.equipment}</p>
+                        )}
+                      </div>
+                      <ChevronRight size={16} className="text-[#C6684F]/40 group-hover:text-[#C6684F] flex-shrink-0 mt-1 transition-colors duration-300" />
                     </div>
-                    <ChevronRight size={16} className="text-text-muted flex-shrink-0 mt-1" />
                   </div>
-                </Card>
+                </div>
               </Link>
             </motion.div>
           )}
