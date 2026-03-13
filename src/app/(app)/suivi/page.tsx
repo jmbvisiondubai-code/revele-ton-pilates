@@ -1,11 +1,11 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import {
   ChevronRight, Trophy, Clock, Sparkles, Flame,
   ArrowLeft, ExternalLink, BookOpen, Calendar, Target,
-  Award, Play, TrendingUp, Star,
+  Award, Play, TrendingUp, Star, Trash2, Pencil, X,
 } from 'lucide-react'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/client'
 import { useAuthStore } from '@/stores/auth-store'
@@ -121,6 +121,11 @@ export default function SuiviPage() {
   const [sessionsThisWeek, setSessionsThisWeek] = useState(0)
   const [recentCompletions, setRecentCompletions] = useState<Completion[]>([])
   const [earnedBadges, setEarnedBadges] = useState<EarnedBadge[]>([])
+  const [editingSession, setEditingSession] = useState<Completion | null>(null)
+  const [editLabel, setEditLabel] = useState('')
+  const [editDuration, setEditDuration] = useState('')
+  const [editSaving, setEditSaving] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
 
   const supabase = createClient()
   const { profile, setProfile } = useAuthStore()
@@ -186,6 +191,35 @@ export default function SuiviPage() {
   function handleOpenRec(rec: Recommendation) {
     setOpenRec(rec)
     markRecAsRead(rec)
+  }
+
+  // ── Edit / Delete sessions ──────────────────────────────────────────
+  function startEdit(c: Completion) {
+    setEditingSession(c)
+    setEditLabel(c.libre_label || c.courses?.title || '')
+    setEditDuration(String(c.duration_watched_minutes ?? c.courses?.duration_minutes ?? ''))
+  }
+
+  async function saveEdit() {
+    if (!editingSession) return
+    setEditSaving(true)
+    await supabase.from('course_completions').update({
+      libre_label: editLabel || 'Séance libre',
+      duration_watched_minutes: parseInt(editDuration) || null,
+    }).eq('id', editingSession.id)
+    setRecentCompletions(prev => prev.map(c => c.id === editingSession.id
+      ? { ...c, libre_label: editLabel || 'Séance libre', duration_watched_minutes: parseInt(editDuration) || null }
+      : c
+    ))
+    setEditingSession(null)
+    setEditSaving(false)
+  }
+
+  async function deleteSession(id: string) {
+    await supabase.from('course_completions').delete().eq('id', id)
+    setRecentCompletions(prev => prev.filter(c => c.id !== id))
+    setSessionsThisWeek(prev => Math.max(0, prev - 1))
+    setConfirmDelete(null)
   }
 
   // ── Recommendation detail view ──────────────────────────────────────
@@ -488,6 +522,7 @@ export default function SuiviPage() {
                       const typeInfo = SESSION_TYPE_LABELS[c.session_type] ?? SESSION_TYPE_LABELS.vod
                       const title = c.courses?.title ?? c.libre_label ?? 'Séance libre'
                       const duration = c.duration_watched_minutes ?? c.courses?.duration_minutes ?? 0
+                      const isManual = c.session_type === 'libre'
                       return (
                         <Card key={c.id} className="!p-3">
                           <div className="flex items-center gap-3">
@@ -507,7 +542,21 @@ export default function SuiviPage() {
                                 )}
                               </div>
                             </div>
-                            <span className="text-[10px] text-[#BFAE9F] flex-shrink-0">{relativeDate(c.completed_at)}</span>
+                            <div className="flex items-center gap-1.5 flex-shrink-0">
+                              <span className="text-[10px] text-[#BFAE9F]">{relativeDate(c.completed_at)}</span>
+                              {isManual && (
+                                <>
+                                  <button onClick={() => startEdit(c)}
+                                    className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-[#F2E8DF] transition-colors text-[#A09488] hover:text-[#6B6359]">
+                                    <Pencil size={12} />
+                                  </button>
+                                  <button onClick={() => setConfirmDelete(c.id)}
+                                    className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-red-50 transition-colors text-[#A09488] hover:text-red-500">
+                                    <Trash2 size={12} />
+                                  </button>
+                                </>
+                              )}
+                            </div>
                           </div>
                         </Card>
                       )
@@ -524,6 +573,100 @@ export default function SuiviPage() {
           )}
         </>
       )}
+
+      {/* ─── Edit session modal ─── */}
+      <AnimatePresence>
+        {editingSession && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[60] bg-black/30"
+              onClick={() => setEditingSession(null)}
+            />
+            <motion.div
+              initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
+              transition={{ type: 'spring', damping: 30, stiffness: 400 }}
+              className="fixed bottom-0 left-0 right-0 z-[70] bg-white rounded-t-3xl shadow-2xl safe-bottom"
+            >
+              <div className="flex justify-center pt-3 pb-1">
+                <div className="w-10 h-1 rounded-full bg-[#DCCFBF]" />
+              </div>
+              <div className="flex items-center justify-between px-5 pb-3">
+                <p className="text-sm font-semibold text-[#2C2C2C]">Modifier la séance</p>
+                <button onClick={() => setEditingSession(null)}
+                  className="w-8 h-8 flex items-center justify-center rounded-full bg-[#F2E8DF] text-[#6B6359]">
+                  <X size={16} />
+                </button>
+              </div>
+              <div className="px-5 pb-6 space-y-4">
+                <div>
+                  <label className="text-xs font-medium text-[#6B6359] mb-1.5 block">Nom de la séance</label>
+                  <input
+                    type="text"
+                    value={editLabel}
+                    onChange={e => setEditLabel(e.target.value)}
+                    placeholder="Ex : Pilates matinal"
+                    className="w-full px-4 py-3 rounded-xl border border-[#EDE5DA] text-sm text-[#2C2C2C] placeholder:text-[#BFAE9F] focus:outline-none focus:border-[#C6684F] transition-colors"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-[#6B6359] mb-1.5 block">Durée (minutes)</label>
+                  <input
+                    type="number"
+                    value={editDuration}
+                    onChange={e => setEditDuration(e.target.value)}
+                    placeholder="30"
+                    min="1"
+                    className="w-full px-4 py-3 rounded-xl border border-[#EDE5DA] text-sm text-[#2C2C2C] placeholder:text-[#BFAE9F] focus:outline-none focus:border-[#C6684F] transition-colors"
+                  />
+                </div>
+                <button
+                  onClick={saveEdit}
+                  disabled={editSaving}
+                  className="w-full py-3 rounded-xl bg-[#C6684F] text-white text-sm font-semibold hover:bg-[#B55A43] active:bg-[#A44F3A] transition-colors disabled:opacity-50"
+                >
+                  {editSaving ? 'Enregistrement…' : 'Enregistrer'}
+                </button>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* ─── Delete confirmation modal ─── */}
+      <AnimatePresence>
+        {confirmDelete && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[60] bg-black/30"
+              onClick={() => setConfirmDelete(null)}
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ duration: 0.15 }}
+              className="fixed left-4 right-4 bottom-1/2 translate-y-1/2 z-[70] bg-white rounded-2xl shadow-2xl p-5 max-w-sm mx-auto"
+            >
+              <p className="text-sm font-semibold text-[#2C2C2C] mb-1">Supprimer cette séance ?</p>
+              <p className="text-xs text-[#6B6359] mb-5">Cette action est irréversible.</p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setConfirmDelete(null)}
+                  className="flex-1 py-2.5 rounded-xl border border-[#EDE5DA] text-sm font-medium text-[#6B6359] hover:bg-[#FAF6F1] transition-colors"
+                >
+                  Annuler
+                </button>
+                <button
+                  onClick={() => deleteSession(confirmDelete)}
+                  className="flex-1 py-2.5 rounded-xl bg-red-500 text-white text-sm font-semibold hover:bg-red-600 active:bg-red-700 transition-colors"
+                >
+                  Supprimer
+                </button>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   )
 }
