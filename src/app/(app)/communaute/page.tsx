@@ -804,7 +804,7 @@ export default function CommunautePage() {
                                 {likeCount > 0 && <span className="font-medium">{likeCount}</span>}
                                 {!likeCount && <span>J&apos;aime</span>}
                               </button>
-                              <button onClick={() => setOpenComments(prev => prev === post.id ? null : post.id)}
+                              <button onClick={() => loadComments(post.id)}
                                 className="flex items-center gap-1 text-xs text-[#A09488] hover:text-[#C6684F] transition-colors">
                                 <span>💬</span>
                                 {post.comment_count > 0 ? `${post.comment_count} message${post.comment_count > 1 ? 's' : ''}` : 'Commenter'}
