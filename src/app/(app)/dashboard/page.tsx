@@ -216,11 +216,20 @@ export default function DashboardPage() {
             {/* Programme Hebdo */}
             {featured && (
               <button onClick={() => openExternal(featured.url)} className="w-full text-left">
-                <Card hover className="h-full">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-[#C6684F]/10 rounded-xl flex items-center justify-center flex-shrink-0">
-                      <Dumbbell size={18} className="text-[#C6684F]" />
+                <Card hover className="h-full p-0 overflow-hidden">
+                  {featured.image && (
+                    <div className="relative w-full h-24">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={featured.image} alt={featured.title} className="w-full h-full object-cover" />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
                     </div>
+                  )}
+                  <div className="flex items-center gap-3 px-3.5 py-3">
+                    {!featured.image && (
+                      <div className="w-10 h-10 bg-[#C6684F]/10 rounded-xl flex items-center justify-center flex-shrink-0">
+                        <Dumbbell size={18} className="text-[#C6684F]" />
+                      </div>
+                    )}
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold text-text truncate">{featured.title}</p>
                       <p className="text-xs text-text-secondary truncate">{featured.description || 'Programme de la semaine'}</p>
@@ -243,7 +252,7 @@ export default function DashboardPage() {
                       <p className="text-sm font-semibold text-text">Replay</p>
                       {replayCode ? (
                         <p className="text-xs text-text-secondary">
-                          Code : <span className="font-mono font-bold text-[#7C3AED]">{replayCode}</span>
+                          Mot de passe : <span className="font-mono font-bold text-[#7C3AED]">{replayCode}</span>
                         </p>
                       ) : (
                         <p className="text-xs text-text-secondary">Dernier cours collectif</p>
