@@ -1,13 +1,16 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { motion } from 'framer-motion'
-import { Home, Play, Users, TrendingUp, BookOpen, User, LogOut, Settings } from 'lucide-react'
+import { Home, Play, Users, TrendingUp, BookOpen, User, LogOut, Settings, MessageCircle, Plus } from 'lucide-react'
 import Image from 'next/image'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/client'
 import { useAuthStore } from '@/stores/auth-store'
+import { PracticeLogModal } from '@/components/practice-log-modal'
+import { PracticeCelebration } from '@/components/practice-celebration'
+import type { PracticeLogResult } from '@/lib/practice-log'
 
 const topItems = [
   { href: '/dashboard',  label: 'Accueil',     icon: Home },
@@ -67,6 +70,16 @@ export function SideNav() {
   const { profile } = useAuthStore()
   const [unreadDms, setUnreadDms] = useState(0)
   const [unreadCommunity, setUnreadCommunity] = useState(0)
+  const [showLogModal, setShowLogModal] = useState(false)
+  const [celebrationResult, setCelebrationResult] = useState<PracticeLogResult | null>(null)
+
+  const handleLogSuccess = useCallback((result: PracticeLogResult) => {
+    setCelebrationResult(result)
+  }, [])
+
+  const handleDismissCelebration = useCallback(() => {
+    setCelebrationResult(null)
+  }, [])
 
   // ── DM unread count ──────────────────────────────────────────────────────
   useEffect(() => {
@@ -121,13 +134,14 @@ export function SideNav() {
 
   // ── Reset badges on navigation ───────────────────────────────────────────
   useEffect(() => {
-    if (pathname.startsWith('/messages') || pathname.startsWith('/suivi'))   setUnreadDms(0)
+    if (pathname.startsWith('/messages'))   setUnreadDms(0)
     if (pathname.startsWith('/communaute')) setUnreadCommunity(0)
   }, [pathname])
 
   const isProfileActive = pathname === '/profil' || pathname.startsWith('/profil/')
 
   return (
+    <>
     <aside className="hidden lg:flex flex-col fixed top-0 left-0 h-full w-[272px] z-40 bg-gradient-to-b from-[#FFFAF7] to-[#FFF5EF] border-r border-[#EDD5C5]/60">
 
       {/* ── Logo header ── */}
@@ -200,27 +214,19 @@ export function SideNav() {
                       {suiviItem.label}
                     </span>
                     <p className={`text-[10px] mt-0.5 ${isSuiviActive ? 'text-white/70' : 'text-[#A09488]'}`}>
-                      Progression & messages
+                      Progression & streaks
                     </p>
                   </div>
-                  {unreadDms > 0 && (
-                    <motion.span
-                      initial={{ scale: 0 }}
-                      animate={{ scale: 1 }}
-                      className={`min-w-[22px] h-[22px] px-1.5 text-[10px] font-bold rounded-full flex items-center justify-center leading-none ${
-                        isSuiviActive
-                          ? 'bg-white text-[#C6684F]'
-                          : 'bg-gradient-to-br from-[#C6684F] to-[#D4785F] text-white shadow-sm shadow-[#C6684F]/30'
-                      }`}
-                    >
-                      {unreadDms > 99 ? '99+' : unreadDms}
-                    </motion.span>
-                  )}
                 </div>
               </motion.div>
             </Link>
           )
         })()}
+
+        {/* Messages */}
+        <div className="space-y-1">
+          <NavItem href="/messages" icon={MessageCircle} label="Messages" isActive={pathname.startsWith('/messages')} badge={unreadDms} />
+        </div>
 
         {/* Bottom nav items */}
         <div className="space-y-1">
@@ -232,6 +238,24 @@ export function SideNav() {
               <NavItem key={item.href} href={item.href} icon={Icon} label={item.label} isActive={isActive} badge={badge} />
             )
           })}
+        </div>
+
+        {/* Spacer */}
+        <div className="flex-1" />
+
+        {/* Practice log button */}
+        <div className="mb-2">
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={() => setShowLogModal(true)}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl bg-gradient-to-r from-[#C6684F] to-[#D4785F] text-white shadow-md shadow-[#C6684F]/20 hover:shadow-lg hover:shadow-[#C6684F]/30 transition-shadow duration-300"
+          >
+            <div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center">
+              <Plus size={18} strokeWidth={2.5} />
+            </div>
+            <span className="text-[13px] font-bold tracking-wide">Enregistrer une session</span>
+          </motion.button>
         </div>
       </nav>
 
@@ -285,5 +309,19 @@ export function SideNav() {
         <p className="text-[9px] text-[#DCCFBF] text-center mt-3 tracking-wider uppercase">MJ Pilates © 2025</p>
       </div>
     </aside>
+
+      {/* Practice log modal */}
+      <PracticeLogModal
+        open={showLogModal}
+        onClose={() => setShowLogModal(false)}
+        onSuccess={handleLogSuccess}
+      />
+
+      {/* Celebration overlay */}
+      <PracticeCelebration
+        result={celebrationResult}
+        onDismiss={handleDismissCelebration}
+      />
+    </>
   )
 }
