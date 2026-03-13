@@ -332,8 +332,8 @@ export default function CoursPage() {
                 )}
               </div>
 
-              {/* Add to calendar — only if registered */}
-              {isRegistered && <div className="flex gap-2 mt-3">
+              {/* Add to calendar — only if registered and not demo */}
+              {isRegistered && nextLive.id !== 'demo-live' && <div className="flex gap-2 mt-3">
                 <a
                   href={getCalendarUrl(nextLive, zoomUrl)}
                   target="_blank"

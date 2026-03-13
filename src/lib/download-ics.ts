@@ -6,8 +6,17 @@
 export async function downloadIcs(url: string, filename = 'event.ics') {
   try {
     const res = await fetch(url)
-    if (!res.ok) throw new Error('fetch failed')
-    const blob = await res.blob()
+    if (!res.ok) {
+      alert('Cet événement n\u2019est pas encore disponible dans l\u2019agenda.')
+      return
+    }
+    const text = await res.text()
+    // Verify it's actually an ICS file
+    if (!text.startsWith('BEGIN:VCALENDAR')) {
+      alert('Cet événement n\u2019est pas encore disponible dans l\u2019agenda.')
+      return
+    }
+    const blob = new Blob([text], { type: 'text/calendar;charset=utf-8' })
     const blobUrl = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = blobUrl
@@ -21,7 +30,6 @@ export async function downloadIcs(url: string, filename = 'event.ics') {
       document.body.removeChild(a)
     }, 200)
   } catch {
-    // Fallback: open in new tab
-    window.open(url, '_blank')
+    alert('Impossible de télécharger le fichier agenda. Vérifie ta connexion.')
   }
 }
