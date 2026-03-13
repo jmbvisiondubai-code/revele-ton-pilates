@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/client'
 import Link from 'next/link'
-import { LayoutDashboard, Video, Calendar, CalendarClock, BookOpen, ArrowLeft, Mail, Users, Settings } from 'lucide-react'
+import { LayoutDashboard, Video, Calendar, CalendarClock, CalendarDays, BookOpen, ArrowLeft, Mail, Users, Settings } from 'lucide-react'
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter()
@@ -70,6 +70,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </Link>
           <Link href="/admin/rdv-prives" className="flex items-center gap-3 px-3 py-2 rounded-lg text-[#6B6359] hover:bg-[#F2E8DF] text-sm font-medium">
             <CalendarClock size={16} /> RDV Privés
+          </Link>
+          <Link href="/admin/planning" className="flex items-center gap-3 px-3 py-2 rounded-lg text-[#6B6359] hover:bg-[#F2E8DF] text-sm font-medium">
+            <CalendarDays size={16} /> Mon planning
           </Link>
           <Link href="/admin/parametres" className="flex items-center gap-3 px-3 py-2 rounded-lg text-[#6B6359] hover:bg-[#F2E8DF] text-sm font-medium">
             <Settings size={16} /> Paramètres
