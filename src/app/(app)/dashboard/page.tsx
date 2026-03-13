@@ -206,56 +206,51 @@ export default function DashboardPage() {
         {/* ── LEFT COLUMN (2/3) ── */}
         <div className="lg:col-span-2 space-y-4">
 
-          {/* Next live — premium dark card */}
+          {/* Next live — premium elegant card */}
           {nextLive && (
             <motion.div initial="hidden" animate="visible" custom={1} variants={fadeInUp}>
               <Link href="/cours">
-                <div className="relative group overflow-hidden rounded-2xl">
-                  {/* Animated gradient glow */}
-                  <motion.div
-                    className="absolute -inset-1 bg-gradient-to-r from-[#C6684F] via-[#D4956B] to-[#C6684F] rounded-2xl opacity-30 blur-md"
-                    animate={{ backgroundPosition: ['0% 50%', '100% 50%', '0% 50%'] }}
-                    transition={{ duration: 6, repeat: Infinity, ease: 'linear' }}
-                    style={{ backgroundSize: '200% 200%' }}
-                  />
-                  <div className="relative bg-gradient-to-br from-[#2C2C2C] via-[#352E2A] to-[#3D2F28] rounded-2xl p-5 lg:p-6 shadow-lg group-hover:shadow-xl transition-shadow duration-300">
-                    {/* Decorative shimmer */}
-                    <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-[#C6684F]/10 to-transparent rounded-bl-full" />
+                <div className="relative group rounded-2xl bg-white border border-[#C6684F]/25 shadow-[0_2px_20px_rgba(198,104,79,0.08)] hover:shadow-[0_4px_30px_rgba(198,104,79,0.15)] transition-all duration-500 overflow-hidden">
+                  {/* Left accent bar */}
+                  <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-[#C6684F] to-[#D4956B]" />
+                  {/* Soft decorative glow */}
+                  <div className="absolute -top-16 -right-16 w-48 h-48 bg-[#C6684F]/[0.04] rounded-full blur-2xl" />
 
-                    <div className="relative flex items-start gap-4">
-                      {/* Icon with breathing ring */}
-                      <div className="relative w-12 h-12 flex-shrink-0">
+                  <div className="relative p-5 lg:p-6 pl-6 lg:pl-7">
+                    <div className="flex items-start gap-4">
+                      {/* Elegant icon */}
+                      <div className="relative w-11 h-11 flex-shrink-0">
                         <motion.div
-                          className="absolute inset-0 rounded-xl border-2 border-[#C6684F]/30"
-                          animate={{ scale: [1, 1.2, 1], opacity: [0.5, 0, 0.5] }}
-                          transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
+                          className="absolute inset-0 rounded-full border border-[#C6684F]/20"
+                          animate={{ scale: [1, 1.3, 1], opacity: [0.4, 0, 0.4] }}
+                          transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
                         />
-                        <div className="relative w-full h-full bg-[#C6684F] rounded-xl flex items-center justify-center shadow-[0_0_20px_rgba(198,104,79,0.3)]">
-                          <Radio size={20} className="text-white" />
+                        <div className="relative w-full h-full bg-gradient-to-br from-[#C6684F] to-[#D4956B] rounded-full flex items-center justify-center shadow-sm">
+                          <Radio size={18} className="text-white" />
                         </div>
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1.5">
-                          <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-wide uppercase text-[#C6684F] bg-[#C6684F]/15 px-2.5 py-1 rounded-full border border-[#C6684F]/20">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="inline-flex items-center gap-1.5 text-[10px] font-semibold tracking-widest uppercase text-[#C6684F]">
                             <span className="relative flex h-1.5 w-1.5">
-                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#C6684F] opacity-60" />
+                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#C6684F] opacity-50" />
                               <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-[#C6684F]" />
                             </span>
                             {SESSION_TYPE_LABELS[nextLive.session_type] ?? 'Prochain live'}
                           </span>
                         </div>
-                        <h3 className="font-[family-name:var(--font-heading)] text-lg lg:text-xl text-white">
+                        <h3 className="font-[family-name:var(--font-heading)] text-lg lg:text-xl text-[#2C2C2C]">
                           {nextLive.title}
                         </h3>
-                        <p className="text-sm text-white/60 mt-1 capitalize">
+                        <p className="text-sm text-[#C6684F]/80 mt-1 capitalize font-medium">
                           {format(new Date(nextLive.scheduled_at), "EEEE d MMMM 'à' HH'h'mm", { locale: fr })}
-                          &nbsp;&bull;&nbsp;{nextLive.duration_minutes} min
+                          <span className="text-[#A09488] font-normal">&nbsp;&middot;&nbsp;{nextLive.duration_minutes} min</span>
                         </p>
                         {nextLive.equipment && (
-                          <p className="text-xs text-white/40 mt-1">Matériel : {nextLive.equipment}</p>
+                          <p className="text-xs text-[#A09488] mt-1.5 italic">Matériel : {nextLive.equipment}</p>
                         )}
                       </div>
-                      <ChevronRight size={16} className="text-white/30 group-hover:text-[#C6684F] flex-shrink-0 mt-1 transition-colors duration-300" />
+                      <ChevronRight size={16} className="text-[#DCCFBF] group-hover:text-[#C6684F] flex-shrink-0 mt-1 transition-colors duration-300" />
                     </div>
                   </div>
                 </div>
