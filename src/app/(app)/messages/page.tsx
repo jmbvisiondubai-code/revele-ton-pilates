@@ -1028,10 +1028,10 @@ export default function MessagesPage() {
                           )}
                         </div>
 
-                        {/* Mobile 3-dot button */}
+                        {/* Mobile 3-dot button — hidden by default, visible on group active/focus */}
                         {(isMe || isAdmin) && (
                           <button
-                            className={`md:hidden flex-shrink-0 self-end mb-1 w-6 h-6 flex items-center justify-center text-[#C8BFB6] ${isMe ? 'order-first mr-1' : 'order-last ml-1'}`}
+                            className={`md:hidden flex-shrink-0 self-end mb-1 w-6 h-6 flex items-center justify-center text-[#C8BFB6] opacity-0 group-active:opacity-100 transition-opacity duration-150 ${isMe ? 'order-first mr-1' : 'order-last ml-1'}`}
                             onTouchStart={e => e.stopPropagation()}
                             onClick={e => e.stopPropagation()}
                             onTouchEnd={(e) => { e.stopPropagation(); e.preventDefault(); setMsgMenu({ msgId: msg.id, isOwn: isMe, content: msg.content, isPinned: msg.is_pinned ?? false }) }}
