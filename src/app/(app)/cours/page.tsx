@@ -344,6 +344,7 @@ export default function CoursPage() {
                 </a>
                 <a
                   href={`/api/calendar?id=${nextLive.id}`}
+                  download="live.ics"
                   className="flex items-center justify-center gap-2 flex-1 py-2.5 rounded-xl border border-[#DCCFBF] text-sm font-medium text-[#6B6359] hover:border-[#C6684F] hover:text-[#C6684F] active:bg-[#F2E8DF] transition-colors"
                 >
                   <CalendarPlus size={14} />
@@ -422,6 +423,7 @@ export default function CoursPage() {
                         </a>
                         <a
                           href={`/api/calendar/rdv?id=${appt.id}`}
+                          download="rdv.ics"
                           className="flex items-center justify-center gap-2 flex-1 py-2.5 rounded-xl border border-[#7C3AED]/20 text-sm font-medium text-[#6B6359] hover:border-[#7C3AED] hover:text-[#7C3AED] active:bg-[#7C3AED]/5 transition-colors"
                         >
                           <CalendarPlus size={14} />

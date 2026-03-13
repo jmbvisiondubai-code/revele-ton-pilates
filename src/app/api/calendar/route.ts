@@ -67,7 +67,7 @@ export async function GET(request: NextRequest) {
   return new NextResponse(ics, {
     headers: {
       'Content-Type': 'text/calendar; charset=utf-8',
-      'Content-Disposition': `inline; filename="live.ics"`,
+      'Content-Disposition': `attachment; filename="live.ics"`,
     },
   })
 }
