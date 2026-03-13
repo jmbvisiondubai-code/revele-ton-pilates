@@ -371,6 +371,9 @@ export default function SuiviPage() {
                   <div className="flex items-center gap-2 mb-3">
                     <Calendar size={16} className="text-[#C6684F]" />
                     <p className="text-sm font-semibold text-[#2C2C2C]">Ton planning</p>
+                    <span className="text-xs text-[#C6684F] font-semibold bg-[#C6684F]/10 px-2 py-0.5 rounded-full">
+                      {userProfile.preferred_days.length}x/sem
+                    </span>
                     {userProfile.preferred_time && (
                       <span className="ml-auto text-xs text-[#6B6359] bg-[#F2E8DF] px-2.5 py-0.5 rounded-full capitalize">
                         {userProfile.preferred_time}
