@@ -301,6 +301,10 @@ export default function CommunautePage() {
   function handleTextareaChange(e: React.ChangeEvent<HTMLTextAreaElement>) {
     const val = e.target.value
     setNewPost(val)
+    // Auto-resize textarea
+    const el = e.target
+    el.style.height = 'auto'
+    el.style.height = `${Math.min(el.scrollHeight, 200)}px`
     const cursor = e.target.selectionStart ?? val.length
     const textUpToCursor = val.slice(0, cursor)
     const match = textUpToCursor.match(/@([a-zA-Z0-9_-]*)$/)
@@ -1547,12 +1551,11 @@ export default function CommunautePage() {
                 <textarea
                   ref={communityTextareaRef}
                   placeholder={isAdmin ? 'Écris un message... (@ pour mentionner)' : 'Partage ton expérience... (@ pour mentionner)'}
-                  value={newPost} onChange={handleTextareaChange} rows={1}
+                  value={newPost} onChange={handleTextareaChange} rows={2}
                   onKeyDown={e => {
                     if (e.key === 'Escape' && mentionSuggestions.length > 0) { setMentionQuery(null); setMentionSuggestions([]); return }
-                    if (e.key === 'Enter' && !e.shiftKey && mentionSuggestions.length === 0) { e.preventDefault(); handlePost() }
                   }}
-                  className="flex-1 resize-none bg-transparent text-sm text-text placeholder:text-text-muted focus:outline-none leading-5 max-h-28 overflow-y-auto"
+                  className="flex-1 resize-none bg-transparent text-sm text-text placeholder:text-text-muted focus:outline-none leading-5 max-h-[200px] overflow-y-auto"
                 />
               </div>
               <button onClick={handlePost} disabled={isPosting || isUploadingMedia || (!newPost.trim() && !postImageUrl && !postLinkUrl)}
