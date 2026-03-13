@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { Clock, Monitor, Video, ExternalLink, Radio, Film, X, ChevronRight, Play, UserCheck, UserMinus } from 'lucide-react'
+import { Clock, Monitor, Video, ExternalLink, Radio, Film, X, ChevronRight, Play, UserCheck, UserMinus, CalendarPlus } from 'lucide-react'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/client'
 import { useAuthStore } from '@/stores/auth-store'
 import { Card, Button } from '@/components/ui'
@@ -18,6 +18,56 @@ const SESSION_TYPE_LABELS: Record<LiveSessionType, { label: string; emoji: strin
 import { COLOR_CLASSES } from '@/app/admin/cours/page'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
+
+function toCalendarDate(date: Date) {
+  return date.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '')
+}
+
+function buildGoogleCalendarUrl(live: LiveSession) {
+  const start = new Date(live.scheduled_at)
+  const end = new Date(start.getTime() + live.duration_minutes * 60000)
+  const typeLabel = SESSION_TYPE_LABELS[live.session_type]?.label ?? 'Live'
+  const params = new URLSearchParams({
+    action: 'TEMPLATE',
+    text: `${typeLabel} — ${live.title}`,
+    dates: `${toCalendarDate(start)}/${toCalendarDate(end)}`,
+    details: [live.description, live.equipment ? `Matériel : ${live.equipment}` : ''].filter(Boolean).join('\n'),
+  })
+  return `https://www.google.com/calendar/render?${params}`
+}
+
+function downloadIcs(live: LiveSession) {
+  const start = new Date(live.scheduled_at)
+  const end = new Date(start.getTime() + live.duration_minutes * 60000)
+  const typeLabel = SESSION_TYPE_LABELS[live.session_type]?.label ?? 'Live'
+  const description = [live.description, live.equipment ? `Matériel : ${live.equipment}` : ''].filter(Boolean).join('\\n')
+  const ics = [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//Révèle ton Pilates//FR',
+    'BEGIN:VEVENT',
+    `DTSTART:${toCalendarDate(start)}`,
+    `DTEND:${toCalendarDate(end)}`,
+    `SUMMARY:${typeLabel} — ${live.title}`,
+    `DESCRIPTION:${description}`,
+    'BEGIN:VALARM',
+    'TRIGGER:-PT30M',
+    'ACTION:DISPLAY',
+    'DESCRIPTION:Rappel',
+    'END:VALARM',
+    'END:VEVENT',
+    'END:VCALENDAR',
+  ].join('\r\n')
+  const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `live-${live.id}.ics`
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
+}
 
 type Tab = 'lives' | 'vod' | 'replays'
 
@@ -51,6 +101,7 @@ export default function CoursPage() {
   const [isRegistered, setIsRegistered] = useState(false)
   const [registering, setRegistering] = useState(false)
   const [regError, setRegError] = useState<string | null>(null)
+  const [showCalMenu, setShowCalMenu] = useState(false)
   const { profile } = useAuthStore()
   const supabase = createClient()
 
@@ -306,6 +357,38 @@ export default function CoursPage() {
                         ? 'Réserver ma place'
                         : 'Je serai présente'}
                   </Button>
+                )}
+              </div>
+
+              {/* Add to calendar */}
+              <div className="relative mt-3">
+                <button
+                  onClick={() => setShowCalMenu(v => !v)}
+                  className="flex items-center gap-2 w-full justify-center py-2.5 rounded-xl border border-[#DCCFBF] text-sm font-medium text-[#6B6359] hover:border-[#C6684F] hover:text-[#C6684F] active:bg-[#F2E8DF] transition-colors"
+                >
+                  <CalendarPlus size={15} />
+                  Ajouter à mon agenda
+                </button>
+                {showCalMenu && (
+                  <>
+                    <div className="fixed inset-0 z-40" onClick={() => setShowCalMenu(false)} />
+                    <div className="absolute left-0 right-0 top-full mt-1 z-50 bg-white rounded-xl border border-[#DCCFBF] shadow-lg overflow-hidden">
+                      <button
+                        onClick={() => { openExternal(buildGoogleCalendarUrl(nextLive)); setShowCalMenu(false) }}
+                        className="flex items-center gap-3 w-full px-4 py-3 text-sm text-[#2C2C2C] hover:bg-[#F2E8DF] transition-colors"
+                      >
+                        <span className="text-base">📅</span>
+                        Google Agenda
+                      </button>
+                      <button
+                        onClick={() => { downloadIcs(nextLive); setShowCalMenu(false) }}
+                        className="flex items-center gap-3 w-full px-4 py-3 text-sm text-[#2C2C2C] hover:bg-[#F2E8DF] transition-colors border-t border-[#DCCFBF]/50"
+                      >
+                        <span className="text-base">🍎</span>
+                        Apple / Outlook (.ics)
+                      </button>
+                    </div>
+                  </>
                 )}
               </div>
 
