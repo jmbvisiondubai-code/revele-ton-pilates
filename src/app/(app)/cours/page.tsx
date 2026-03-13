@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { Clock, Monitor, Video, ExternalLink, Radio, Film, X, ChevronRight, Play, UserCheck, UserMinus, CalendarPlus } from 'lucide-react'
+import { Clock, Monitor, Video, ExternalLink, Radio, Film, ChevronRight, Play, UserCheck, UserMinus, CalendarPlus } from 'lucide-react'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/client'
 import { useAuthStore } from '@/stores/auth-store'
 import { Card, Button } from '@/components/ui'
@@ -63,7 +63,6 @@ export default function CoursPage() {
   const [vimeoCode, setVimeoCode] = useState<string | null>(null)
   const [zoomUrl, setZoomUrl] = useState<string | null>(null)
   const [linkCopied, setLinkCopied] = useState<string | null>(null)
-  const [iosPrompt, setIosPrompt] = useState<string | null>(null)
   const [isRegistered, setIsRegistered] = useState(false)
   const [registering, setRegistering] = useState(false)
   const [regError, setRegError] = useState<string | null>(null)
@@ -135,20 +134,13 @@ export default function CoursPage() {
   }
 
   function openExternal(url: string) {
-    const isIosPwa = (navigator as Navigator & { standalone?: boolean }).standalone === true
-    if (isIosPwa) {
-      navigator.clipboard.writeText(url).catch(() => {})
-      setIosPrompt(url)
-      setTimeout(() => setIosPrompt(null), 5000)
-    } else {
-      const a = document.createElement('a')
-      a.href = url
-      a.target = '_blank'
-      a.rel = 'noopener noreferrer'
-      document.body.appendChild(a)
-      a.click()
-      document.body.removeChild(a)
-    }
+    const a = document.createElement('a')
+    a.href = url
+    a.target = '_blank'
+    a.rel = 'noopener noreferrer'
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
   }
 
   async function registerForLive() {
@@ -198,20 +190,6 @@ export default function CoursPage() {
 
   return (
     <div className="px-5 pt-6 pb-4 lg:px-8 lg:pt-8 max-w-3xl mx-auto">
-      {/* iOS PWA prompt */}
-      {iosPrompt && (
-        <div className="fixed bottom-24 left-4 right-4 z-50 bg-[#2C2C2C] text-white rounded-2xl px-4 py-3 shadow-xl flex items-start gap-3">
-          <span className="text-xl mt-0.5">📋</span>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium">Lien copié !</p>
-            <p className="text-xs text-white/70 mt-0.5">Ouvre <strong>Safari</strong> et colle le lien pour accéder au cours.</p>
-          </div>
-          <button onClick={() => setIosPrompt(null)} className="text-white/50 hover:text-white mt-0.5">
-            <X size={16} />
-          </button>
-        </div>
-      )}
-
       {/* Header */}
       <div className="mb-5">
         <h1 className="font-[family-name:var(--font-heading)] text-3xl text-text">Tes cours</h1>

@@ -61,19 +61,10 @@ export default function DashboardPage() {
   const [replayCode, setReplayCode] = useState<string | null>(null)
   const [replayImage, setReplayImage] = useState<string | null>(null)
   const [codeCopied, setCodeCopied] = useState(false)
-  const [iosPrompt, setIosPrompt] = useState(false)
-
   function openExternal(url: string) {
-    const isIosPwa = (navigator as Navigator & { standalone?: boolean }).standalone === true
-    if (isIosPwa) {
-      navigator.clipboard.writeText(url).catch(() => {})
-      setIosPrompt(true)
-      setTimeout(() => setIosPrompt(false), 4000)
-    } else {
-      const a = document.createElement('a')
-      a.href = url; a.target = '_blank'; a.rel = 'noopener noreferrer'
-      document.body.appendChild(a); a.click(); document.body.removeChild(a)
-    }
+    const a = document.createElement('a')
+    a.href = url; a.target = '_blank'; a.rel = 'noopener noreferrer'
+    document.body.appendChild(a); a.click(); document.body.removeChild(a)
   }
 
   useEffect(() => {
@@ -156,17 +147,6 @@ export default function DashboardPage() {
 
   return (
     <div className="px-5 pt-6 pb-4 lg:px-8 lg:pt-8 max-w-5xl mx-auto">
-
-      {/* iOS PWA prompt */}
-      {iosPrompt && (
-        <div className="fixed bottom-24 left-4 right-4 z-50 bg-[#2C2C2C] text-white rounded-2xl px-4 py-3 shadow-xl flex items-center gap-3">
-          <span className="text-xl">📋</span>
-          <div className="flex-1">
-            <p className="text-sm font-medium">Lien copié !</p>
-            <p className="text-xs text-white/70 mt-0.5">Ouvre <strong>Safari</strong> et colle le lien.</p>
-          </div>
-        </div>
-      )}
 
       {/* Header */}
       {(() => {
