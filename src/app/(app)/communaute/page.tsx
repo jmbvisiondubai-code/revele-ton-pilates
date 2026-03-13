@@ -605,7 +605,7 @@ export default function CommunautePage() {
         )}
       </AnimatePresence>
 
-      <div className="sticky top-0 z-30 px-4 lg:px-8 pt-6 lg:pt-8 pb-4 mb-1 bg-[#FAF6F1]/95 backdrop-blur-sm">
+      <div className="sticky top-0 z-30 px-4 lg:px-6 pt-6 lg:pt-8 pb-4 mb-1 bg-[#FAF6F1]/95 backdrop-blur-sm">
         <Link
           href="/messages"
           className="lg:hidden inline-flex items-center gap-1.5 text-sm text-text-muted hover:text-primary transition-colors mb-2"
@@ -617,18 +617,9 @@ export default function CommunautePage() {
         <p className="text-text-secondary mt-1">Partage, inspire et célèbre ensemble</p>
       </div>
 
-      <div className="px-4 pb-compose lg:px-8 max-w-5xl mx-auto">
-      <div className="lg:grid lg:grid-cols-3 lg:gap-6">
-        {/* Sidebar — desktop only (quote card) */}
-        <div className="hidden lg:block lg:col-span-1 lg:order-2 space-y-4">
-          <Card className="bg-primary/5 border-primary/10">
-            <p className="font-[family-name:var(--font-heading)] text-base italic text-text leading-relaxed">"Ensemble, on va plus loin."</p>
-            <p className="text-sm text-text-secondary mt-1">— Marjorie</p>
-          </Card>
-        </div>
-
-        {/* Feed column */}
-        <div className="relative lg:col-span-2 lg:order-1 min-h-dvh">
+      <div className="px-4 pb-compose lg:px-6">
+        {/* Feed column — full width */}
+        <div className="relative min-h-dvh max-w-3xl lg:mx-auto">
           {/* ── Pinned messages from Marjorie — sticky at top ── */}
           {pinnedPosts.length > 0 && (
             <div className="sticky top-[8.5rem] lg:top-[9rem] z-20 space-y-3 -mx-4 lg:mx-0 px-4 lg:px-0 pt-2 pb-5 mb-4 bg-gradient-to-b from-[#FAF6F1]/95 via-[#FAF6F1]/80 to-transparent backdrop-blur-sm">
@@ -1350,7 +1341,6 @@ export default function CommunautePage() {
           )}
           <div ref={messagesEndRef} className="h-1" />
         </div>
-      </div>
       </div>
 
       {/* ── WhatsApp-style context menu ── */}
