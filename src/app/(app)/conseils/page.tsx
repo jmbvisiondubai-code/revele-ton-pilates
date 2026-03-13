@@ -112,13 +112,20 @@ export default function ConseilsPage() {
   }
 
   async function postComment() {
-    if (!commentText.trim() || !openArticle || !currentUserId) return
+    if (!commentText.trim() || !openArticle || !currentUserId) {
+      console.warn('[postComment] guard failed:', { text: !!commentText.trim(), article: !!openArticle, userId: currentUserId })
+      return
+    }
     setPostingComment(true)
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('article_comments')
       .insert({ article_id: openArticle.id, user_id: currentUserId, content: commentText.trim() })
       .select('*, profiles(username, avatar_url)')
       .single()
+    if (error) {
+      console.error('[postComment] error:', error)
+      alert(`Erreur: ${error.message}`)
+    }
     if (data) {
       setComments(prev => [...prev, data as ArticleComment])
       setCommentText('')
