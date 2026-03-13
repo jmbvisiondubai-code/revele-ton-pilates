@@ -27,6 +27,8 @@ type Comment = {
   created_at: string
   edited_at?: string | null
   profiles?: { username: string; avatar_url: string | null }
+  like_count: number
+  liked_by_me: boolean
 }
 
 type ReactionUser = { user_id: string; reaction_type: ReactionType; username: string }
@@ -117,6 +119,7 @@ export default function CommunautePage() {
   const [editingComment, setEditingComment] = useState<string | null>(null)
   const [editCommentContent, setEditCommentContent] = useState('')
   const [commentMenu, setCommentMenu] = useState<string | null>(null)
+  const [confirmDeleteComment, setConfirmDeleteComment] = useState<{ postId: string; commentId: string } | null>(null)
   const [openReactions, setOpenReactions] = useState<string | null>(null)
   const [contextMenu, setContextMenu] = useState<{ postId: string; isOwn: boolean; content: string; authorName: string } | null>(null)
   const [swipingPost, setSwipingPost] = useState<{ postId: string; deltaX: number } | null>(null)
@@ -426,10 +429,18 @@ export default function CommunautePage() {
     if (openComments === postId) { setOpenComments(null); return }
     setOpenComments(postId)
     if (!isSupabaseConfigured()) return
-    const { data } = await supabase.from('post_comments')
+    const { data: rawComments } = await supabase.from('post_comments')
       .select('id, user_id, content, created_at, edited_at, profiles(username, avatar_url)')
       .eq('post_id', postId).order('created_at', { ascending: true })
-    if (data) setPosts(prev => prev.map(p => p.id === postId ? { ...p, comments: data as unknown as Comment[] } : p))
+    if (!rawComments?.length) { setPosts(prev => prev.map(p => p.id === postId ? { ...p, comments: [] } : p)); return }
+    const commentIds = rawComments.map(c => c.id)
+    const { data: likes } = await supabase.from('comment_likes').select('comment_id, user_id').in('comment_id', commentIds)
+    const comments: Comment[] = rawComments.map(c => ({
+      ...(c as unknown as Comment),
+      like_count: (likes ?? []).filter(l => l.comment_id === c.id).length,
+      liked_by_me: (likes ?? []).some(l => l.comment_id === c.id && l.user_id === myId),
+    }))
+    setPosts(prev => prev.map(p => p.id === postId ? { ...p, comments } : p))
   }
 
   async function submitComment(postId: string) {
@@ -439,7 +450,8 @@ export default function CommunautePage() {
       .insert({ user_id: profile.id, post_id: postId, content: newComment.trim() })
       .select('id, user_id, content, created_at, edited_at, profiles(username, avatar_url)').single()
     if (data) {
-      setPosts(prev => prev.map(p => p.id !== postId ? p : { ...p, comment_count: p.comment_count + 1, comments: [...(p.comments ?? []), data as unknown as Comment] }))
+      const comment: Comment = { ...(data as unknown as Comment), like_count: 0, liked_by_me: false }
+      setPosts(prev => prev.map(p => p.id !== postId ? p : { ...p, comment_count: p.comment_count + 1, comments: [...(p.comments ?? []), comment] }))
       setNewComment('')
     }
     setIsCommenting(false)
@@ -459,6 +471,22 @@ export default function CommunautePage() {
   async function handleDeleteComment(postId: string, commentId: string) {
     const { error } = await supabase.from('post_comments').delete().eq('id', commentId)
     if (!error) setPosts(prev => prev.map(p => p.id !== postId ? p : { ...p, comment_count: p.comment_count - 1, comments: p.comments?.filter(c => c.id !== commentId) }))
+    setConfirmDeleteComment(null)
+  }
+
+  async function toggleCommentLike(postId: string, commentId: string, liked: boolean) {
+    if (!myId || !isSupabaseConfigured()) return
+    // Optimistic update
+    setPosts(prev => prev.map(p => p.id !== postId ? p : {
+      ...p, comments: p.comments?.map(c => c.id !== commentId ? c : {
+        ...c, liked_by_me: !liked, like_count: liked ? c.like_count - 1 : c.like_count + 1,
+      })
+    }))
+    if (liked) {
+      await supabase.from('comment_likes').delete().eq('comment_id', commentId).eq('user_id', myId)
+    } else {
+      await supabase.from('comment_likes').insert({ comment_id: commentId, user_id: myId })
+    }
   }
 
   // ── Gesture handlers (long press = picker, swipe right = reply) ──────────
@@ -779,14 +807,48 @@ export default function CommunautePage() {
                               <div className="mt-3 text-left border-t border-[#EDD5C5] pt-3">
                                 {(post.comments ?? []).map(comment => {
                                   const isMyComment = !!myId && myId === comment.user_id
+                                  const canDelete = isMyComment || isAdmin
                                   return (
-                                    <div key={comment.id} className={`flex items-end gap-2 mb-2 ${isMyComment ? 'flex-row-reverse' : 'flex-row'}`}>
+                                    <div key={comment.id} className={`flex items-end gap-2 mb-2 group ${isMyComment ? 'flex-row-reverse' : 'flex-row'}`}>
                                       <Avatar src={comment.profiles?.avatar_url} fallback={comment.profiles?.username} size="sm" />
                                       <div className={`flex flex-col gap-0.5 ${isMyComment ? 'items-end' : 'items-start'}`}>
                                         <span className="text-[10px] text-[#6B6359] px-1">{isMyComment ? 'Toi' : comment.profiles?.username}</span>
-                                        <div className={`px-3 py-1.5 rounded-xl text-xs text-[#2C2C2C] ${isMyComment ? 'bg-[#C6684F]/10' : 'bg-white border border-[#EDD5C5]'}`}>
+                                        <div className={`relative px-3 py-1.5 rounded-xl text-xs text-[#2C2C2C] ${isMyComment ? 'bg-[#C6684F]/10' : 'bg-white border border-[#EDD5C5]'}`}>
                                           {comment.content}
+                                          {comment.edited_at && <span className="text-[9px] text-[#DCCFBF] ml-1">(modifié)</span>}
+                                          {(isMyComment || isAdmin) && (
+                                            <div className="relative inline-block ml-1" onClick={e => e.stopPropagation()}>
+                                              <button onClick={() => setCommentMenu(commentMenu === comment.id ? null : comment.id)}
+                                                className="opacity-0 group-hover:opacity-100 transition-opacity text-[#DCCFBF] hover:text-[#6B6359]">
+                                                <MoreHorizontal size={11} />
+                                              </button>
+                                              <AnimatePresence>
+                                                {commentMenu === comment.id && (
+                                                  <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }}
+                                                    className="absolute right-0 bottom-5 z-20 bg-white rounded-xl shadow-lg border border-[#DCCFBF] overflow-hidden min-w-[120px]">
+                                                    {isMyComment && (
+                                                      <button onClick={() => { setEditingComment(comment.id); setEditCommentContent(comment.content); setCommentMenu(null) }}
+                                                        className="w-full flex items-center gap-2 px-3 py-2 text-xs text-text hover:bg-bg-elevated text-left">
+                                                        <Pencil size={11} /> Modifier
+                                                      </button>
+                                                    )}
+                                                    {canDelete && (
+                                                      <button onClick={() => { setConfirmDeleteComment({ postId: post.id, commentId: comment.id }); setCommentMenu(null) }}
+                                                        className="w-full flex items-center gap-2 px-3 py-2 text-xs text-error hover:bg-error-light text-left">
+                                                        <Trash2 size={11} /> Supprimer
+                                                      </button>
+                                                    )}
+                                                  </motion.div>
+                                                )}
+                                              </AnimatePresence>
+                                            </div>
+                                          )}
                                         </div>
+                                        <button onClick={() => toggleCommentLike(post.id, comment.id, comment.liked_by_me)}
+                                          className={`flex items-center gap-1 px-1 text-[10px] transition-colors ${comment.liked_by_me ? 'text-[#C6684F]' : 'text-[#DCCFBF] hover:text-[#C6684F]'}`}>
+                                          <Heart size={10} fill={comment.liked_by_me ? '#C6684F' : 'none'} />
+                                          {comment.like_count > 0 && <span>{comment.like_count}</span>}
+                                        </button>
                                       </div>
                                     </div>
                                   )
@@ -1053,6 +1115,7 @@ export default function CommunautePage() {
                             className="mt-2 ml-9 space-y-2">
                             {(post.comments ?? []).map(comment => {
                               const isMyComment = !!myId && myId === comment.user_id
+                              const canDelete = isMyComment || isAdmin
                               return (
                                 <div key={comment.id} className={`flex items-end gap-2 group ${isMyComment ? 'flex-row-reverse' : 'flex-row'}`}>
                                   <Avatar src={comment.profiles?.avatar_url} fallback={comment.profiles?.username} size="sm" />
@@ -1072,7 +1135,8 @@ export default function CommunautePage() {
                                       <div className={`relative rounded-2xl px-3 py-2 text-xs text-[#2C2C2C] leading-relaxed ${isMyComment ? 'bg-[#F2E8DF] rounded-br-sm' : 'bg-white border border-[#DCCFBF] rounded-bl-sm'}`}>
                                         {comment.content}
                                         {comment.edited_at && <span className="text-[9px] text-[#DCCFBF] ml-1">(modifié)</span>}
-                                        {isMyComment && (
+                                        {/* Menu: own comments = edit + delete, admin on others = delete only */}
+                                        {(isMyComment || isAdmin) && (
                                           <div className="relative inline-block ml-1" onClick={e => e.stopPropagation()}>
                                             <button onClick={() => setCommentMenu(commentMenu === comment.id ? null : comment.id)}
                                               className="opacity-0 group-hover:opacity-100 transition-opacity text-[#DCCFBF] hover:text-[#6B6359]">
@@ -1082,14 +1146,18 @@ export default function CommunautePage() {
                                               {commentMenu === comment.id && (
                                                 <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }}
                                                   className="absolute right-0 bottom-5 z-20 bg-white rounded-xl shadow-lg border border-[#DCCFBF] overflow-hidden min-w-[120px]">
-                                                  <button onClick={() => { setEditingComment(comment.id); setEditCommentContent(comment.content); setCommentMenu(null) }}
-                                                    className="w-full flex items-center gap-2 px-3 py-2 text-xs text-text hover:bg-bg-elevated text-left">
-                                                    <Pencil size={11} /> Modifier
-                                                  </button>
-                                                  <button onClick={() => { handleDeleteComment(post.id, comment.id); setCommentMenu(null) }}
-                                                    className="w-full flex items-center gap-2 px-3 py-2 text-xs text-error hover:bg-error-light text-left">
-                                                    <Trash2 size={11} /> Supprimer
-                                                  </button>
+                                                  {isMyComment && (
+                                                    <button onClick={() => { setEditingComment(comment.id); setEditCommentContent(comment.content); setCommentMenu(null) }}
+                                                      className="w-full flex items-center gap-2 px-3 py-2 text-xs text-text hover:bg-bg-elevated text-left">
+                                                      <Pencil size={11} /> Modifier
+                                                    </button>
+                                                  )}
+                                                  {canDelete && (
+                                                    <button onClick={() => { setConfirmDeleteComment({ postId: post.id, commentId: comment.id }); setCommentMenu(null) }}
+                                                      className="w-full flex items-center gap-2 px-3 py-2 text-xs text-error hover:bg-error-light text-left">
+                                                      <Trash2 size={11} /> Supprimer
+                                                    </button>
+                                                  )}
                                                 </motion.div>
                                               )}
                                             </AnimatePresence>
@@ -1097,6 +1165,12 @@ export default function CommunautePage() {
                                         )}
                                       </div>
                                     )}
+                                    {/* Like button */}
+                                    <button onClick={() => toggleCommentLike(post.id, comment.id, comment.liked_by_me)}
+                                      className={`flex items-center gap-1 px-1 text-[10px] transition-colors ${comment.liked_by_me ? 'text-[#C6684F]' : 'text-[#DCCFBF] hover:text-[#C6684F]'}`}>
+                                      <Heart size={10} fill={comment.liked_by_me ? '#C6684F' : 'none'} />
+                                      {comment.like_count > 0 && <span>{comment.like_count}</span>}
+                                    </button>
                                   </div>
                                 </div>
                               )
@@ -1348,6 +1422,30 @@ export default function CommunautePage() {
           </div>
         </div>
       )}
+      {/* ── Delete comment confirmation modal ── */}
+      <AnimatePresence>
+        {confirmDeleteComment && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm px-6"
+            onClick={() => setConfirmDeleteComment(null)}>
+            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-xl" onClick={e => e.stopPropagation()}>
+              <p className="text-sm font-semibold text-[#2C2C2C] mb-2">Supprimer ce commentaire ?</p>
+              <p className="text-xs text-[#6B6359] mb-5">Cette action est irréversible.</p>
+              <div className="flex gap-3 justify-end">
+                <button onClick={() => setConfirmDeleteComment(null)}
+                  className="px-4 py-2 text-xs font-medium text-[#6B6359] bg-[#F2E8DF] rounded-xl hover:bg-[#EDE5DA] transition-colors">
+                  Annuler
+                </button>
+                <button onClick={() => handleDeleteComment(confirmDeleteComment.postId, confirmDeleteComment.commentId)}
+                  className="px-4 py-2 text-xs font-medium text-white bg-[#C94F4F] rounded-xl hover:bg-[#b04444] transition-colors">
+                  Supprimer
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }
