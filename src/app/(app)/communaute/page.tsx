@@ -2,8 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Heart, MessageCircle, Send, Pin, PinOff, MoreHorizontal, Pencil, Trash2, Check, X, Link as LinkIcon, Image as ImageIcon, ExternalLink, CornerUpLeft, Smile, ChevronDown, ArrowLeft, Paperclip, Loader2 } from 'lucide-react'
-import Link from 'next/link'
+import { Heart, MessageCircle, Send, Pin, PinOff, MoreHorizontal, Pencil, Trash2, Check, X, Link as LinkIcon, Image as ImageIcon, ExternalLink, CornerUpLeft, Smile, ChevronDown, Paperclip, Loader2 } from 'lucide-react'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/client'
 import { useAuthStore } from '@/stores/auth-store'
 import { Card, Avatar, Button } from '@/components/ui'
@@ -609,16 +608,11 @@ export default function CommunautePage() {
         )}
       </AnimatePresence>
 
-      <div className="sticky top-14 lg:top-0 z-30 px-4 lg:px-6 pt-4 lg:pt-8 pb-4 mb-1 bg-[#FAF6F1]/95 backdrop-blur-sm">
-        <Link
-          href="/messages"
-          className="lg:hidden inline-flex items-center gap-1.5 text-sm text-text-muted hover:text-primary transition-colors mb-2"
-        >
-          <ArrowLeft size={14} />
-          Messages
-        </Link>
-        <h1 className="font-[family-name:var(--font-heading)] text-3xl text-text">Communauté</h1>
-        <p className="text-text-secondary mt-1">Partage, inspire et célèbre ensemble</p>
+      <div className="sticky top-14 lg:top-0 z-30 px-4 lg:px-6 pt-2 lg:pt-4 pb-2 bg-[#FAF6F1]/95 backdrop-blur-sm">
+        <div className="flex items-center justify-between">
+          <h1 className="font-[family-name:var(--font-heading)] text-xl text-text">Communauté</h1>
+          <p className="text-xs text-text-muted">Partage, inspire et célèbre</p>
+        </div>
       </div>
 
       <div className="px-4 pb-compose lg:px-6">
@@ -626,7 +620,7 @@ export default function CommunautePage() {
         <div className="relative min-h-dvh">
           {/* ── Pinned messages from Marjorie — sticky at top ── */}
           {pinnedPosts.length > 0 && (
-            <div className="sticky top-[10.5rem] lg:top-[9rem] z-20 space-y-3 -mx-4 lg:mx-0 px-4 lg:px-0 pt-2 pb-5 mb-4 bg-gradient-to-b from-[#FAF6F1]/95 via-[#FAF6F1]/80 to-transparent backdrop-blur-sm">
+            <div className="sticky top-[6.5rem] lg:top-[5rem] z-20 space-y-3 -mx-4 lg:mx-0 px-4 lg:px-0 pt-2 pb-5 mb-4 bg-gradient-to-b from-[#FAF6F1]/95 via-[#FAF6F1]/80 to-transparent backdrop-blur-sm">
               {pinnedPosts.map((post) => {
                 const pinnedAuthor = 'Marjorie'
                 const isPinnedOwn = !!myId && myId === post.user_id
