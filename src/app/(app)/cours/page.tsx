@@ -45,15 +45,7 @@ async function addToCalendar(live: LiveSession) {
     'END:VCALENDAR',
   ].join('\r\n')
 
-  const file = new File([ics], 'live.ics', { type: 'text/calendar' })
-
-  // Mobile: share menu lets user pick ANY calendar app
-  if (navigator.share && navigator.canShare?.({ files: [file] })) {
-    await navigator.share({ files: [file], title: `${typeLabel} — ${live.title}` })
-    return
-  }
-
-  // Desktop fallback: Google Calendar
+  // Google Calendar URL (works everywhere, no download)
   const details2 = [live.description, live.equipment ? `Matériel : ${live.equipment}` : ''].filter(Boolean).join('\n')
   const params = new URLSearchParams({
     action: 'TEMPLATE',
@@ -61,7 +53,20 @@ async function addToCalendar(live: LiveSession) {
     dates: `${fmt(start)}/${fmt(end)}`,
     details: details2,
   })
-  window.open(`https://calendar.google.com/calendar/render?${params}`, '_blank', 'noopener')
+  const googleUrl = `https://calendar.google.com/calendar/render?${params}`
+
+  // Mobile: try Web Share API first (lets user pick any calendar app)
+  try {
+    const file = new File([ics], 'live.ics', { type: 'text/calendar' })
+    if (navigator.share && navigator.canShare?.({ files: [file] })) {
+      await navigator.share({ files: [file], title: `${typeLabel} — ${live.title}` })
+      return
+    }
+  } catch {
+    // Share cancelled or failed — fall through to Google Calendar
+  }
+
+  window.open(googleUrl, '_blank', 'noopener')
 }
 
 type Tab = 'lives' | 'vod' | 'replays'
