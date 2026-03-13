@@ -19,54 +19,19 @@ import { COLOR_CLASSES } from '@/app/admin/cours/page'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
 
-async function addToCalendar(live: LiveSession) {
+function getCalendarUrl(live: LiveSession) {
   const start = new Date(live.scheduled_at)
   const end = new Date(start.getTime() + live.duration_minutes * 60000)
   const fmt = (d: Date) => d.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '')
   const typeLabel = SESSION_TYPE_LABELS[live.session_type]?.label ?? 'Live'
-  const desc = [live.description, live.equipment ? `Matériel : ${live.equipment}` : ''].filter(Boolean).join('\\n')
-  const ics = [
-    'BEGIN:VCALENDAR',
-    'VERSION:2.0',
-    'PRODID:-//Revele ton Pilates//FR',
-    'METHOD:PUBLISH',
-    'BEGIN:VEVENT',
-    `UID:${live.id}@reveletonpilates.com`,
-    `DTSTART:${fmt(start)}`,
-    `DTEND:${fmt(end)}`,
-    `SUMMARY:${typeLabel} — ${live.title}`,
-    `DESCRIPTION:${desc}`,
-    'BEGIN:VALARM',
-    'TRIGGER:-PT30M',
-    'ACTION:DISPLAY',
-    'DESCRIPTION:Rappel',
-    'END:VALARM',
-    'END:VEVENT',
-    'END:VCALENDAR',
-  ].join('\r\n')
-
-  // Google Calendar URL (works everywhere, no download)
-  const details2 = [live.description, live.equipment ? `Matériel : ${live.equipment}` : ''].filter(Boolean).join('\n')
+  const details = [live.description, live.equipment ? `Matériel : ${live.equipment}` : ''].filter(Boolean).join('\n')
   const params = new URLSearchParams({
     action: 'TEMPLATE',
     text: `${typeLabel} — ${live.title}`,
     dates: `${fmt(start)}/${fmt(end)}`,
-    details: details2,
+    details,
   })
-  const googleUrl = `https://calendar.google.com/calendar/render?${params}`
-
-  // Mobile: try Web Share API first (lets user pick any calendar app)
-  try {
-    const file = new File([ics], 'live.ics', { type: 'text/calendar' })
-    if (navigator.share && navigator.canShare?.({ files: [file] })) {
-      await navigator.share({ files: [file], title: `${typeLabel} — ${live.title}` })
-      return
-    }
-  } catch {
-    // Share cancelled or failed — fall through to Google Calendar
-  }
-
-  window.open(googleUrl, '_blank', 'noopener')
+  return `https://calendar.google.com/calendar/render?${params}`
 }
 
 type Tab = 'lives' | 'vod' | 'replays'
@@ -360,13 +325,15 @@ export default function CoursPage() {
               </div>
 
               {/* Add to calendar */}
-              <button
-                onClick={() => addToCalendar(nextLive)}
+              <a
+                href={getCalendarUrl(nextLive)}
+                target="_blank"
+                rel="noopener noreferrer"
                 className="flex items-center justify-center gap-2 w-full mt-3 py-2.5 rounded-xl border border-[#DCCFBF] text-sm font-medium text-[#6B6359] hover:border-[#C6684F] hover:text-[#C6684F] active:bg-[#F2E8DF] transition-colors"
               >
                 <CalendarPlus size={14} />
                 Ajouter à mon agenda
-              </button>
+              </a>
 
               {/* Zoom link */}
               <div className="flex gap-2 mt-3">
