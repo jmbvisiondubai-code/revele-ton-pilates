@@ -130,7 +130,10 @@ export interface ArticleComment {
   user_id: string
   content: string
   created_at: string
+  edited_at?: string | null
   profiles?: Pick<Profile, 'username' | 'avatar_url'>
+  like_count: number
+  liked_by_me: boolean
 }
 
 export interface CommunityPost {

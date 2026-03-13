@@ -2,8 +2,9 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { BookOpen, Clock, Sparkles, ExternalLink, ArrowLeft, ChevronRight, Send, Trash2 } from 'lucide-react'
+import { BookOpen, Clock, Sparkles, ExternalLink, ArrowLeft, ChevronRight, Send, Trash2, Heart, Pencil, MoreHorizontal, X, Check } from 'lucide-react'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/client'
+import { useAuthStore } from '@/stores/auth-store'
 import { Card, BadgePill, Chip } from '@/components/ui'
 import type { Article, ArticleCategory, ArticleComment, Recommendation } from '@/types/database'
 
@@ -63,8 +64,14 @@ export default function ConseilsPage() {
   const [postingComment, setPostingComment] = useState(false)
   const [commentError, setCommentError] = useState<string | null>(null)
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
+  const [editingComment, setEditingComment] = useState<string | null>(null)
+  const [editContent, setEditContent] = useState('')
+  const [commentMenu, setCommentMenu] = useState<string | null>(null)
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
   const commentInputRef = useRef<HTMLTextAreaElement>(null)
   const supabase = createClient()
+  const { profile } = useAuthStore()
+  const isAdmin = profile?.is_admin === true
 
   useEffect(() => {
     async function load() {
@@ -91,10 +98,26 @@ export default function ConseilsPage() {
       .eq('article_id', articleId)
       .order('created_at', { ascending: true })
     if (!rawComments?.length) { setComments([]); return }
+    const commentIds = rawComments.map(c => c.id)
     const userIds = [...new Set(rawComments.map(c => c.user_id))]
-    const { data: profiles } = await supabase.from('profiles').select('id, username, avatar_url').in('id', userIds)
+    const [{ data: profiles }, { data: likes }] = await Promise.all([
+      supabase.from('profiles').select('id, username, avatar_url').in('id', userIds),
+      supabase.from('comment_likes').select('comment_id, user_id').in('comment_id', commentIds),
+    ])
     const profileMap = new Map((profiles ?? []).map(p => [p.id, p]))
-    setComments(rawComments.map(c => ({ ...c, profiles: profileMap.get(c.user_id) ?? undefined })) as ArticleComment[])
+    const likesByComment = new Map<string, { count: number; mine: boolean }>()
+    for (const l of likes ?? []) {
+      const entry = likesByComment.get(l.comment_id) ?? { count: 0, mine: false }
+      entry.count++
+      if (l.user_id === currentUserId) entry.mine = true
+      likesByComment.set(l.comment_id, entry)
+    }
+    setComments(rawComments.map(c => ({
+      ...c,
+      profiles: profileMap.get(c.user_id) ?? undefined,
+      like_count: likesByComment.get(c.id)?.count ?? 0,
+      liked_by_me: likesByComment.get(c.id)?.mine ?? false,
+    })) as ArticleComment[])
   }
 
   async function markAsRead(rec: Recommendation) {
@@ -135,7 +158,7 @@ export default function ConseilsPage() {
       }
       if (data) {
         const { data: prof } = await supabase.from('profiles').select('username, avatar_url').eq('id', currentUserId).single()
-        const comment: ArticleComment = { ...data, profiles: prof ?? undefined }
+        const comment: ArticleComment = { ...data, profiles: prof ?? undefined, like_count: 0, liked_by_me: false }
         setComments(prev => [...prev, comment])
         setCommentText('')
       }
@@ -146,9 +169,32 @@ export default function ConseilsPage() {
     }
   }
 
-  async function deleteComment(id: string) {
+  async function handleDeleteComment(id: string) {
     await supabase.from('article_comments').delete().eq('id', id)
     setComments(prev => prev.filter(c => c.id !== id))
+    setConfirmDelete(null)
+  }
+
+  async function handleEditComment(id: string) {
+    if (!editContent.trim()) return
+    const { error } = await supabase.from('article_comments').update({ content: editContent.trim(), edited_at: new Date().toISOString() }).eq('id', id)
+    if (!error) {
+      setComments(prev => prev.map(c => c.id === id ? { ...c, content: editContent.trim(), edited_at: new Date().toISOString() } : c))
+    }
+    setEditingComment(null)
+    setEditContent('')
+  }
+
+  async function toggleCommentLike(commentId: string, liked: boolean) {
+    if (!currentUserId) return
+    setComments(prev => prev.map(c => c.id !== commentId ? c : {
+      ...c, liked_by_me: !liked, like_count: liked ? c.like_count - 1 : c.like_count + 1,
+    }))
+    if (liked) {
+      await supabase.from('comment_likes').delete().eq('comment_id', commentId).eq('user_id', currentUserId)
+    } else {
+      await supabase.from('comment_likes').insert({ comment_id: commentId, user_id: currentUserId })
+    }
   }
 
   const filteredArticles = articleFilter === 'all' ? articles : articles.filter(a => a.category === articleFilter)
@@ -228,34 +274,76 @@ export default function ConseilsPage() {
             )}
 
             <div className="space-y-3 mb-5">
-              {comments.map(c => (
-                <div key={c.id} className="flex gap-3">
-                  <div className="w-8 h-8 rounded-full bg-[#F2E8DF] flex items-center justify-center text-sm font-semibold text-[#C6684F] flex-shrink-0 overflow-hidden">
-                    {c.profiles?.avatar_url ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={c.profiles.avatar_url} alt="" className="w-full h-full object-cover" />
-                    ) : (
-                      c.profiles?.username?.[0]?.toUpperCase() ?? '?'
-                    )}
-                  </div>
-                  <div className="flex-1 bg-white border border-[#DCCFBF] rounded-2xl rounded-tl-sm p-3">
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-xs font-semibold text-[#2C2C2C]">{c.profiles?.username ?? 'Anonyme'}</span>
-                      <div className="flex items-center gap-2">
-                        <span className="text-[10px] text-[#DCCFBF]">
-                          {new Date(c.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
+              {comments.map(c => {
+                const isMyComment = c.user_id === currentUserId
+                const canDelete = isMyComment || isAdmin
+                const isEditing = editingComment === c.id
+                return (
+                  <div key={c.id} className="flex gap-3">
+                    <div className="w-8 h-8 rounded-full bg-[#F2E8DF] flex items-center justify-center text-sm font-semibold text-[#C6684F] flex-shrink-0 overflow-hidden">
+                      {c.profiles?.avatar_url ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={c.profiles.avatar_url} alt="" className="w-full h-full object-cover" />
+                      ) : (
+                        c.profiles?.username?.[0]?.toUpperCase() ?? '?'
+                      )}
+                    </div>
+                    <div className="flex-1 bg-white border border-[#DCCFBF] rounded-2xl rounded-tl-sm p-3">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-xs font-semibold text-[#2C2C2C]">
+                          {c.profiles?.username ?? 'Anonyme'}
+                          {c.edited_at && <span className="text-[10px] text-[#DCCFBF] font-normal ml-1">(modifié)</span>}
                         </span>
-                        {c.user_id === currentUserId && (
-                          <button onClick={() => deleteComment(c.id)} className="text-[#DCCFBF] hover:text-red-400 transition-colors">
-                            <Trash2 size={11} />
-                          </button>
-                        )}
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] text-[#DCCFBF]">
+                            {new Date(c.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
+                          </span>
+                          {(isMyComment || canDelete) && (
+                            <div className="relative">
+                              <button onClick={() => setCommentMenu(commentMenu === c.id ? null : c.id)} className="text-[#DCCFBF] hover:text-[#6B6359] transition-colors">
+                                <MoreHorizontal size={14} />
+                              </button>
+                              {commentMenu === c.id && (
+                                <div className="absolute right-0 top-5 bg-white border border-[#DCCFBF] rounded-xl shadow-lg py-1 z-20 min-w-[130px]">
+                                  {isMyComment && (
+                                    <button onClick={() => { setEditingComment(c.id); setEditContent(c.content); setCommentMenu(null) }}
+                                      className="w-full flex items-center gap-2 px-3 py-2 text-xs text-[#2C2C2C] hover:bg-[#F2E8DF] transition-colors">
+                                      <Pencil size={12} /> Modifier
+                                    </button>
+                                  )}
+                                  {canDelete && (
+                                    <button onClick={() => { setConfirmDelete(c.id); setCommentMenu(null) }}
+                                      className="w-full flex items-center gap-2 px-3 py-2 text-xs text-red-500 hover:bg-red-50 transition-colors">
+                                      <Trash2 size={12} /> Supprimer
+                                    </button>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      {isEditing ? (
+                        <div className="flex gap-2 items-end mt-1">
+                          <textarea value={editContent} onChange={e => setEditContent(e.target.value)} rows={2}
+                            className="flex-1 border border-[#DCCFBF] rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-[#C6684F] resize-none bg-[#FAFAFA]" />
+                          <button onClick={() => handleEditComment(c.id)} className="text-[#C6684F] hover:text-[#b05a42]"><Check size={16} /></button>
+                          <button onClick={() => { setEditingComment(null); setEditContent('') }} className="text-[#DCCFBF] hover:text-[#6B6359]"><X size={16} /></button>
+                        </div>
+                      ) : (
+                        <p className="text-sm text-[#2C2C2C] leading-relaxed">{c.content}</p>
+                      )}
+                      <div className="flex items-center mt-2">
+                        <button onClick={() => toggleCommentLike(c.id, c.liked_by_me)}
+                          className={`flex items-center gap-1 text-[11px] transition-colors ${c.liked_by_me ? 'text-[#C6684F]' : 'text-[#DCCFBF] hover:text-[#C6684F]'}`}>
+                          <Heart size={12} fill={c.liked_by_me ? '#C6684F' : 'none'} />
+                          {c.like_count > 0 && <span>{c.like_count}</span>}
+                        </button>
                       </div>
                     </div>
-                    <p className="text-sm text-[#2C2C2C] leading-relaxed">{c.content}</p>
                   </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
 
             {/* Comment error */}
@@ -264,9 +352,6 @@ export default function ConseilsPage() {
                 {commentError}
               </div>
             )}
-
-            {/* Version check */}
-            <p className="text-[10px] text-[#DCCFBF] mb-2">v2 — userId: {currentUserId ? 'ok' : 'non connecté'}</p>
 
             {/* Comment input */}
             <div className="flex gap-3 items-end">
@@ -291,6 +376,31 @@ export default function ConseilsPage() {
               </button>
             </div>
           </div>
+
+          {/* Delete confirmation modal */}
+          <AnimatePresence>
+            {confirmDelete && (
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm px-6"
+                onClick={() => setConfirmDelete(null)}>
+                <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
+                  className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-xl" onClick={e => e.stopPropagation()}>
+                  <p className="text-sm font-semibold text-[#2C2C2C] mb-2">Supprimer ce commentaire ?</p>
+                  <p className="text-xs text-[#6B6359] mb-5">Cette action est irréversible.</p>
+                  <div className="flex gap-3 justify-end">
+                    <button onClick={() => setConfirmDelete(null)}
+                      className="px-4 py-2 text-xs font-medium text-[#6B6359] bg-[#F2E8DF] rounded-xl hover:bg-[#EDE5DA] transition-colors">
+                      Annuler
+                    </button>
+                    <button onClick={() => handleDeleteComment(confirmDelete)}
+                      className="px-4 py-2 text-xs font-medium text-white bg-[#C94F4F] rounded-xl hover:bg-[#b04444] transition-colors">
+                      Supprimer
+                    </button>
+                  </div>
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </motion.div>
       </div>
     )
