@@ -226,7 +226,8 @@ export default function DashboardPage() {
             {featured && (
               <button onClick={() => openExternal(featured.url)} className="w-full text-left">
                 <Card hover className="h-full p-0 overflow-hidden">
-                  <div className="flex items-stretch">
+                  {/* Mobile: horizontal compact */}
+                  <div className="flex items-stretch lg:hidden">
                     {featured.image ? (
                       <div className="w-24 flex-shrink-0 rounded-l-2xl overflow-hidden">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -245,6 +246,28 @@ export default function DashboardPage() {
                       <ExternalLink size={14} className="text-[#C6684F] flex-shrink-0" />
                     </div>
                   </div>
+                  {/* Desktop: vertical with large image */}
+                  <div className="hidden lg:block">
+                    {featured.image ? (
+                      <div className="w-full h-36 overflow-hidden">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={featured.image} alt={featured.title} className="w-full h-full object-cover" />
+                      </div>
+                    ) : (
+                      <div className="w-full h-24 bg-[#C6684F]/10 flex items-center justify-center">
+                        <Dumbbell size={28} className="text-[#C6684F]" />
+                      </div>
+                    )}
+                    <div className="p-4">
+                      <p className="text-base font-semibold text-text">{featured.title}</p>
+                      {featured.description && (
+                        <p className="text-sm text-text-secondary mt-1 line-clamp-2">{featured.description}</p>
+                      )}
+                      <div className="flex items-center gap-1.5 mt-3 text-xs font-semibold text-[#C6684F]">
+                        Accéder <ExternalLink size={12} />
+                      </div>
+                    </div>
+                  </div>
                 </Card>
               </button>
             )}
@@ -253,7 +276,8 @@ export default function DashboardPage() {
             {replayUrl && (
               <button onClick={() => openExternal(replayUrl)} className="w-full text-left">
                 <Card hover className="h-full p-0 overflow-hidden border-[#7C3AED]/10 bg-[#7C3AED]/[0.03]">
-                  <div className="flex items-stretch">
+                  {/* Mobile: horizontal compact */}
+                  <div className="flex items-stretch lg:hidden">
                     {replayImage ? (
                       <div className="w-24 flex-shrink-0 rounded-l-2xl overflow-hidden">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -289,6 +313,45 @@ export default function DashboardPage() {
                         </button>
                       )}
                       <ExternalLink size={14} className="text-[#7C3AED] flex-shrink-0" />
+                    </div>
+                  </div>
+                  {/* Desktop: vertical with large image */}
+                  <div className="hidden lg:block">
+                    {replayImage ? (
+                      <div className="w-full h-36 overflow-hidden">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={replayImage} alt="Replay" className="w-full h-full object-cover" />
+                      </div>
+                    ) : (
+                      <div className="w-full h-24 bg-[#7C3AED]/10 flex items-center justify-center">
+                        <Play size={28} className="text-[#7C3AED] ml-0.5" />
+                      </div>
+                    )}
+                    <div className="p-4">
+                      <p className="text-base font-semibold text-text">Replay</p>
+                      {replayCode ? (
+                        <div className="flex items-center gap-2 mt-1.5">
+                          <p className="text-sm text-text-secondary">
+                            Mot de passe : <span className="font-mono font-bold text-[#7C3AED]">{replayCode}</span>
+                          </p>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              navigator.clipboard.writeText(replayCode)
+                              setCodeCopied(true)
+                              setTimeout(() => setCodeCopied(false), 2000)
+                            }}
+                            className="p-1 rounded-md bg-[#7C3AED]/10 hover:bg-[#7C3AED]/20 transition-colors text-[#7C3AED]"
+                          >
+                            {codeCopied ? <Check size={13} /> : <Copy size={13} />}
+                          </button>
+                        </div>
+                      ) : (
+                        <p className="text-sm text-text-secondary mt-1">Dernier cours collectif</p>
+                      )}
+                      <div className="flex items-center gap-1.5 mt-3 text-xs font-semibold text-[#7C3AED]">
+                        Regarder <ExternalLink size={12} />
+                      </div>
                     </div>
                   </div>
                 </Card>
