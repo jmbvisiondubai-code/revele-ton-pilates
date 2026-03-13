@@ -1,10 +1,9 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import Link from 'next/link'
 import { motion } from 'framer-motion'
 import {
-  MessageSquare, ChevronRight, Trophy, Clock, Sparkles, Flame,
+  ChevronRight, Trophy, Clock, Sparkles, Flame,
   ArrowLeft, ExternalLink, BookOpen,
 } from 'lucide-react'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/client'
@@ -47,16 +46,7 @@ function openExternal(url: string) {
   }
 }
 
-type Tab = 'messages' | 'recommandations' | 'parcours'
-
-interface ConvPreview {
-  partnerId: string
-  partnerName: string
-  partnerAvatar: string | null
-  lastMessage: string
-  lastAt: string
-  unreadCount: number
-}
+type Tab = 'parcours' | 'recommandations'
 
 const fadeInUp = {
   hidden: { opacity: 0, y: 12 },
@@ -64,10 +54,9 @@ const fadeInUp = {
 }
 
 export default function SuiviPage() {
-  const [tab, setTab] = useState<Tab>('messages')
+  const [tab, setTab] = useState<Tab>('parcours')
   const [loading, setLoading] = useState(true)
   const [userProfile, setUserProfile] = useState<Profile | null>(null)
-  const [conversations, setConversations] = useState<ConvPreview[]>([])
   const [recs, setRecs] = useState<Recommendation[]>([])
   const [unreadRecs, setUnreadRecs] = useState(0)
   const [openRec, setOpenRec] = useState<Recommendation | null>(null)
@@ -88,53 +77,6 @@ export default function SuiviPage() {
         if (data) { setProfile(data); prof = data }
       }
       setUserProfile(prof)
-
-      // Fetch conversations (last message per partner)
-      const { data: allMsgs } = await supabase
-        .from('direct_messages')
-        .select('sender_id, receiver_id, content, created_at, read_at')
-        .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
-        .order('created_at', { ascending: false })
-
-      if (allMsgs) {
-        const partnerMap = new Map<string, { lastMsg: string; lastAt: string; unread: number }>()
-        for (const m of allMsgs) {
-          const partnerId = m.sender_id === user.id ? m.receiver_id : m.sender_id
-          if (!partnerMap.has(partnerId)) {
-            const isReceived = m.receiver_id === user.id
-            partnerMap.set(partnerId, {
-              lastMsg: m.content || '📎 Fichier',
-              lastAt: m.created_at,
-              unread: isReceived && !m.read_at ? 1 : 0,
-            })
-          } else {
-            const entry = partnerMap.get(partnerId)!
-            if (m.receiver_id === user.id && !m.read_at) entry.unread++
-          }
-        }
-
-        const partnerIds = [...partnerMap.keys()]
-        const { data: profiles } = await supabase
-          .from('profiles')
-          .select('id, username, avatar_url')
-          .in('id', partnerIds)
-
-        const profileMap = new Map((profiles ?? []).map(p => [p.id, p]))
-        const convs: ConvPreview[] = partnerIds.map(pid => {
-          const entry = partnerMap.get(pid)!
-          const p = profileMap.get(pid)
-          return {
-            partnerId: pid,
-            partnerName: p?.username ?? 'Utilisateur',
-            partnerAvatar: p?.avatar_url ?? null,
-            lastMessage: entry.lastMsg,
-            lastAt: entry.lastAt,
-            unreadCount: entry.unread,
-          }
-        }).sort((a, b) => new Date(b.lastAt).getTime() - new Date(a.lastAt).getTime())
-
-        setConversations(convs)
-      }
 
       // Fetch personal recommendations
       const { data: personal } = await supabase
@@ -218,9 +160,8 @@ export default function SuiviPage() {
       {/* Tabs */}
       <div className="flex gap-1 bg-[#F2E8DF] rounded-xl p-1 mb-6 lg:max-w-md">
         {([
-          { key: 'messages' as Tab, label: 'Messages' },
-          { key: 'recommandations' as Tab, label: 'Conseils', badge: unreadRecs },
           { key: 'parcours' as Tab, label: 'Mon parcours' },
+          { key: 'recommandations' as Tab, label: 'Conseils', badge: unreadRecs },
         ]).map(t => (
           <button key={t.key} onClick={() => setTab(t.key)}
             className={`flex-1 relative py-2 lg:py-2.5 rounded-lg text-sm lg:text-base font-medium transition-all ${
@@ -243,55 +184,6 @@ export default function SuiviPage() {
         </div>
       ) : (
         <>
-          {/* ── MESSAGES TAB ── */}
-          {tab === 'messages' && (
-            <motion.div initial="hidden" animate="visible" custom={0} variants={fadeInUp} className="space-y-3">
-              {conversations.length === 0 ? (
-                <div className="text-center py-16 text-text-secondary">
-                  <MessageSquare size={36} className="mx-auto mb-3 text-[#DCCFBF]" />
-                  <p className="font-medium">Aucune conversation</p>
-                  <p className="text-sm text-text-muted mt-1">Tes messages avec Marjorie apparaitront ici.</p>
-                </div>
-              ) : (
-                conversations.map((conv, i) => (
-                  <motion.div key={conv.partnerId} initial="hidden" animate="visible" custom={i * 0.5} variants={fadeInUp}>
-                    <Link href={`/messages?id=${conv.partnerId}`}>
-                      <Card hover className="p-0">
-                        <div className="flex items-center gap-3 p-4">
-                          <div className="w-11 h-11 rounded-full bg-[#F2E8DF] flex items-center justify-center text-sm font-semibold text-[#C6684F] flex-shrink-0 overflow-hidden">
-                            {conv.partnerAvatar ? (
-                              // eslint-disable-next-line @next/next/no-img-element
-                              <img src={conv.partnerAvatar} alt="" className="w-full h-full object-cover" />
-                            ) : (
-                              conv.partnerName[0]?.toUpperCase() ?? '?'
-                            )}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center justify-between mb-0.5">
-                              <span className="text-sm font-semibold text-[#2C2C2C]">{conv.partnerName}</span>
-                              <span className="text-[10px] text-[#DCCFBF] flex-shrink-0">
-                                {new Date(conv.lastAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
-                              </span>
-                            </div>
-                            <p className="text-xs text-[#6B6359] truncate">{conv.lastMessage}</p>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            {conv.unreadCount > 0 && (
-                              <span className="min-w-[20px] h-5 px-1 bg-[#C6684F] text-white text-[10px] font-bold rounded-full flex items-center justify-center">
-                                {conv.unreadCount}
-                              </span>
-                            )}
-                            <ChevronRight size={14} className="text-[#DCCFBF]" />
-                          </div>
-                        </div>
-                      </Card>
-                    </Link>
-                  </motion.div>
-                ))
-              )}
-            </motion.div>
-          )}
-
           {/* ── RECOMMANDATIONS TAB ── */}
           {tab === 'recommandations' && (
             <motion.div initial="hidden" animate="visible" custom={0} variants={fadeInUp} className="space-y-3">
