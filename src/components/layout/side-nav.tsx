@@ -11,8 +11,8 @@ import { useAuthStore } from '@/stores/auth-store'
 const navItems = [
   { href: '/dashboard',  label: 'Accueil',     icon: Home },
   { href: '/cours',      label: 'Cours',        icon: Play },
-  { href: '/communaute', label: 'Communauté',   icon: Users },
   { href: '/suivi',      label: 'Mon suivi',    icon: Heart },
+  { href: '/communaute', label: 'Communauté',   icon: Users },
   { href: '/conseils',   label: 'Conseils',     icon: BookOpen },
   { href: '/profil',     label: 'Mon profil',   icon: User },
 ]
