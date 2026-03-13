@@ -314,15 +314,13 @@ export default function CoursPage() {
               </div>
 
               {/* Add to calendar */}
-              <a
-                href={getCalendarUrl(nextLive.id)}
-                target="_blank"
-                rel="noopener noreferrer"
+              <button
+                onClick={() => { window.location.href = getCalendarUrl(nextLive.id) }}
                 className="flex items-center justify-center gap-2 w-full mt-3 py-2.5 rounded-xl border border-[#DCCFBF] text-sm font-medium text-[#6B6359] hover:border-[#C6684F] hover:text-[#C6684F] active:bg-[#F2E8DF] transition-colors"
               >
                 <CalendarPlus size={14} />
                 Ajouter à mon agenda
-              </a>
+              </button>
 
               {/* Zoom link */}
               <div className="flex gap-2 mt-3">
