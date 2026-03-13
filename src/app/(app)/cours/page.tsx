@@ -15,7 +15,6 @@ const SESSION_TYPE_LABELS: Record<LiveSessionType, { label: string; emoji: strin
   atelier: { label: 'Atelier', emoji: '🛠️' },
   autre: { label: 'Live', emoji: '📌' },
 }
-import { COLOR_CLASSES } from '@/app/admin/cours/page'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
 
@@ -464,13 +463,15 @@ export default function CoursPage() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.03 }}
                 onClick={() => openExternal(cat.url)}
-                className={`flex items-center gap-3 p-3.5 rounded-2xl border text-left transition-all active:scale-95 ${COLOR_CLASSES[cat.color] ?? COLOR_CLASSES.rose}`}
+                whileHover={{ y: -2 }}
+                whileTap={{ scale: 0.97 }}
+                className="group relative flex flex-col items-center text-center p-5 rounded-2xl bg-white border border-[#EDE5DA] shadow-sm hover:shadow-md hover:border-[#C6684F]/30 transition-all duration-200"
               >
-                <span className="text-2xl flex-shrink-0">{cat.emoji}</span>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold leading-tight">{cat.label}</p>
+                <div className="w-12 h-12 rounded-xl bg-[#FAF6F1] flex items-center justify-center mb-3 group-hover:bg-[#C6684F]/10 transition-colors">
+                  <span className="text-2xl">{cat.emoji}</span>
                 </div>
-                <ChevronRight size={14} className="flex-shrink-0 opacity-40" />
+                <p className="text-sm font-semibold text-[#2C2C2C] leading-snug">{cat.label}</p>
+                <ChevronRight size={13} className="absolute top-3 right-3 text-[#DCCFBF] group-hover:text-[#C6684F] transition-colors" />
               </motion.button>
             ))}
           </div>
