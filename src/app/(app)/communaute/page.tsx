@@ -255,7 +255,9 @@ export default function CommunautePage() {
     if (docInputRef.current) docInputRef.current.value = ''
   }
 
-  async function handleTextareaChange(e: React.ChangeEvent<HTMLTextAreaElement>) {
+  const mentionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  function handleTextareaChange(e: React.ChangeEvent<HTMLTextAreaElement>) {
     const val = e.target.value
     setNewPost(val)
     const cursor = e.target.selectionStart ?? val.length
@@ -263,13 +265,16 @@ export default function CommunautePage() {
     const match = textUpToCursor.match(/@([a-zA-Z0-9_-]*)$/)
     if (match) {
       setMentionQuery(match[1])
-      if (isSupabaseConfigured()) {
-        const q = match[1]
-        const { data } = await supabase.from('profiles').select('id, username, avatar_url')
-          .ilike('username', `${q}%`).limit(6)
-        setMentionSuggestions(data ?? [])
-      }
+      if (mentionTimerRef.current) clearTimeout(mentionTimerRef.current)
+      mentionTimerRef.current = setTimeout(async () => {
+        if (isSupabaseConfigured()) {
+          const { data } = await supabase.from('profiles').select('id, username, avatar_url')
+            .ilike('username', `${match[1]}%`).limit(6)
+          setMentionSuggestions(data ?? [])
+        }
+      }, 300)
     } else {
+      if (mentionTimerRef.current) clearTimeout(mentionTimerRef.current)
       setMentionQuery(null)
       setMentionSuggestions([])
     }
@@ -614,7 +619,7 @@ export default function CommunautePage() {
                           {post.image_url && (
                             <div className="mt-2 rounded-xl overflow-hidden">
                               {/* eslint-disable-next-line @next/next/no-img-element */}
-                              <img src={post.image_url} alt="" className="w-full object-cover max-h-60" />
+                              <img src={post.image_url} alt="" className="w-full object-cover max-h-60" loading="lazy" />
                             </div>
                           )}
                           {post.link_url && (
@@ -958,7 +963,7 @@ export default function CommunautePage() {
                                 {post.image_url && (
                                   <div className="mt-2 rounded-xl overflow-hidden">
                                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                                    <img src={post.image_url} alt="" className="w-full object-cover max-h-60" />
+                                    <img src={post.image_url} alt="" className="w-full object-cover max-h-60" loading="lazy" />
                                   </div>
                                 )}
                                 {post.link_url && (

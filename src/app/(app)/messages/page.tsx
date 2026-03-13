@@ -73,6 +73,8 @@ export default function MessagesPage() {
   // Messages
   const [messages,    setMessages]    = useState<MsgWithMeta[]>([])
   const [loadingMsgs, setLoadingMsgs] = useState(false)
+  const [hasMoreMsgs, setHasMoreMsgs] = useState(false)
+  const [loadingMore, setLoadingMore] = useState(false)
   const [inputText,   setInputText]   = useState('')
   const [replyingTo,  setReplyingTo]  = useState<ReplyTarget | null>(null)
   const [pendingFile, setPendingFile] = useState<PendingFile | null>(null)
@@ -123,10 +125,13 @@ export default function MessagesPage() {
 
     setLoadingConvs(true)
 
-    // Fetch all DMs involving this user
-    const { data: sent }     = await supabase.from('direct_messages').select('*').eq('sender_id', resolvedId).order('created_at', { ascending: false })
-    const { data: received } = await supabase.from('direct_messages').select('*').eq('receiver_id', resolvedId).order('created_at', { ascending: false })
-    const allMsgs = [...(sent ?? []), ...(received ?? [])]
+    // Fetch all DMs involving this user (single query)
+    const { data: allMsgsRaw } = await supabase
+      .from('direct_messages')
+      .select('sender_id, receiver_id, content, image_url, file_name, created_at, read_at')
+      .or(`sender_id.eq.${resolvedId},receiver_id.eq.${resolvedId}`)
+      .order('created_at', { ascending: false })
+    const allMsgs = allMsgsRaw ?? []
 
     // Build partner list
     const partnerIds = new Set<string>()
@@ -192,38 +197,77 @@ export default function MessagesPage() {
     }
   }, [convs]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Load messages ────────────────────────────────────────────────────────
-  const loadMessages = useCallback(async () => {
-    if (!myId || !activeId || !isSupabaseConfigured()) return
-    setLoadingMsgs(true)
-    const supabase = createClient()
-    const { data: msgs } = await supabase
-      .from('direct_messages').select('*')
-      .or(`and(sender_id.eq.${myId},receiver_id.eq.${activeId}),and(sender_id.eq.${activeId},receiver_id.eq.${myId})`)
-      .order('created_at', { ascending: true })
+  // ── Load messages (paginated — last 50, then load more on scroll up) ────
+  const MSG_PAGE_SIZE = 50
 
-    const { data: rxns } = isSupabaseConfigured()
-      ? await supabase.from('direct_message_reactions').select('message_id, user_id, reaction_type').in('message_id', (msgs ?? []).map(m => m.id))
-      : { data: [] as { message_id: string; user_id: string; reaction_type: string }[] }
-
-    const msgsWithMeta: MsgWithMeta[] = (msgs ?? []).map(msg => {
+  async function enrichMessages(msgs: DirectMessage[], supabase: ReturnType<typeof createClient>): Promise<MsgWithMeta[]> {
+    if (!msgs.length) return []
+    const { data: rxns } = await supabase.from('direct_message_reactions').select('message_id, user_id, reaction_type').in('message_id', msgs.map(m => m.id))
+    return msgs.map(msg => {
       const msgRxns = (rxns ?? []).filter(r => r.message_id === msg.id)
       const reaction_counts = { ...EMPTY_REACTIONS }
       msgRxns.forEach(r => { if (r.reaction_type in reaction_counts) reaction_counts[r.reaction_type as ReactionType]++ })
       const user_reactions = msgRxns.filter(r => r.user_id === myId).map(r => r.reaction_type as ReactionType)
       return { ...msg, reaction_counts, user_reactions }
     })
+  }
 
+  const loadMessages = useCallback(async () => {
+    if (!myId || !activeId || !isSupabaseConfigured()) return
+    setLoadingMsgs(true)
+    const supabase = createClient()
+
+    // Fetch last MSG_PAGE_SIZE messages (descending to get latest, then reverse)
+    const { data: msgs } = await supabase
+      .from('direct_messages').select('*')
+      .or(`and(sender_id.eq.${myId},receiver_id.eq.${activeId}),and(sender_id.eq.${activeId},receiver_id.eq.${myId})`)
+      .order('created_at', { ascending: false })
+      .limit(MSG_PAGE_SIZE + 1)
+
+    const hasMore = (msgs ?? []).length > MSG_PAGE_SIZE
+    const page = (msgs ?? []).slice(0, MSG_PAGE_SIZE).reverse()
+    setHasMoreMsgs(hasMore)
+
+    const msgsWithMeta = await enrichMessages(page, supabase)
     setMessages(msgsWithMeta)
     setLoadingMsgs(false)
 
     // Mark received messages as read
-    const unread = (msgs ?? []).filter(m => m.receiver_id === myId && !m.read_at).map(m => m.id)
+    const unread = page.filter(m => m.receiver_id === myId && !m.read_at).map(m => m.id)
     if (unread.length) {
       await supabase.from('direct_messages').update({ read_at: new Date().toISOString() }).in('id', unread)
       loadConversations()
     }
   }, [myId, activeId]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function loadOlderMessages() {
+    if (!myId || !activeId || loadingMore || !hasMoreMsgs) return
+    setLoadingMore(true)
+    const supabase = createClient()
+    const oldest = messages[0]?.created_at
+    if (!oldest) { setLoadingMore(false); return }
+
+    const { data: msgs } = await supabase
+      .from('direct_messages').select('*')
+      .or(`and(sender_id.eq.${myId},receiver_id.eq.${activeId}),and(sender_id.eq.${activeId},receiver_id.eq.${myId})`)
+      .lt('created_at', oldest)
+      .order('created_at', { ascending: false })
+      .limit(MSG_PAGE_SIZE + 1)
+
+    const hasMore = (msgs ?? []).length > MSG_PAGE_SIZE
+    const page = (msgs ?? []).slice(0, MSG_PAGE_SIZE).reverse()
+    setHasMoreMsgs(hasMore)
+
+    const older = await enrichMessages(page, supabase)
+    // Preserve scroll position
+    const list = msgListRef.current
+    const prevHeight = list?.scrollHeight ?? 0
+    setMessages(prev => [...older, ...prev])
+    requestAnimationFrame(() => {
+      if (list) list.scrollTop = list.scrollHeight - prevHeight
+    })
+    setLoadingMore(false)
+  }
 
   useEffect(() => { loadMessages() }, [loadMessages])
 
@@ -768,8 +812,15 @@ export default function MessagesPage() {
                 <div className="flex items-center justify-center py-10">
                   <p className="text-sm text-[#A09488]">Commencez la conversation ✨</p>
                 </div>
-              ) : (
-                messages.map((msg, i) => {
+              ) : (<>
+                {hasMoreMsgs && (
+                  <div className="flex justify-center py-2">
+                    <button onClick={loadOlderMessages} disabled={loadingMore} className="text-xs text-[#C6684F] font-medium bg-white/80 border border-[#DCCFBF] rounded-full px-4 py-1.5 hover:bg-[#FAF6F1] transition-colors disabled:opacity-50">
+                      {loadingMore ? <span className="inline-block w-3 h-3 border-2 border-[#C6684F] border-t-transparent rounded-full animate-spin" /> : 'Charger les messages précédents'}
+                    </button>
+                  </div>
+                )}
+                {messages.map((msg, i) => {
                   const isMe        = msg.sender_id === myId
                   const prev        = messages[i - 1]
                   const showDate    = !prev || new Date(msg.created_at).toDateString() !== new Date(prev.created_at).toDateString()
@@ -988,7 +1039,7 @@ export default function MessagesPage() {
                     </div>
                   )
                 })
-              )}
+              }</>)}
               <div ref={messagesEndRef} />
             </div>
 
