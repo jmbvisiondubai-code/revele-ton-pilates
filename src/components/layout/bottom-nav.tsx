@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { motion } from 'framer-motion'
-import { Home, Play, MessageSquare, Users, BookOpen, User } from 'lucide-react'
+import { Home, Play, Users, Heart, BookOpen, User } from 'lucide-react'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/client'
 import { useAuthStore } from '@/stores/auth-store'
 
@@ -12,7 +12,7 @@ const navItems = [
   { href: '/dashboard',   label: 'Accueil',     icon: Home },
   { href: '/cours',       label: 'Cours',        icon: Play },
   { href: '/communaute',  label: 'Communauté',   icon: Users },
-  { href: '/messages',    label: 'Messages',     icon: MessageSquare },
+  { href: '/suivi',       label: 'Mon suivi',    icon: Heart },
   { href: '/conseils',    label: 'Conseils',     icon: BookOpen },
   { href: '/profil',      label: 'Profil',       icon: User },
 ]
@@ -42,13 +42,15 @@ export function BottomNav() {
     const channel = supabase.channel(`nav-dm-${profile.id}`)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'direct_messages', filter: `receiver_id=eq.${profile.id}` },
         () => {
-          if (!window.location.pathname.startsWith('/messages')) {
+          const p = window.location.pathname
+          if (!p.startsWith('/messages') && !p.startsWith('/suivi')) {
             setUnreadDms(prev => prev + 1)
           }
         })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'direct_messages', filter: `receiver_id=eq.${profile.id}` },
         () => {
-          if (!window.location.pathname.startsWith('/messages')) {
+          const p = window.location.pathname
+          if (!p.startsWith('/messages') && !p.startsWith('/suivi')) {
             fetchUnreadDms()
           }
         })
@@ -88,7 +90,7 @@ export function BottomNav() {
 
   // ── Reset badges on page navigation ──────────────────────────────────────
   useEffect(() => {
-    if (pathname.startsWith('/messages'))   setUnreadDms(0)
+    if (pathname.startsWith('/messages') || pathname.startsWith('/suivi'))   setUnreadDms(0)
     if (pathname.startsWith('/communaute')) setUnreadCommunity(0)
   }, [pathname])
 
@@ -98,7 +100,7 @@ export function BottomNav() {
         {navItems.map((item) => {
           const isActive = pathname === item.href || pathname.startsWith(item.href + '/')
           const Icon = item.icon
-          const isMessages   = item.href === '/messages'
+          const isMessages   = item.href === '/suivi'
           const isCommunaute = item.href === '/communaute'
           const badge = isMessages ? unreadDms : isCommunaute ? unreadCommunity : 0
 
