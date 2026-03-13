@@ -1043,8 +1043,8 @@ export default function CommunautePage() {
                                 </button>
                                 <AnimatePresence>
                                   {postMenu === post.id && (
-                                    <motion.div initial={{ opacity: 0, scale: 0.9, y: -4 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9 }}
-                                      className={`absolute top-6 z-20 bg-white rounded-xl shadow-lg border border-[#DCCFBF] overflow-hidden min-w-[150px] ${isOwn ? 'right-0' : 'left-0'}`}>
+                                    <motion.div initial={{ opacity: 0, scale: 0.9, y: 4 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9 }}
+                                      className={`absolute bottom-6 z-20 bg-white rounded-xl shadow-lg border border-[#DCCFBF] overflow-hidden min-w-[150px] ${isOwn ? 'right-0' : 'left-0'}`}>
                                       {isOwn && (
                                         <button onClick={() => { setEditingPost(post.id); setEditPostContent(post.content); setPostMenu(null) }}
                                           className="w-full flex items-center gap-2 px-3 py-2 text-sm text-text hover:bg-bg-elevated text-left">
