@@ -608,7 +608,7 @@ export default function CommunautePage() {
         )}
       </AnimatePresence>
 
-      <div className="sticky top-14 lg:top-0 z-30 px-4 lg:px-6 pt-3 lg:pt-5 pb-3 bg-[#FAF6F1]/95 backdrop-blur-sm">
+      <div className="sticky sticky-below-topbar lg:!top-0 z-30 px-4 lg:px-6 pt-3 lg:pt-5 pb-3 bg-[#FAF6F1]/95 backdrop-blur-sm">
         <div className="flex items-center justify-between">
           <h1 className="font-[family-name:var(--font-heading)] text-2xl text-text">Communauté</h1>
           <p className="text-sm text-text-muted">Partage, inspire et célèbre</p>
@@ -620,7 +620,7 @@ export default function CommunautePage() {
         <div className="relative min-h-dvh">
           {/* ── Pinned messages from Marjorie — sticky at top ── */}
           {pinnedPosts.length > 0 && (
-            <div className="sticky top-[6.5rem] lg:top-[5rem] z-20 space-y-3 -mx-4 lg:mx-0 px-4 lg:px-0 pt-2 pb-5 mb-4 bg-gradient-to-b from-[#FAF6F1]/95 via-[#FAF6F1]/80 to-transparent backdrop-blur-sm">
+            <div className="sticky sticky-below-topbar-plus lg:!top-[5rem] z-20 space-y-3 -mx-4 lg:mx-0 px-4 lg:px-0 pt-2 pb-5 mb-4 bg-gradient-to-b from-[#FAF6F1]/95 via-[#FAF6F1]/80 to-transparent backdrop-blur-sm">
               {pinnedPosts.map((post) => {
                 const pinnedAuthor = 'Marjorie'
                 const isPinnedOwn = !!myId && myId === post.user_id

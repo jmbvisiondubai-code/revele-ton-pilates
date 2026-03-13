@@ -105,6 +105,19 @@ h1, h2, h3, h4 {
   -webkit-tap-highlight-color: transparent;
 }
 
+/* Safe area padding for native app status bar (iOS + Android) */
+.safe-top {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+/* Sticky offsets that account for TopBar + safe area */
+.sticky-below-topbar {
+  top: calc(3.5rem + env(safe-area-inset-top, 0px));
+}
+.sticky-below-topbar-plus {
+  top: calc(6.5rem + env(safe-area-inset-top, 0px));
+}
+
 /* Safe area padding for mobile */
 .safe-bottom {
   padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 20px);
