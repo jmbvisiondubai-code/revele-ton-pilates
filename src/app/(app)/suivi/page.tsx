@@ -60,7 +60,7 @@ interface ConvPreview {
 
 const fadeInUp = {
   hidden: { opacity: 0, y: 12 },
-  visible: (d: number) => ({ opacity: 1, y: 0, transition: { delay: d * 0.08, duration: 0.4, ease: 'easeOut' } }),
+  visible: (d: number) => ({ opacity: 1, y: 0, transition: { delay: d * 0.08, duration: 0.4, ease: 'easeOut' as const } }),
 }
 
 export default function SuiviPage() {
