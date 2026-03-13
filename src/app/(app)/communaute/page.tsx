@@ -8,6 +8,7 @@ import { createClient, isSupabaseConfigured } from '@/lib/supabase/client'
 import { useAuthStore } from '@/stores/auth-store'
 import { Card, Avatar, Button } from '@/components/ui'
 import { formatRelativeDate, parseTextParts, safeUrl } from '@/lib/utils'
+import confetti from 'canvas-confetti'
 import type { CommunityPost, ReactionType } from '@/types/database'
 
 const REACTIONS: { type: ReactionType; emoji: string; label: string }[] = [
@@ -140,6 +141,8 @@ export default function CommunautePage() {
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const isInitialLoad = useRef(true)
   const lastTapRef = useRef<{ postId: string; time: number } | null>(null)
+  const seenCelebrationsRef = useRef<Set<string>>(new Set())
+  const celebrationObserverRef = useRef<IntersectionObserver | null>(null)
 
   const isAdmin = profile?.is_admin === true
   const myId = profile?.id ?? currentUserId
@@ -159,6 +162,40 @@ export default function CommunautePage() {
   useEffect(() => {
     lastVisitRef.current = localStorage.getItem('communaute_last_visit')
     localStorage.setItem('communaute_last_visit', new Date().toISOString())
+  }, [])
+
+  // Load seen celebrations from localStorage + setup IntersectionObserver for confetti
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('seen_celebrations')
+      if (stored) seenCelebrationsRef.current = new Set(JSON.parse(stored))
+    } catch { /* ignore */ }
+
+    celebrationObserverRef.current = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (!entry.isIntersecting) return
+        const postId = (entry.target as HTMLElement).dataset.celebrationId
+        if (!postId || seenCelebrationsRef.current.has(postId)) return
+        // Mark as seen
+        seenCelebrationsRef.current.add(postId)
+        localStorage.setItem('seen_celebrations', JSON.stringify([...seenCelebrationsRef.current]))
+        // Stop observing
+        celebrationObserverRef.current?.unobserve(entry.target)
+        // Launch confetti from the element position
+        const rect = entry.target.getBoundingClientRect()
+        const x = (rect.left + rect.width / 2) / window.innerWidth
+        const y = (rect.top + rect.height * 0.3) / window.innerHeight
+        // Burst 1: main explosion
+        confetti({ particleCount: 80, spread: 70, origin: { x, y }, colors: ['#C6684F', '#EDD5C5', '#FFD700', '#FF69B4', '#FFA500'], startVelocity: 30, gravity: 0.8, ticks: 120, scalar: 0.9 })
+        // Burst 2: delayed side sparks
+        setTimeout(() => {
+          confetti({ particleCount: 40, angle: 60, spread: 55, origin: { x: Math.max(0, x - 0.1), y }, colors: ['#C6684F', '#FFD700', '#FF69B4'], startVelocity: 25, gravity: 0.9, ticks: 100, scalar: 0.8 })
+          confetti({ particleCount: 40, angle: 120, spread: 55, origin: { x: Math.min(1, x + 0.1), y }, colors: ['#C6684F', '#FFD700', '#FF69B4'], startVelocity: 25, gravity: 0.9, ticks: 100, scalar: 0.8 })
+        }, 150)
+      })
+    }, { threshold: 0.6 })
+
+    return () => celebrationObserverRef.current?.disconnect()
   }, [])
 
   // Track scroll position to show "new posts" pill when scrolled up
@@ -772,7 +809,14 @@ export default function CommunautePage() {
                     const totalReactions = Object.values(post.reaction_counts).reduce((a, b) => a + b, 0)
                     return (
                       <motion.div key={post.id} id={`post-${post.id}`} initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }}>
-                        <div className="mx-2 my-1">
+                        <div className="mx-2 my-1"
+                          data-celebration-id={post.id}
+                          ref={(el) => {
+                            if (el && celebrationObserverRef.current && !seenCelebrationsRef.current.has(post.id)) {
+                              celebrationObserverRef.current.observe(el)
+                            }
+                          }}
+                        >
                           <div className="relative bg-gradient-to-br from-[#FFF8F5] via-[#FFF0E8] to-[#FDEEE6] border border-[#EDD5C5] rounded-2xl px-4 pt-4 pb-3 shadow-sm overflow-hidden">
                             {/* decorative confetti dots */}
                             <div className="absolute top-2 left-3 text-[10px] opacity-40">🎊</div>
