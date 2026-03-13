@@ -2,11 +2,11 @@
 
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { Clock, Monitor, Video, ExternalLink, Radio, Film, ChevronRight, Play, UserCheck, UserMinus, CalendarPlus } from 'lucide-react'
+import { Clock, Monitor, Video, ExternalLink, Radio, Film, ChevronRight, Play, UserCheck, UserMinus, CalendarPlus, CalendarClock } from 'lucide-react'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/client'
 import { useAuthStore } from '@/stores/auth-store'
 import { Card, Button } from '@/components/ui'
-import type { LiveSession, LiveSessionType, VodCategory } from '@/types/database'
+import type { LiveSession, LiveSessionType, VodCategory, PrivateAppointment } from '@/types/database'
 
 const SESSION_TYPE_LABELS: Record<LiveSessionType, { label: string; emoji: string }> = {
   collectif: { label: 'Cours collectif', emoji: '🧘' },
@@ -66,6 +66,7 @@ export default function CoursPage() {
   const [isRegistered, setIsRegistered] = useState(false)
   const [registering, setRegistering] = useState(false)
   const [regError, setRegError] = useState<string | null>(null)
+  const [privateAppts, setPrivateAppts] = useState<PrivateAppointment[]>([])
   const { profile } = useAuthStore()
   const supabase = createClient()
 
@@ -121,6 +122,19 @@ export default function CoursPage() {
         .eq('is_active', true)
         .order('order_index')
       if (cats && cats.length > 0) setVodCategories(cats as VodCategory[])
+
+      // Load private appointments
+      const { data: { user: currentUser } } = await supabase.auth.getUser()
+      if (currentUser) {
+        const { data: appts } = await supabase
+          .from('private_appointments')
+          .select('*')
+          .eq('client_id', currentUser.id)
+          .in('status', ['pending', 'confirmed'])
+          .gte('scheduled_at', new Date().toISOString())
+          .order('scheduled_at', { ascending: true })
+        if (appts) setPrivateAppts(appts as PrivateAppointment[])
+      }
     }
     loadData()
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -348,6 +362,43 @@ export default function CoursPage() {
               <Radio size={32} className="mx-auto mb-3 text-[#DCCFBF]" />
               <p className="font-medium">Aucun live collectif prévu</p>
               <p className="text-sm text-text-muted mt-1">Le prochain cours apparaîtra ici dès qu'il sera programmé.</p>
+            </div>
+          )}
+
+          {/* Private appointments */}
+          {privateAppts.length > 0 && (
+            <div className="mt-6 space-y-3">
+              <h3 className="font-[family-name:var(--font-heading)] text-lg text-text">Tes RDV prives</h3>
+              {privateAppts.map(appt => (
+                <Card key={appt.id} className="bg-[#7C3AED]/5 border-[#7C3AED]/20">
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 bg-[#7C3AED]/10 rounded-xl flex items-center justify-center flex-shrink-0">
+                      <CalendarClock size={18} className="text-[#7C3AED]" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-medium text-text">{appt.title}</h4>
+                      <p className="text-sm text-text-secondary mt-0.5 capitalize">
+                        {format(new Date(appt.scheduled_at), "EEEE d MMMM 'à' HH'h'mm", { locale: fr })}
+                        &nbsp;&bull;&nbsp;{appt.duration_minutes} min
+                      </p>
+                      {appt.description && (
+                        <p className="text-xs text-text-muted mt-1">{appt.description}</p>
+                      )}
+                      {appt.meeting_url && (
+                        <a
+                          href={appt.meeting_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 mt-2 text-sm font-medium text-[#7C3AED] hover:text-[#6D28D9] transition-colors"
+                        >
+                          <Video size={14} />
+                          Rejoindre la visio
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                </Card>
+              ))}
             </div>
           )}
 

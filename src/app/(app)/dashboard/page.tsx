@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import {
   Calendar,
+  CalendarClock,
   Clock,
   Trophy,
   ChevronRight,
@@ -15,13 +16,14 @@ import {
   Play,
   Copy,
   Check,
+  Video,
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/client'
 import { useAuthStore } from '@/stores/auth-store'
 import { Card, ProgressBar, StreakBadge, BadgePill } from '@/components/ui'
 import { getGreeting, formatDuration } from '@/lib/utils'
-import type { Profile, DailyInspiration, LiveSession, LiveSessionType } from '@/types/database'
+import type { Profile, DailyInspiration, LiveSession, LiveSessionType, PrivateAppointment } from '@/types/database'
 
 const SESSION_TYPE_LABELS: Record<LiveSessionType, string> = {
   collectif: 'Prochain cours collectif',
@@ -61,6 +63,7 @@ export default function DashboardPage() {
   const [replayCode, setReplayCode] = useState<string | null>(null)
   const [replayImage, setReplayImage] = useState<string | null>(null)
   const [codeCopied, setCodeCopied] = useState(false)
+  const [privateAppt, setPrivateAppt] = useState<PrivateAppointment | null>(null)
   function openExternal(url: string) {
     const a = document.createElement('a')
     a.href = url; a.target = '_blank'; a.rel = 'noopener noreferrer'
@@ -107,6 +110,17 @@ export default function DashboardPage() {
         .order('scheduled_at', { ascending: true })
         .limit(1).single()
       if (liveData) setNextLive(liveData as LiveSession)
+
+      const { data: apptData } = await supabase
+        .from('private_appointments')
+        .select('*')
+        .eq('client_id', user.id)
+        .in('status', ['pending', 'confirmed'])
+        .gte('scheduled_at', new Date().toISOString())
+        .order('scheduled_at', { ascending: true })
+        .limit(1)
+        .maybeSingle()
+      if (apptData) setPrivateAppt(apptData as PrivateAppointment)
 
       const { data: settings } = await supabase
         .from('app_settings')
@@ -204,6 +218,46 @@ export default function DashboardPage() {
                   </div>
                 </Card>
               </Link>
+            </motion.div>
+          )}
+
+          {/* Private appointment */}
+          {privateAppt && (
+            <motion.div initial="hidden" animate="visible" custom={1.5} variants={fadeInUp}>
+              <Card className="bg-[#7C3AED]/5 border-[#7C3AED]/20 lg:p-6">
+                <div className="flex items-start gap-4">
+                  <div className="w-12 h-12 bg-[#7C3AED]/10 rounded-xl flex items-center justify-center flex-shrink-0">
+                    <CalendarClock size={20} className="text-[#7C3AED]" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <BadgePill variant="accent">RDV prive avec Marjorie</BadgePill>
+                    </div>
+                    <h3 className="font-[family-name:var(--font-heading)] text-lg lg:text-xl text-text">
+                      {privateAppt.title}
+                    </h3>
+                    <p className="text-sm text-text-secondary mt-1 capitalize">
+                      {format(new Date(privateAppt.scheduled_at), "EEEE d MMMM 'à' HH'h'mm", { locale: fr })}
+                      &nbsp;&bull;&nbsp;{privateAppt.duration_minutes} min
+                    </p>
+                    {privateAppt.description && (
+                      <p className="text-xs text-text-muted mt-1">{privateAppt.description}</p>
+                    )}
+                    {privateAppt.meeting_url && (
+                      <a
+                        href={privateAppt.meeting_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 mt-2 text-sm font-medium text-[#7C3AED] hover:text-[#6D28D9] transition-colors"
+                        onClick={e => e.stopPropagation()}
+                      >
+                        <Video size={14} />
+                        Rejoindre la visio
+                      </a>
+                    )}
+                  </div>
+                </div>
+              </Card>
             </motion.div>
           )}
 

@@ -14,7 +14,7 @@ import { useAuthStore } from '@/stores/auth-store'
 import { formatRelativeDate, parseTextWithLinks, safeUrl } from '@/lib/utils'
 import type { DirectMessage, ReactionType } from '@/types/database'
 import Image from 'next/image'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 
 // ── Constants ────────────────────────────────────────────────────────────────
 const REACTIONS: { type: ReactionType; emoji: string; label: string }[] = [
@@ -55,6 +55,7 @@ export default function MessagesPage() {
   const myId    = profile?.id
   const isAdmin = profile?.is_admin ?? false
   const router  = useRouter()
+  const searchParams = useSearchParams()
 
   // ── State ─────────────────────────────────────────────────────────────────
   const [convs,          setConvs]          = useState<ConvPreview[]>([])
@@ -196,6 +197,31 @@ export default function MessagesPage() {
       else { setActiveId(null); setShowList(true); sessionStorage.removeItem('dm_active_conv') }
     }
   }, [convs]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Handle ?to= query param (e.g. from admin RDV page)
+  useEffect(() => {
+    const toId = searchParams.get('to')
+    if (!toId || !convs.length && loadingConvs) return
+    // Try to find existing conversation
+    const existing = convs.find(c => c.partner.id === toId)
+    if (existing) {
+      openConversation(existing)
+    } else {
+      // No existing conversation — fetch the profile and open directly
+      const supabase = createClient()
+      supabase.from('profiles').select('id, username, avatar_url').eq('id', toId).single().then(({ data }) => {
+        if (data) {
+          const partner = data as ConvProfile
+          sessionStorage.setItem('dm_active_conv', partner.id)
+          setActiveId(partner.id)
+          setActiveProfile(partner)
+          setShowList(false)
+        }
+      })
+    }
+    // Clear the param from URL without navigation
+    router.replace('/messages', { scroll: false })
+  }, [convs, loadingConvs]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Load messages (paginated — last 50, then load more on scroll up) ────
   const MSG_PAGE_SIZE = 50

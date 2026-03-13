@@ -248,3 +248,20 @@ export interface VodCategory {
   is_active: boolean
   created_at: string
 }
+
+export type MeetingType = 'zoom' | 'meet' | 'other'
+export type AppointmentStatus = 'pending' | 'confirmed' | 'cancelled' | 'completed'
+
+export interface PrivateAppointment {
+  id: string
+  client_id: string
+  created_by: string
+  title: string
+  description: string | null
+  scheduled_at: string
+  duration_minutes: number
+  meeting_url: string | null
+  meeting_type: MeetingType
+  status: AppointmentStatus
+  created_at: string
+}
