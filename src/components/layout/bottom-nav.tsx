@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Home, Play, Users, TrendingUp, BookOpen, CheckCircle, BarChart3 } from 'lucide-react'
+import { Home, Play, Users, TrendingUp, BookOpen, Plus, LayoutGrid } from 'lucide-react'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/client'
 import { useAuthStore } from '@/stores/auth-store'
 import { PracticeLogModal } from '@/components/practice-log-modal'
@@ -16,7 +16,7 @@ const leftItems = [
   { href: '/cours',       label: 'Cours',        icon: Play },
 ]
 
-const centerItem = { href: '/suivi', label: 'Mon suivi', icon: TrendingUp }
+const centerItem = { href: '/suivi', label: 'Menu', icon: LayoutGrid }
 
 const rightItems = [
   { href: '/communaute',  label: 'Communauté',   icon: Users },
@@ -143,9 +143,9 @@ export function BottomNav() {
                   className="absolute -top-[4.5rem] -left-10 flex flex-col items-center gap-1"
                 >
                   <div className="w-12 h-12 rounded-full bg-[#C6684F] shadow-lg shadow-[#C6684F]/25 flex items-center justify-center">
-                    <CheckCircle size={22} className="text-white" />
+                    <Plus size={24} strokeWidth={2.5} className="text-white" />
                   </div>
-                  <span className="text-[9px] font-semibold text-[#C6684F] whitespace-nowrap">Session</span>
+                  <span className="text-[9px] font-semibold text-[#C6684F] whitespace-nowrap">Ajouter</span>
                 </motion.button>
 
                 {/* Right: Mon suivi */}
@@ -158,7 +158,7 @@ export function BottomNav() {
                   className="absolute -top-[4.5rem] -right-10 flex flex-col items-center gap-1"
                 >
                   <div className="w-12 h-12 rounded-full bg-[#E8D5C4] shadow-lg shadow-[#DCCFBF]/40 flex items-center justify-center">
-                    <BarChart3 size={22} className="text-[#A8543D]" />
+                    <TrendingUp size={22} className="text-[#A8543D]" />
                   </div>
                   <span className="text-[9px] font-semibold text-[#6B6359] whitespace-nowrap">Mon suivi</span>
                 </motion.button>
