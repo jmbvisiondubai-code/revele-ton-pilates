@@ -821,13 +821,24 @@ export default function CommunautePage() {
                                       <Avatar src={comment.profiles?.avatar_url} fallback={comment.profiles?.username} size="sm" />
                                       <div className={`flex flex-col gap-0.5 ${isMyComment ? 'items-end' : 'items-start'}`}>
                                         <span className="text-[10px] text-[#6B6359] px-1">{isMyComment ? 'Toi' : comment.profiles?.username}</span>
+                                        {editingComment === comment.id ? (
+                                          <div className="w-full">
+                                            <input value={editCommentContent} onChange={e => setEditCommentContent(e.target.value)}
+                                              onKeyDown={e => e.key === 'Enter' && !e.shiftKey && handleEditComment(post.id, comment.id)}
+                                              autoFocus className="w-full bg-white text-xs text-[#2C2C2C] rounded-xl px-3 py-2 focus:outline-none border border-[#C6684F]/30" />
+                                            <div className="flex gap-2 mt-1 justify-end">
+                                              <button onClick={() => { setEditingComment(null); setEditCommentContent('') }} className="text-[10px] text-[#6B6359]">Annuler</button>
+                                              <button onClick={() => handleEditComment(post.id, comment.id)} className="text-[10px] font-semibold text-[#C6684F]">Enregistrer</button>
+                                            </div>
+                                          </div>
+                                        ) : (
                                         <div className={`relative px-3 py-1.5 rounded-xl text-xs text-[#2C2C2C] ${isMyComment ? 'bg-[#C6684F]/10' : 'bg-white border border-[#EDD5C5]'}`}>
                                           {comment.content}
                                           {comment.edited_at && <span className="text-[9px] text-[#DCCFBF] ml-1">(modifié)</span>}
                                           {(isMyComment || isAdmin) && (
                                             <div className="relative inline-block ml-1" onClick={e => e.stopPropagation()}>
                                               <button onClick={() => setCommentMenu(commentMenu === comment.id ? null : comment.id)}
-                                                className="opacity-0 group-hover:opacity-100 transition-opacity text-[#DCCFBF] hover:text-[#6B6359]">
+                                                className="text-[#DCCFBF] hover:text-[#6B6359] active:text-[#6B6359]">
                                                 <MoreHorizontal size={11} />
                                               </button>
                                               <AnimatePresence>
@@ -852,6 +863,7 @@ export default function CommunautePage() {
                                             </div>
                                           )}
                                         </div>
+                                        )}
                                         <button onClick={() => toggleCommentLike(post.id, comment.id, comment.liked_by_me)}
                                           className={`flex items-center gap-1 px-1 text-[10px] transition-colors ${comment.liked_by_me ? 'text-[#C6684F]' : 'text-[#DCCFBF] hover:text-[#C6684F]'}`}>
                                           <Heart size={10} fill={comment.liked_by_me ? '#C6684F' : 'none'} />
