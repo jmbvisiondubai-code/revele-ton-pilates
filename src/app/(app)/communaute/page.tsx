@@ -136,6 +136,7 @@ export default function CommunautePage() {
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null)
   const touchStartRef = useRef<{ x: number; y: number } | null>(null)
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const commentLongPressRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const isInitialLoad = useRef(true)
   const lastTapRef = useRef<{ postId: string; time: number } | null>(null)
@@ -832,14 +833,34 @@ export default function CommunautePage() {
                                             </div>
                                           </div>
                                         ) : (
-                                        <div className={`relative px-3 py-1.5 rounded-xl text-xs text-[#2C2C2C] ${isMyComment ? 'bg-[#C6684F]/10' : 'bg-white border border-[#EDD5C5]'}`}>
+                                        <div className={`relative px-3 py-1.5 rounded-xl text-xs text-[#2C2C2C] select-none ${isMyComment ? 'bg-[#C6684F]/10' : 'bg-white border border-[#EDD5C5]'}`}
+                                          onTouchStart={(e) => {
+                                            if (!isMyComment && !isAdmin) return
+                                            const touch = e.touches[0]
+                                            const startPos = { x: touch.clientX, y: touch.clientY }
+                                            commentLongPressRef.current = setTimeout(() => {
+                                              setCommentMenu(comment.id)
+                                            }, 500)
+                                            const onMove = (ev: TouchEvent) => {
+                                              const dx = ev.touches[0].clientX - startPos.x
+                                              const dy = ev.touches[0].clientY - startPos.y
+                                              if (Math.abs(dx) > 10 || Math.abs(dy) > 10) {
+                                                if (commentLongPressRef.current) { clearTimeout(commentLongPressRef.current); commentLongPressRef.current = null }
+                                                document.removeEventListener('touchmove', onMove)
+                                              }
+                                            }
+                                            document.addEventListener('touchmove', onMove, { passive: true })
+                                          }}
+                                          onTouchEnd={() => { if (commentLongPressRef.current) { clearTimeout(commentLongPressRef.current); commentLongPressRef.current = null } }}
+                                          onTouchCancel={() => { if (commentLongPressRef.current) { clearTimeout(commentLongPressRef.current); commentLongPressRef.current = null } }}
+                                        >
                                           {comment.content}
                                           {comment.edited_at && <span className="text-[9px] text-[#DCCFBF] ml-1">(modifié)</span>}
                                           {(isMyComment || isAdmin) && (
                                             <div className="relative inline-block ml-1" onClick={e => e.stopPropagation()}>
                                               <button onClick={() => setCommentMenu(commentMenu === comment.id ? null : comment.id)}
-                                                className="text-[#DCCFBF] hover:text-[#6B6359] active:text-[#6B6359]">
-                                                <MoreHorizontal size={11} />
+                                                className="text-[#A09488] hover:text-[#6B6359] active:text-[#6B6359]">
+                                                <MoreHorizontal size={12} />
                                               </button>
                                               <AnimatePresence>
                                                 {commentMenu === comment.id && (
@@ -1152,15 +1173,35 @@ export default function CommunautePage() {
                                         </div>
                                       </div>
                                     ) : (
-                                      <div className={`relative rounded-2xl px-3 py-2 text-xs text-[#2C2C2C] leading-relaxed ${isMyComment ? 'bg-[#F2E8DF] rounded-br-sm' : 'bg-white border border-[#DCCFBF] rounded-bl-sm'}`}>
+                                      <div className={`relative rounded-2xl px-3 py-2 text-xs text-[#2C2C2C] leading-relaxed select-none ${isMyComment ? 'bg-[#F2E8DF] rounded-br-sm' : 'bg-white border border-[#DCCFBF] rounded-bl-sm'}`}
+                                        onTouchStart={(e) => {
+                                          if (!isMyComment && !isAdmin) return
+                                          const touch = e.touches[0]
+                                          const startPos = { x: touch.clientX, y: touch.clientY }
+                                          commentLongPressRef.current = setTimeout(() => {
+                                            setCommentMenu(comment.id)
+                                          }, 500)
+                                          const onMove = (ev: TouchEvent) => {
+                                            const dx = ev.touches[0].clientX - startPos.x
+                                            const dy = ev.touches[0].clientY - startPos.y
+                                            if (Math.abs(dx) > 10 || Math.abs(dy) > 10) {
+                                              if (commentLongPressRef.current) { clearTimeout(commentLongPressRef.current); commentLongPressRef.current = null }
+                                              document.removeEventListener('touchmove', onMove)
+                                            }
+                                          }
+                                          document.addEventListener('touchmove', onMove, { passive: true })
+                                        }}
+                                        onTouchEnd={() => { if (commentLongPressRef.current) { clearTimeout(commentLongPressRef.current); commentLongPressRef.current = null } }}
+                                        onTouchCancel={() => { if (commentLongPressRef.current) { clearTimeout(commentLongPressRef.current); commentLongPressRef.current = null } }}
+                                      >
                                         {comment.content}
                                         {comment.edited_at && <span className="text-[9px] text-[#DCCFBF] ml-1">(modifié)</span>}
                                         {/* Menu: own comments = edit + delete, admin on others = delete only */}
                                         {(isMyComment || isAdmin) && (
                                           <div className="relative inline-block ml-1" onClick={e => e.stopPropagation()}>
                                             <button onClick={() => setCommentMenu(commentMenu === comment.id ? null : comment.id)}
-                                              className="text-[#DCCFBF] hover:text-[#6B6359] transition-colors">
-                                              <MoreHorizontal size={11} />
+                                              className="text-[#A09488] hover:text-[#6B6359] transition-colors">
+                                              <MoreHorizontal size={12} />
                                             </button>
                                             <AnimatePresence>
                                               {commentMenu === comment.id && (
