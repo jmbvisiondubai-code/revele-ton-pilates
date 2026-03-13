@@ -50,7 +50,7 @@ export function TopBar() {
   }, [isMessagesActive])
 
   return (
-    <header className="lg:hidden sticky top-0 z-40 bg-white/80 backdrop-blur-xl border-b border-[#EDD5C5]/50 shadow-[0_1px_8px_rgba(198,104,79,0.06)]">
+    <header className="lg:hidden sticky top-0 z-40 bg-white/95 backdrop-blur-xl border-b border-[#EDD5C5]/50 shadow-[0_1px_8px_rgba(198,104,79,0.06)]">
       <div className="flex items-center justify-between px-5 py-2.5">
         {/* Logo */}
         <Link href="/dashboard" className="flex items-center gap-2.5">
