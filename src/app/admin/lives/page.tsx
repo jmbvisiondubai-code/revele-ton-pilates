@@ -3,13 +3,23 @@
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import type { LiveSession } from '@/types/database'
+import type { LiveSessionType } from '@/types/database'
 import { Plus, Pencil, Trash2, X, Settings, Save } from 'lucide-react'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
 
+const SESSION_TYPES: { value: LiveSessionType; label: string; emoji: string }[] = [
+  { value: 'collectif', label: 'Cours collectif', emoji: '🧘' },
+  { value: 'masterclass', label: 'Masterclass', emoji: '🎓' },
+  { value: 'faq', label: 'Session FAQ', emoji: '❓' },
+  { value: 'atelier', label: 'Atelier', emoji: '🛠️' },
+  { value: 'autre', label: 'Autre', emoji: '📌' },
+]
+
 const EMPTY_FORM = {
   title: '', description: '', scheduled_at: '', duration_minutes: 60,
   meeting_url: '', max_participants: 20, is_unlimited: false, equipment: '', is_collective: true,
+  session_type: 'collectif' as LiveSessionType,
 }
 
 export default function AdminLivesPage() {
@@ -82,6 +92,7 @@ export default function AdminLivesPage() {
       is_unlimited: live.max_participants === null,
       equipment: live.equipment ?? '',
       is_collective: live.is_collective ?? true,
+      session_type: live.session_type ?? 'collectif',
     })
     setShowForm(true)
   }
@@ -96,7 +107,8 @@ export default function AdminLivesPage() {
       meeting_url: form.meeting_url || null,
       max_participants: form.is_unlimited ? null : form.max_participants,
       equipment: form.equipment || null,
-      is_collective: form.is_collective,
+      is_collective: form.session_type === 'collectif',
+      session_type: form.session_type,
     }
     if (editing) {
       await supabase.from('live_sessions').update(payload).eq('id', editing.id)
@@ -185,9 +197,10 @@ export default function AdminLivesPage() {
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
                 <h3 className="font-medium text-[#2C2C2C]">{live.title}</h3>
-                {live.is_collective && (
-                  <span className="text-[10px] bg-[#F2E8DF] text-[#C6684F] px-1.5 py-0.5 rounded font-medium">Collectif</span>
-                )}
+                <span className="text-[10px] bg-[#F2E8DF] text-[#C6684F] px-1.5 py-0.5 rounded font-medium">
+                  {SESSION_TYPES.find(t => t.value === live.session_type)?.emoji}{' '}
+                  {SESSION_TYPES.find(t => t.value === live.session_type)?.label ?? 'Cours collectif'}
+                </span>
               </div>
               <p className="text-sm text-[#C6684F]">
                 {format(new Date(live.scheduled_at), 'EEEE d MMMM à HH:mm', { locale: fr })} · {live.duration_minutes} min
@@ -220,18 +233,26 @@ export default function AdminLivesPage() {
               <button onClick={() => setShowForm(false)}><X size={20} className="text-[#C6684F]" /></button>
             </div>
             <div className="p-6 space-y-4">
-              {/* Type */}
-              <div className="flex items-center gap-3 p-3 bg-[#F2E8DF] rounded-xl">
-                <input
-                  type="checkbox"
-                  id="is_collective"
-                  checked={form.is_collective}
-                  onChange={e => setForm(p => ({ ...p, is_collective: e.target.checked }))}
-                  className="w-4 h-4 accent-[#C6684F]"
-                />
-                <label htmlFor="is_collective" className="text-sm font-medium text-[#2C2C2C] cursor-pointer">
-                  Cours collectif (affiché dans l'onglet Lives)
-                </label>
+              {/* Type de session */}
+              <div>
+                <label className="block text-sm font-medium text-[#6B6359] mb-2">Type de session *</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {SESSION_TYPES.map(t => (
+                    <button
+                      key={t.value}
+                      type="button"
+                      onClick={() => setForm(p => ({ ...p, session_type: t.value }))}
+                      className={`flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-medium border transition-colors text-left ${
+                        form.session_type === t.value
+                          ? 'bg-[#C6684F] text-white border-[#C6684F]'
+                          : 'border-[#DCCFBF] text-[#6B6359] hover:border-[#C6684F]'
+                      }`}
+                    >
+                      <span>{t.emoji}</span>
+                      {t.label}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               <div>

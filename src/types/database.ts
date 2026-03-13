@@ -6,6 +6,7 @@ export type Equipment = 'tapis' | 'swiss_ball' | 'elastique' | 'foam_roller'
 export type ArticleCategory = 'pratique' | 'nutrition' | 'bien_etre' | 'recuperation'
 export type ReactionType = 'pouce' | 'coeur' | 'applaudissement' | 'priere' | 'muscle' | 'fete' | 'feu'
 export type BadgeCategory = 'regularity' | 'milestone' | 'exploration' | 'community' | 'wellness' | 'challenge' | 'social' | 'teacher'
+export type LiveSessionType = 'collectif' | 'masterclass' | 'faq' | 'atelier' | 'autre'
 export type NotificationType = 'reminder' | 'badge' | 'live' | 'streak' | 'weekly_recap' | 'message'
 
 export type Goal =
@@ -87,6 +88,7 @@ export interface LiveSession {
   max_participants: number | null
   is_cancelled: boolean
   is_collective: boolean
+  session_type: LiveSessionType
   equipment: string | null
   registered_count: number
   created_at: string

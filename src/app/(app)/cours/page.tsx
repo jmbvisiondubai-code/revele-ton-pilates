@@ -6,7 +6,15 @@ import { Clock, Monitor, Video, ExternalLink, Radio, Film, X, ChevronRight, Play
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/client'
 import { useAuthStore } from '@/stores/auth-store'
 import { Card, Button } from '@/components/ui'
-import type { LiveSession, VodCategory } from '@/types/database'
+import type { LiveSession, LiveSessionType, VodCategory } from '@/types/database'
+
+const SESSION_TYPE_LABELS: Record<LiveSessionType, { label: string; emoji: string }> = {
+  collectif: { label: 'Cours collectif', emoji: '🧘' },
+  masterclass: { label: 'Masterclass', emoji: '🎓' },
+  faq: { label: 'Session FAQ', emoji: '❓' },
+  atelier: { label: 'Atelier', emoji: '🛠️' },
+  autre: { label: 'Live', emoji: '📌' },
+}
 import { COLOR_CLASSES } from '@/app/admin/cours/page'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
@@ -25,6 +33,7 @@ const DEMO_LIVE: LiveSession = {
   max_participants: 20,
   is_cancelled: false,
   is_collective: true,
+  session_type: 'collectif',
   equipment: 'Tapis, foam roller',
   registered_count: 12,
   created_at: new Date().toISOString(),
@@ -59,7 +68,6 @@ export default function CoursPage() {
         .from('live_sessions')
         .select('*')
         .eq('is_cancelled', false)
-        .eq('is_collective', true)
         .gte('scheduled_at', new Date().toISOString())
         .order('scheduled_at', { ascending: true })
         .limit(1)
@@ -220,7 +228,9 @@ export default function CoursPage() {
               <div className="absolute top-0 right-0 w-24 h-24 bg-primary/10 rounded-full -translate-y-1/2 translate-x-1/2" />
               <div className="flex items-center gap-2 mb-3">
                 <Radio size={15} className="text-[#C6684F]" />
-                <span className="text-xs font-semibold text-[#C6684F] bg-[#C6684F]/10 px-2 py-0.5 rounded-full">Prochain cours collectif</span>
+                <span className="text-xs font-semibold text-[#C6684F] bg-[#C6684F]/10 px-2 py-0.5 rounded-full">
+                  {(() => { const t = SESSION_TYPE_LABELS[nextLive.session_type] ?? SESSION_TYPE_LABELS.collectif; return `${t.emoji} ${t.label}`; })()}
+                </span>
               </div>
               <h3 className="font-[family-name:var(--font-heading)] text-xl text-text leading-snug">
                 {nextLive.title}
