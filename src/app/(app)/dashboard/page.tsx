@@ -21,7 +21,15 @@ import { createClient, isSupabaseConfigured } from '@/lib/supabase/client'
 import { useAuthStore } from '@/stores/auth-store'
 import { Card, ProgressBar, StreakBadge, BadgePill } from '@/components/ui'
 import { getGreeting, formatDuration } from '@/lib/utils'
-import type { Profile, DailyInspiration, LiveSession } from '@/types/database'
+import type { Profile, DailyInspiration, LiveSession, LiveSessionType } from '@/types/database'
+
+const SESSION_TYPE_LABELS: Record<LiveSessionType, string> = {
+  collectif: 'Prochain cours collectif',
+  masterclass: 'Prochaine masterclass',
+  faq: 'Prochaine session FAQ',
+  atelier: 'Prochain atelier',
+  autre: 'Prochain live',
+}
 import { DEMO_PROFILE } from '@/lib/demo-data'
 import Link from 'next/link'
 import { format } from 'date-fns'
@@ -104,7 +112,6 @@ export default function DashboardPage() {
       const { data: liveData } = await supabase
         .from('live_sessions').select('*')
         .eq('is_cancelled', false)
-        .eq('is_collective', true)
         .gte('scheduled_at', new Date().toISOString())
         .order('scheduled_at', { ascending: true })
         .limit(1).single()
@@ -200,7 +207,7 @@ export default function DashboardPage() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
-                        <BadgePill variant="accent">Prochain live collectif</BadgePill>
+                        <BadgePill variant="accent">{SESSION_TYPE_LABELS[nextLive.session_type] ?? 'Prochain live'}</BadgePill>
                       </div>
                       <h3 className="font-[family-name:var(--font-heading)] text-lg lg:text-xl text-text">
                         {nextLive.title}
