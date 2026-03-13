@@ -915,25 +915,27 @@ export default function CommunautePage() {
                                     </div>
                                   )
                                 })}
-                                <div className="flex gap-2 items-center mt-2">
-                                  <Avatar src={profile?.avatar_url} fallback={profile?.username ?? '?'} size="sm" />
-                                  <div className="flex-1 flex gap-2">
-                                    <input
-                                      type="text"
-                                      placeholder="Félicite-la ! 🎉"
-                                      value={newComment}
-                                      onChange={e => setNewComment(e.target.value)}
-                                      onKeyDown={e => e.key === 'Enter' && submitComment(post.id)}
-                                      className="flex-1 text-xs border border-[#DCCFBF] rounded-full px-3 py-1.5 focus:outline-none focus:border-[#C6684F] bg-white"
-                                    />
-                                    <button onClick={() => submitComment(post.id)} disabled={!newComment.trim()}
-                                      className="w-7 h-7 rounded-full bg-[#C6684F] flex items-center justify-center text-white disabled:opacity-40">
-                                      <Send size={12} />
-                                    </button>
-                                  </div>
-                                </div>
                               </div>
                             )}
+                            {/* Input bar — always visible */}
+                            <div className="flex gap-2 items-center mt-3 pt-2 border-t border-[#EDD5C5]/50">
+                              <Avatar src={profile?.avatar_url} fallback={profile?.username ?? '?'} size="sm" />
+                              <div className="flex-1 flex gap-2">
+                                <input
+                                  type="text"
+                                  placeholder="Félicite-la ! 🎉"
+                                  value={openComments === post.id ? newComment : ''}
+                                  onFocus={() => { if (openComments !== post.id) loadComments(post.id) }}
+                                  onChange={e => setNewComment(e.target.value)}
+                                  onKeyDown={e => e.key === 'Enter' && submitComment(post.id)}
+                                  className="flex-1 text-xs border border-[#DCCFBF] rounded-full px-3 py-1.5 focus:outline-none focus:border-[#C6684F] bg-white"
+                                />
+                                <button onClick={() => submitComment(post.id)} disabled={!newComment.trim()}
+                                  className="w-7 h-7 rounded-full bg-[#C6684F] flex items-center justify-center text-white disabled:opacity-40">
+                                  <Send size={12} />
+                                </button>
+                              </div>
+                            </div>
                             <p className="text-[10px] text-[#DCCFBF] mt-2">{formatRelativeDate(post.created_at)}</p>
                           </div>
                         </div>
