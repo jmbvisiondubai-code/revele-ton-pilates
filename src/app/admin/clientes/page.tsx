@@ -43,6 +43,7 @@ export default function ClientesPage() {
   ]
   const [form, setForm] = useState({ title: '', message: '', recCategory: 'cours', vodCategory: '', directUrl: '', thumbnailUrl: '', thumbnailMode: 'none' as 'none' | 'url' | 'upload' })
   const [saving, setSaving] = useState(false)
+  const [savingLevel, setSavingLevel] = useState(false)
   const [uploadingThumb, setUploadingThumb] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -154,6 +155,17 @@ export default function ClientesPage() {
     setSelected(prev => prev ? { ...prev, recommendations: prev.recommendations.filter(r => r.id !== recId) } : prev)
   }
 
+  async function handleLevelChange(newLevel: string) {
+    if (!selected || savingLevel) return
+    setSavingLevel(true)
+    const { error } = await supabase.from('profiles').update({ practice_level: newLevel }).eq('id', selected.id)
+    if (!error) {
+      setSelected(prev => prev ? { ...prev, practice_level: newLevel } : prev)
+      setClients(prev => prev.map(c => c.id === selected.id ? { ...c, practice_level: newLevel } : c))
+    }
+    setSavingLevel(false)
+  }
+
   if (!isSupabaseConfigured()) return <p className="text-[#6B6359]">Supabase non configuré.</p>
 
   return (
@@ -231,6 +243,28 @@ export default function ClientesPage() {
                       <p className="text-[10px] text-[#6B6359]">{label}</p>
                     </div>
                   ))}
+                </div>
+
+                {/* Level selector */}
+                <div>
+                  <h3 className="font-semibold text-sm text-[#2C2C2C] mb-2">Niveau de pratique</h3>
+                  <div className="flex gap-2">
+                    {([
+                      { value: 'debutante', label: 'Débutante', emoji: '🌱' },
+                      { value: 'intermediaire', label: 'Intermédiaire', emoji: '💎' },
+                      { value: 'avancee', label: 'Avancée', emoji: '👑' },
+                    ] as const).map(opt => (
+                      <button key={opt.value} onClick={() => handleLevelChange(opt.value)}
+                        disabled={savingLevel || opt.value === (selected.practice_level || 'debutante')}
+                        className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-medium transition-all ${
+                          opt.value === (selected.practice_level || 'debutante')
+                            ? 'bg-[#C6684F] text-white'
+                            : 'bg-[#FAF6F1] text-[#6B6359] hover:bg-[#F2E8DF] disabled:opacity-50'
+                        }`}>
+                        <span>{opt.emoji}</span> {opt.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
 
                 {selected.limitations && (
