@@ -163,7 +163,7 @@ export function AddToCalendar({ event, filename = 'event.ics', accent = 'terraco
     : 'hover:border-[#C6684F] hover:text-[#C6684F]'
 
   return (
-    <div ref={ref} className="relative flex-1">
+    <>
       <button
         onClick={(e) => { e.stopPropagation(); setOpen(!open) }}
         className={`flex items-center justify-center gap-2 w-full py-2.5 rounded-xl border ${borderClass} text-sm font-medium text-[#6B6359] ${hoverClass} active:bg-[#F2E8DF] transition-colors`}
@@ -174,42 +174,58 @@ export function AddToCalendar({ event, filename = 'event.ics', accent = 'terraco
 
       <AnimatePresence>
         {open && (
-          <motion.div
-            initial={{ opacity: 0, y: 8, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 8, scale: 0.95 }}
-            transition={{ duration: 0.15 }}
-            className="absolute bottom-full left-0 right-0 mb-2 bg-white rounded-2xl shadow-xl border border-[#EDE5DA] overflow-hidden z-50"
-            onClick={e => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between px-4 pt-3 pb-2">
-              <p className="text-xs font-semibold text-[#A09488] uppercase tracking-wide">Choisir l&apos;agenda</p>
-              <button onClick={() => setOpen(false)} className="text-[#A09488] hover:text-[#6B6359]">
-                <X size={14} />
-              </button>
-            </div>
-            <div className="px-2 pb-2 space-y-0.5">
-              {CALENDARS.map((cal) => (
-                <button
-                  key={cal.id}
-                  onClick={() => {
-                    if (cal.getUrl) {
-                      window.open(cal.getUrl(event), '_blank')
-                    } else {
-                      downloadIcsFile(event, filename)
-                    }
-                    setOpen(false)
-                  }}
-                  className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-left text-sm font-medium text-[#2C2C2C] hover:bg-[#FAF6F1] active:bg-[#F2E8DF] transition-colors"
-                >
-                  <span className="text-lg">{cal.icon}</span>
-                  {cal.name}
+          <>
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[60] bg-black/30"
+              onClick={() => setOpen(false)}
+            />
+            {/* Bottom sheet */}
+            <motion.div
+              ref={ref}
+              initial={{ y: '100%' }}
+              animate={{ y: 0 }}
+              exit={{ y: '100%' }}
+              transition={{ type: 'spring', damping: 30, stiffness: 400 }}
+              className="fixed bottom-0 left-0 right-0 z-[70] bg-white rounded-t-3xl shadow-2xl safe-bottom"
+              onClick={e => e.stopPropagation()}
+            >
+              {/* Handle */}
+              <div className="flex justify-center pt-3 pb-1">
+                <div className="w-10 h-1 rounded-full bg-[#DCCFBF]" />
+              </div>
+              <div className="flex items-center justify-between px-5 pb-2">
+                <p className="text-sm font-semibold text-[#2C2C2C]">Ajouter à l&apos;agenda</p>
+                <button onClick={() => setOpen(false)} className="w-8 h-8 flex items-center justify-center rounded-full bg-[#F2E8DF] text-[#6B6359]">
+                  <X size={16} />
                 </button>
-              ))}
-            </div>
-          </motion.div>
+              </div>
+              <div className="px-3 pb-4 space-y-1">
+                {CALENDARS.map((cal) => (
+                  <button
+                    key={cal.id}
+                    onClick={() => {
+                      if (cal.getUrl) {
+                        window.open(cal.getUrl(event), '_blank')
+                      } else {
+                        downloadIcsFile(event, filename)
+                      }
+                      setOpen(false)
+                    }}
+                    className="flex items-center gap-4 w-full px-4 py-3.5 rounded-2xl text-left text-[15px] font-medium text-[#2C2C2C] hover:bg-[#FAF6F1] active:bg-[#F2E8DF] transition-colors"
+                  >
+                    <span className="text-xl">{cal.icon}</span>
+                    {cal.name}
+                  </button>
+                ))}
+              </div>
+            </motion.div>
+          </>
         )}
       </AnimatePresence>
-    </div>
+    </>
   )
 }
