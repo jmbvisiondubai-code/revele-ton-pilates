@@ -121,7 +121,7 @@ export default function CommunautePage() {
   const [commentMenu, setCommentMenu] = useState<string | null>(null)
   const [confirmDeleteComment, setConfirmDeleteComment] = useState<{ postId: string; commentId: string } | null>(null)
   const [openReactions, setOpenReactions] = useState<string | null>(null)
-  const [contextMenu, setContextMenu] = useState<{ postId: string; isOwn: boolean; content: string; authorName: string } | null>(null)
+  const [contextMenu, setContextMenu] = useState<{ postId: string; isOwn: boolean; content: string; authorName: string; isAutomated?: boolean } | null>(null)
   const [swipingPost, setSwipingPost] = useState<{ postId: string; deltaX: number } | null>(null)
   const [replyingTo, setReplyingTo] = useState<{ id: string; content: string; authorName: string } | null>(null)
   const [doubleTapHeart, setDoubleTapHeart] = useState<string | null>(null)
@@ -768,7 +768,8 @@ export default function CommunautePage() {
 
                   // ── Celebration post (automated) ──
                   if (post.is_automated) {
-                    const totalRxn = Object.values(post.reaction_counts).reduce((a, b) => a + b, 0)
+                    const likeCount = post.reaction_counts.coeur || 0
+                    const hasLiked = post.user_reactions.includes('coeur')
                     return (
                       <motion.div key={post.id} id={`post-${post.id}`} initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }}>
                         <div className="mx-2 my-1">
@@ -795,23 +796,13 @@ export default function CommunautePage() {
                               </div>
                             </div>
                             <p className="text-sm text-[#2C2C2C] leading-relaxed">{post.content}</p>
-                            {/* reactions */}
-                            {totalRxn > 0 && (
-                              <div className="flex justify-center gap-1 mt-2 flex-wrap">
-                                {REACTIONS.filter(r => post.reaction_counts[r.type] > 0).map(r => (
-                                  <button key={r.type} onClick={() => toggleReaction(post.id, r.type)}
-                                    className={`flex items-center gap-0.5 px-2 py-0.5 rounded-full text-xs transition-all ${post.user_reactions.includes(r.type) ? 'bg-[#C6684F]/15 border border-[#C6684F]/30' : 'bg-white/70 border border-[#EDD5C5] hover:bg-white'}`}>
-                                    <span>{r.emoji}</span>
-                                    <span className="text-[#6B6359]">{post.reaction_counts[r.type]}</span>
-                                  </button>
-                                ))}
-                              </div>
-                            )}
-                            {/* add reaction + comment count */}
-                            <div className="flex items-center justify-center gap-3 mt-2">
-                              <button onClick={() => setContextMenu({ postId: post.id, isOwn: false, content: post.content, authorName })}
-                                className="flex items-center gap-1 text-xs text-[#A09488] hover:text-[#C6684F] transition-colors">
-                                <span>🙂</span> Réagir
+                            {/* bottom bar: like left, comment right */}
+                            <div className="flex items-center justify-between mt-3 pt-2 border-t border-[#EDD5C5]/50">
+                              <button onClick={() => toggleReaction(post.id, 'coeur')}
+                                className={`flex items-center gap-1.5 text-xs transition-colors ${hasLiked ? 'text-[#C6684F]' : 'text-[#A09488] hover:text-[#C6684F]'}`}>
+                                <Heart size={14} fill={hasLiked ? '#C6684F' : 'none'} />
+                                {likeCount > 0 && <span className="font-medium">{likeCount}</span>}
+                                {!likeCount && <span>J&apos;aime</span>}
                               </button>
                               <button onClick={() => setOpenComments(prev => prev === post.id ? null : post.id)}
                                 className="flex items-center gap-1 text-xs text-[#A09488] hover:text-[#C6684F] transition-colors">
