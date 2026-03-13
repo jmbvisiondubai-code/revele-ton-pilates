@@ -1,6 +1,6 @@
-export type PracticeLevel = 'debutante' | 'intermediaire' | 'avancee'
+export type PracticeLevel = 'debutante' | 'initiee' | 'intermediaire' | 'avancee'
 export type PreferredTime = 'matin' | 'midi' | 'soir'
-export type CourseLevel = 'debutante' | 'intermediaire' | 'avancee' | 'tous_niveaux'
+export type CourseLevel = 'debutante' | 'initiee' | 'intermediaire' | 'avancee' | 'tous_niveaux'
 export type CourseFocus = 'programme' | 'full_body' | 'reformer' | 'perfect_time' | 'quick' | 'session_longue' | 'souplesse' | 'accessoires'
 export type Equipment = 'tapis' | 'swiss_ball' | 'elastique' | 'foam_roller'
 export type ArticleCategory = 'pratique' | 'nutrition' | 'bien_etre' | 'recuperation'

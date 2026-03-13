@@ -84,6 +84,7 @@ export const GOAL_LABELS: Record<string, string> = {
 
 export const LEVEL_LABELS: Record<string, string> = {
   debutante: 'Débutante',
+  initiee: 'Initiée',
   intermediaire: 'Intermédiaire',
   avancee: 'Avancée',
   tous_niveaux: 'Tous niveaux',

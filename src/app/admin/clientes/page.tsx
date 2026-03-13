@@ -254,9 +254,10 @@ export default function ClientesPage() {
                 {/* Level selector */}
                 <div>
                   <h3 className="font-semibold text-sm text-[#2C2C2C] mb-2">Niveau de pratique</h3>
-                  <div className="flex gap-2">
+                  <div className="flex gap-1.5">
                     {([
                       { value: 'debutante', label: 'Débutante', emoji: '🌱' },
+                      { value: 'initiee', label: 'Initiée', emoji: '🌿' },
                       { value: 'intermediaire', label: 'Intermédiaire', emoji: '💎' },
                       { value: 'avancee', label: 'Avancée', emoji: '👑' },
                     ] as const).map(opt => (

@@ -721,7 +721,7 @@ export default function ProfilPage() {
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
                         <span className="text-lg">
-                          {levelInfo.currentLevel === 'avancee' ? '👑' : levelInfo.currentLevel === 'intermediaire' ? '💎' : '🌱'}
+                          {levelInfo.currentLevel === 'avancee' ? '👑' : levelInfo.currentLevel === 'intermediaire' ? '💎' : levelInfo.currentLevel === 'initiee' ? '🌿' : '🌱'}
                         </span>
                         <div>
                           <p className="text-sm font-semibold text-text">

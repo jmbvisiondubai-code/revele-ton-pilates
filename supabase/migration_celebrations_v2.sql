@@ -118,6 +118,7 @@ BEGIN
     -- Map level to French label + emoji
     CASE NEW.practice_level
       WHEN 'debutante' THEN v_level_label := 'Débutante'; v_level_emoji := '🌱';
+      WHEN 'initiee' THEN v_level_label := 'Initiée'; v_level_emoji := '🌿';
       WHEN 'intermediaire' THEN v_level_label := 'Intermédiaire'; v_level_emoji := '💎';
       WHEN 'avancee' THEN v_level_label := 'Avancée'; v_level_emoji := '👑';
       ELSE v_level_label := NEW.practice_level; v_level_emoji := '⭐';

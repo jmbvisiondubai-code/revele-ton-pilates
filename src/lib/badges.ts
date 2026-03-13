@@ -2,22 +2,22 @@ import type { BadgeCategory } from '@/types/database'
 
 // ── Level progression ────────────────────────────────────────────────────────
 // Thresholds: number of badges earned to reach each level
-// If user starts at "debutante": 0→15 = debutante, 15→40 = intermediaire, 40+ = avancee
-// If user starts at "intermediaire": must earn ALL intermediaire-eligible badges to reach avancee
-// If user starts at "avancee": continues earning badges freely
+// 0→8 = débutante, 8→20 = initiée, 20→40 = intermédiaire, 40+ = avancée
 
 export const LEVEL_THRESHOLDS = {
-  debutante: { min: 0, next: 'intermediaire' as const, badgesRequired: 15 },
-  intermediaire: { min: 15, next: 'avancee' as const, badgesRequired: 40 },
+  debutante: { min: 0, next: 'initiee' as const, badgesRequired: 8 },
+  initiee: { min: 8, next: 'intermediaire' as const, badgesRequired: 20 },
+  intermediaire: { min: 20, next: 'avancee' as const, badgesRequired: 40 },
   avancee: { min: 40, next: null, badgesRequired: Infinity },
 }
 
-const LEVEL_ORDER = ['debutante', 'intermediaire', 'avancee']
+const LEVEL_ORDER = ['debutante', 'initiee', 'intermediaire', 'avancee']
 
 /** Compute the level that badges alone would grant (ignoring manual choice) */
 export function getSuggestedLevel(earnedCount: number): string {
   if (earnedCount >= LEVEL_THRESHOLDS.intermediaire.badgesRequired) return 'avancee'
-  if (earnedCount >= LEVEL_THRESHOLDS.debutante.badgesRequired) return 'intermediaire'
+  if (earnedCount >= LEVEL_THRESHOLDS.initiee.badgesRequired) return 'intermediaire'
+  if (earnedCount >= LEVEL_THRESHOLDS.debutante.badgesRequired) return 'initiee'
   return 'debutante'
 }
 
@@ -228,8 +228,13 @@ export const ALL_BADGES: BadgeSeed[] = [
 
 // Level up messages
 export const LEVEL_UP_MESSAGES: Record<string, { title: string; message: string; emoji: string }> = {
+  initiee: {
+    title: 'Bravo, tu passes en Initiée !',
+    message: 'Tes premiers pas sont solides ! Tu as montré ta motivation et ta régularité. Continue sur cette belle lancée !',
+    emoji: '🌿',
+  },
   intermediaire: {
-    title: 'Bravo, tu passes en Intermédiaire !',
+    title: 'Félicitations, tu passes en Intermédiaire !',
     message: 'Tu as débloqué suffisamment de badges pour prouver ton engagement. Ta régularité et ta persévérance t\'ont permise de monter de niveau. Continue comme ça !',
     emoji: '🎉',
   },

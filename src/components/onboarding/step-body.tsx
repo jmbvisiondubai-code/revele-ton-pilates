@@ -9,12 +9,17 @@ const levels: { value: PracticeLevel; label: string; description: string }[] = [
   {
     value: 'debutante',
     label: 'Débutante',
-    description: 'Je découvre le Pilates ou j\'ai peu pratiqué',
+    description: 'Je découvre le Pilates ou j\'ai très peu pratiqué',
+  },
+  {
+    value: 'initiee',
+    label: 'Initiée',
+    description: 'J\'ai les bases et je pratique depuis quelques semaines',
   },
   {
     value: 'intermediaire',
     label: 'Intermédiaire',
-    description: 'Je pratique régulièrement depuis quelques mois',
+    description: 'Je pratique régulièrement depuis plusieurs mois',
   },
   {
     value: 'avancee',
