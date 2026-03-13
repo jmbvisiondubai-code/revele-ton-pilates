@@ -70,7 +70,7 @@ export default function ConseilsPage() {
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
   const commentInputRef = useRef<HTMLTextAreaElement>(null)
   const supabase = createClient()
-  const { profile } = useAuthStore()
+  const { profile, setProfile } = useAuthStore()
   const isAdmin = profile?.is_admin === true
 
   useEffect(() => {
@@ -79,6 +79,11 @@ export default function ConseilsPage() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { setLoading(false); return }
       setCurrentUserId(user.id)
+      // Ensure profile is loaded in the auth store (needed for isAdmin)
+      if (!profile) {
+        const { data: prof } = await supabase.from('profiles').select('*').eq('id', user.id).single()
+        if (prof) setProfile(prof)
+      }
       const [{ data: personal }, { data: arts }] = await Promise.all([
         supabase.from('recommendations').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
         supabase.from('articles').select('*').eq('is_published', true).order('published_at', { ascending: false, nullsFirst: false }),
