@@ -109,6 +109,7 @@ export default function ProfilPage() {
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null)
   const [badgeFilter, setBadgeFilter] = useState<string>('all')
   const [levelUpData, setLevelUpData] = useState<{ title: string; message: string; emoji: string } | null>(null)
+  const [savingLevel, setSavingLevel] = useState(false)
   const supabase = createClient()
 
   const onCropComplete = useCallback((_: Area, croppedPixels: Area) => {
@@ -167,24 +168,6 @@ export default function ProfilPage() {
           if (a.earned && b.earned) return new Date(b.earned_at!).getTime() - new Date(a.earned_at!).getTime()
           return 0
         }))
-
-        // Check for level-up
-        const earnedCount = enriched.filter(b => b.earned).length
-        const currentProfile = profileData as Profile
-        const startLevel = currentProfile.start_level || currentProfile.practice_level || 'debutante'
-        const levelInfo = getLevelProgress(
-          currentProfile.practice_level || 'debutante',
-          earnedCount,
-          startLevel
-        )
-        if (levelInfo.shouldLevelUp && levelInfo.newLevel) {
-          // Update practice_level in DB
-          await supabase.from('profiles').update({ practice_level: levelInfo.newLevel }).eq('id', user.id)
-          setProfile({ ...currentProfile, practice_level: levelInfo.newLevel as Profile['practice_level'] })
-          // Show level-up modal
-          const msg = LEVEL_UP_MESSAGES[levelInfo.newLevel]
-          if (msg) setLevelUpData(msg)
-        }
       }
 
     }
@@ -309,6 +292,24 @@ export default function ProfilPage() {
       setProfile({ ...profile, weekly_rhythm: editRhythm, preferred_days: editDays })
       setEditingRhythm(false)
     } catch { /* silent */ } finally { setSavingRhythm(false) }
+  }
+
+  async function handleLevelChange(newLevel: string) {
+    if (!profile || savingLevel) return
+    setSavingLevel(true)
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+      const { error } = await supabase.from('profiles').update({ practice_level: newLevel }).eq('id', user.id)
+      if (error) throw error
+      setProfile({ ...profile, practice_level: newLevel as Profile['practice_level'] })
+      // Show celebration if leveling UP
+      const levels = ['debutante', 'intermediaire', 'avancee']
+      if (levels.indexOf(newLevel) > levels.indexOf(profile.practice_level || 'debutante')) {
+        const msg = LEVEL_UP_MESSAGES[newLevel]
+        if (msg) setLevelUpData(msg)
+      }
+    } catch { /* silent */ } finally { setSavingLevel(false) }
   }
 
   if (!profile) {
@@ -755,43 +756,94 @@ export default function ProfilPage() {
             {/* Level progression card */}
             {profile && (() => {
               const earnedCount = badges.filter(b => b.earned).length
-              const startLevel = profile.start_level || profile.practice_level || 'debutante'
-              const levelInfo = getLevelProgress(profile.practice_level || 'debutante', earnedCount, startLevel)
+              const levelInfo = getLevelProgress(profile.practice_level || 'debutante', earnedCount)
+              const levelOptions: { value: string; label: string; emoji: string }[] = [
+                { value: 'debutante', label: 'Débutante', emoji: '🌱' },
+                { value: 'intermediaire', label: 'Intermédiaire', emoji: '💎' },
+                { value: 'avancee', label: 'Avancée', emoji: '👑' },
+              ]
               return (
-                <Card>
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <span className="text-lg">
-                        {levelInfo.currentLevel === 'avancee' ? '👑' : levelInfo.currentLevel === 'intermediaire' ? '💎' : '🌱'}
-                      </span>
+                <>
+                  <Card>
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <span className="text-lg">
+                          {levelInfo.currentLevel === 'avancee' ? '👑' : levelInfo.currentLevel === 'intermediaire' ? '💎' : '🌱'}
+                        </span>
+                        <div>
+                          <p className="text-sm font-semibold text-text">
+                            {LEVEL_LABELS[levelInfo.currentLevel] || levelInfo.currentLevel}
+                          </p>
+                          <p className="text-[11px] text-text-muted">
+                            {earnedCount} badge{earnedCount > 1 ? 's' : ''} débloqué{earnedCount > 1 ? 's' : ''}
+                          </p>
+                        </div>
+                      </div>
+                      {profile.is_teacher && (
+                        <span className="flex items-center gap-1 px-2.5 py-1 bg-[#F2E8DF] rounded-full text-xs font-semibold text-[#A8543D]">
+                          🎓 Professeur
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Manual level selector */}
+                    <div className="flex gap-2 mb-3">
+                      {levelOptions.map(opt => (
+                        <button
+                          key={opt.value}
+                          onClick={() => handleLevelChange(opt.value)}
+                          disabled={savingLevel || opt.value === (profile.practice_level || 'debutante')}
+                          className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-medium transition-all ${
+                            opt.value === (profile.practice_level || 'debutante')
+                              ? 'bg-primary text-white'
+                              : 'bg-bg-elevated text-text-secondary hover:bg-secondary/40 disabled:opacity-50'
+                          }`}
+                        >
+                          <span>{opt.emoji}</span>
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Progress bar toward next level */}
+                    {levelInfo.nextLevel && (
                       <div>
-                        <p className="text-sm font-semibold text-text">
-                          {LEVEL_LABELS[levelInfo.currentLevel] || levelInfo.currentLevel}
-                        </p>
-                        <p className="text-[11px] text-text-muted">
-                          {earnedCount} badge{earnedCount > 1 ? 's' : ''} débloqué{earnedCount > 1 ? 's' : ''}
-                        </p>
+                        <div className="flex items-center justify-between text-[11px] text-text-muted mb-1.5">
+                          <span>Prochain : {LEVEL_LABELS[levelInfo.nextLevel]}</span>
+                          <span>{earnedCount}/{levelInfo.badgesForNext} badges</span>
+                        </div>
+                        <ProgressBar value={levelInfo.progress} size="sm" color="primary" />
                       </div>
-                    </div>
-                    {profile.is_teacher && (
-                      <span className="flex items-center gap-1 px-2.5 py-1 bg-[#F2E8DF] rounded-full text-xs font-semibold text-[#A8543D]">
-                        🎓 Professeur
-                      </span>
                     )}
-                  </div>
-                  {levelInfo.nextLevel && (
-                    <div>
-                      <div className="flex items-center justify-between text-[11px] text-text-muted mb-1.5">
-                        <span>Prochain : {LEVEL_LABELS[levelInfo.nextLevel]}</span>
-                        <span>{earnedCount}/{levelInfo.badgesForNext} badges</span>
+                    {!levelInfo.nextLevel && (
+                      <p className="text-xs text-success font-medium">Niveau maximum atteint !</p>
+                    )}
+                  </Card>
+
+                  {/* Suggestion banner if badges qualify for higher level */}
+                  {levelInfo.canLevelUp && (
+                    <Card className="border border-primary/20 bg-[#FFF8F5]">
+                      <div className="flex items-start gap-3">
+                        <span className="text-2xl mt-0.5">🎉</span>
+                        <div className="flex-1">
+                          <p className="text-sm font-semibold text-text">
+                            Tu peux passer en {LEVEL_LABELS[levelInfo.suggestedLevel]} !
+                          </p>
+                          <p className="text-xs text-text-secondary mt-0.5 leading-relaxed">
+                            Avec {earnedCount} badges débloqués, ta progression te permet d&apos;accéder au niveau supérieur.
+                          </p>
+                          <button
+                            onClick={() => handleLevelChange(levelInfo.suggestedLevel)}
+                            disabled={savingLevel}
+                            className="mt-2 px-4 py-1.5 rounded-lg bg-primary text-white text-xs font-semibold hover:bg-primary-dark transition-colors disabled:opacity-50"
+                          >
+                            {savingLevel ? 'Mise à jour...' : `Passer en ${LEVEL_LABELS[levelInfo.suggestedLevel]}`}
+                          </button>
+                        </div>
                       </div>
-                      <ProgressBar value={levelInfo.progress} size="sm" color="primary" />
-                    </div>
+                    </Card>
                   )}
-                  {!levelInfo.nextLevel && (
-                    <p className="text-xs text-success font-medium mt-1">Niveau maximum atteint !</p>
-                  )}
-                </Card>
+                </>
               )
             })()}
 

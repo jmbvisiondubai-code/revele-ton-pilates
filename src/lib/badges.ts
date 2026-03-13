@@ -12,51 +12,51 @@ export const LEVEL_THRESHOLDS = {
   avancee: { min: 40, next: null, badgesRequired: Infinity },
 }
 
+const LEVEL_ORDER = ['debutante', 'intermediaire', 'avancee']
+
+/** Compute the level that badges alone would grant (ignoring manual choice) */
+export function getSuggestedLevel(earnedCount: number): string {
+  if (earnedCount >= LEVEL_THRESHOLDS.intermediaire.badgesRequired) return 'avancee'
+  if (earnedCount >= LEVEL_THRESHOLDS.debutante.badgesRequired) return 'intermediaire'
+  return 'debutante'
+}
+
 export function getLevelProgress(
   currentLevel: string,
   earnedCount: number,
-  startLevel: string
 ): {
   currentLevel: string
+  suggestedLevel: string
   nextLevel: string | null
   badgesForNext: number
   progress: number // 0-100
-  shouldLevelUp: boolean
-  newLevel: string | null
+  canLevelUp: boolean // suggested > current
 } {
-  // Determine effective level based on badges earned
-  let effectiveLevel = startLevel || 'debutante'
+  const suggestedLevel = getSuggestedLevel(earnedCount)
 
-  if (startLevel === 'debutante') {
-    if (earnedCount >= LEVEL_THRESHOLDS.intermediaire.badgesRequired) effectiveLevel = 'avancee'
-    else if (earnedCount >= LEVEL_THRESHOLDS.debutante.badgesRequired) effectiveLevel = 'intermediaire'
-  } else if (startLevel === 'intermediaire') {
-    if (earnedCount >= LEVEL_THRESHOLDS.intermediaire.badgesRequired) effectiveLevel = 'avancee'
-  }
+  // Use the user's actual current level for display
+  const threshold = LEVEL_THRESHOLDS[currentLevel as keyof typeof LEVEL_THRESHOLDS]
+    || LEVEL_THRESHOLDS.debutante
+  const nextLevel = threshold.next || null
+  const badgesForNext = threshold.badgesRequired
 
-  const shouldLevelUp = effectiveLevel !== currentLevel && effectiveLevel !== startLevel
-  const newLevel = shouldLevelUp ? effectiveLevel : null
-
-  const threshold = LEVEL_THRESHOLDS[effectiveLevel as keyof typeof LEVEL_THRESHOLDS]
-  const nextLevel = threshold?.next || null
-  const badgesForNext = threshold?.badgesRequired ?? Infinity
-
-  // Progress toward next level
+  // Progress toward next level from current
   let progress = 100
   if (nextLevel) {
-    const currentThreshold = LEVEL_THRESHOLDS[effectiveLevel as keyof typeof LEVEL_THRESHOLDS]
-    const prevMin = currentThreshold.min
-    const nextMin = currentThreshold.badgesRequired
-    progress = Math.min(100, Math.round(((earnedCount - prevMin) / (nextMin - prevMin)) * 100))
+    const prevMin = threshold.min
+    const nextMin = threshold.badgesRequired
+    progress = Math.min(100, Math.max(0, Math.round(((earnedCount - prevMin) / (nextMin - prevMin)) * 100)))
   }
 
+  const canLevelUp = LEVEL_ORDER.indexOf(suggestedLevel) > LEVEL_ORDER.indexOf(currentLevel)
+
   return {
-    currentLevel: effectiveLevel,
+    currentLevel,
+    suggestedLevel,
     nextLevel,
     badgesForNext,
     progress,
-    shouldLevelUp,
-    newLevel,
+    canLevelUp,
   }
 }
 
