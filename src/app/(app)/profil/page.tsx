@@ -109,7 +109,7 @@ export default function ProfilPage() {
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null)
   const [badgeFilter, setBadgeFilter] = useState<string>('all')
   const [levelUpData, setLevelUpData] = useState<{ title: string; message: string; emoji: string } | null>(null)
-  const [savingLevel, setSavingLevel] = useState(false)
+  const [editLevel, setEditLevel] = useState<string>('debutante')
   const supabase = createClient()
 
   const onCropComplete = useCallback((_: Area, croppedPixels: Area) => {
@@ -228,6 +228,7 @@ export default function ProfilPage() {
     setEditUsername(profile.username)
     setEditFirstName(profile.first_name)
     setEditLastName(profile.last_name)
+    setEditLevel(profile.practice_level || 'debutante')
     setInfoError('')
     setEditingInfo(true)
   }
@@ -256,10 +257,16 @@ export default function ProfilPage() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
       const { error } = await supabase.from('profiles')
-        .update({ username: trimmedUsername, first_name: trimmedFirst, last_name: trimmedLast })
+        .update({ username: trimmedUsername, first_name: trimmedFirst, last_name: trimmedLast, practice_level: editLevel })
         .eq('id', user.id)
       if (error) throw error
-      setProfile({ ...profile, username: trimmedUsername, first_name: trimmedFirst, last_name: trimmedLast })
+      // Show celebration if leveling up
+      const levels = ['debutante', 'intermediaire', 'avancee']
+      if (levels.indexOf(editLevel) > levels.indexOf(profile.practice_level || 'debutante')) {
+        const msg = LEVEL_UP_MESSAGES[editLevel]
+        if (msg) setLevelUpData(msg)
+      }
+      setProfile({ ...profile, username: trimmedUsername, first_name: trimmedFirst, last_name: trimmedLast, practice_level: editLevel as Profile['practice_level'] })
       setEditingInfo(false)
     } catch (err) {
       setInfoError(err instanceof Error ? err.message : 'Erreur lors de la sauvegarde')
@@ -292,24 +299,6 @@ export default function ProfilPage() {
       setProfile({ ...profile, weekly_rhythm: editRhythm, preferred_days: editDays })
       setEditingRhythm(false)
     } catch { /* silent */ } finally { setSavingRhythm(false) }
-  }
-
-  async function handleLevelChange(newLevel: string) {
-    if (!profile || savingLevel) return
-    setSavingLevel(true)
-    try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
-      const { error } = await supabase.from('profiles').update({ practice_level: newLevel }).eq('id', user.id)
-      if (error) throw error
-      setProfile({ ...profile, practice_level: newLevel as Profile['practice_level'] })
-      // Show celebration if leveling UP
-      const levels = ['debutante', 'intermediaire', 'avancee']
-      if (levels.indexOf(newLevel) > levels.indexOf(profile.practice_level || 'debutante')) {
-        const msg = LEVEL_UP_MESSAGES[newLevel]
-        if (msg) setLevelUpData(msg)
-      }
-    } catch { /* silent */ } finally { setSavingLevel(false) }
   }
 
   if (!profile) {
@@ -492,6 +481,19 @@ export default function ProfilPage() {
                     />
                     <p className="text-xs text-text-muted mt-1 ml-1">Visible publiquement</p>
                   </div>
+                  <div>
+                    <p className="text-xs text-text-muted mb-2 ml-1">Niveau de pratique</p>
+                    <div className="flex gap-2">
+                      {(['debutante', 'intermediaire', 'avancee'] as const).map(lvl => (
+                        <button key={lvl} type="button" onClick={() => setEditLevel(lvl)}
+                          className={`flex-1 py-2 rounded-lg text-xs font-medium transition-all ${
+                            editLevel === lvl ? 'bg-primary text-white' : 'bg-bg-elevated text-text-secondary hover:bg-secondary/40'
+                          }`}>
+                          {LEVEL_LABELS[lvl]}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                   {infoError && <p className="text-xs text-error bg-error-light px-3 py-2 rounded-lg">{infoError}</p>}
                   <div className="flex gap-2 pt-1">
                     <button onClick={() => setEditingInfo(false)} className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg border border-border text-sm text-text-secondary hover:bg-bg-elevated transition-colors">
@@ -515,6 +517,10 @@ export default function ProfilPage() {
                   <div className="flex justify-between">
                     <span className="text-text-muted">Nom</span>
                     <span className="text-text">{profile.last_name || '—'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-text-muted">Niveau</span>
+                    <span className="text-text">{LEVEL_LABELS[profile.practice_level || ''] || '—'}</span>
                   </div>
                 </div>
               )}
@@ -757,15 +763,10 @@ export default function ProfilPage() {
             {profile && (() => {
               const earnedCount = badges.filter(b => b.earned).length
               const levelInfo = getLevelProgress(profile.practice_level || 'debutante', earnedCount)
-              const levelOptions: { value: string; label: string; emoji: string }[] = [
-                { value: 'debutante', label: 'Débutante', emoji: '🌱' },
-                { value: 'intermediaire', label: 'Intermédiaire', emoji: '💎' },
-                { value: 'avancee', label: 'Avancée', emoji: '👑' },
-              ]
               return (
                 <>
                   <Card>
-                    <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
                         <span className="text-lg">
                           {levelInfo.currentLevel === 'avancee' ? '👑' : levelInfo.currentLevel === 'intermediaire' ? '💎' : '🌱'}
@@ -785,27 +786,6 @@ export default function ProfilPage() {
                         </span>
                       )}
                     </div>
-
-                    {/* Manual level selector */}
-                    <div className="flex gap-2 mb-3">
-                      {levelOptions.map(opt => (
-                        <button
-                          key={opt.value}
-                          onClick={() => handleLevelChange(opt.value)}
-                          disabled={savingLevel || opt.value === (profile.practice_level || 'debutante')}
-                          className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-medium transition-all ${
-                            opt.value === (profile.practice_level || 'debutante')
-                              ? 'bg-primary text-white'
-                              : 'bg-bg-elevated text-text-secondary hover:bg-secondary/40 disabled:opacity-50'
-                          }`}
-                        >
-                          <span>{opt.emoji}</span>
-                          {opt.label}
-                        </button>
-                      ))}
-                    </div>
-
-                    {/* Progress bar toward next level */}
                     {levelInfo.nextLevel && (
                       <div>
                         <div className="flex items-center justify-between text-[11px] text-text-muted mb-1.5">
@@ -816,7 +796,7 @@ export default function ProfilPage() {
                       </div>
                     )}
                     {!levelInfo.nextLevel && (
-                      <p className="text-xs text-success font-medium">Niveau maximum atteint !</p>
+                      <p className="text-xs text-success font-medium mt-1">Niveau maximum atteint !</p>
                     )}
                   </Card>
 
@@ -827,18 +807,11 @@ export default function ProfilPage() {
                         <span className="text-2xl mt-0.5">🎉</span>
                         <div className="flex-1">
                           <p className="text-sm font-semibold text-text">
-                            Tu peux passer en {LEVEL_LABELS[levelInfo.suggestedLevel]} !
+                            Ta progression te permet de passer en {LEVEL_LABELS[levelInfo.suggestedLevel]} !
                           </p>
                           <p className="text-xs text-text-secondary mt-0.5 leading-relaxed">
-                            Avec {earnedCount} badges débloqués, ta progression te permet d&apos;accéder au niveau supérieur.
+                            Avec {earnedCount} badges, tu as atteint le niveau requis. Tu peux modifier ton niveau dans tes informations personnelles.
                           </p>
-                          <button
-                            onClick={() => handleLevelChange(levelInfo.suggestedLevel)}
-                            disabled={savingLevel}
-                            className="mt-2 px-4 py-1.5 rounded-lg bg-primary text-white text-xs font-semibold hover:bg-primary-dark transition-colors disabled:opacity-50"
-                          >
-                            {savingLevel ? 'Mise à jour...' : `Passer en ${LEVEL_LABELS[levelInfo.suggestedLevel]}`}
-                          </button>
                         </div>
                       </div>
                     </Card>
