@@ -223,24 +223,22 @@ export default function DashboardPage() {
             {featured && (
               <button onClick={() => openExternal(featured.url)} className="w-full text-left">
                 <Card hover className="h-full p-0 overflow-hidden">
-                  {featured.image && (
-                    <div className="relative w-full h-24">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={featured.image} alt={featured.title} className="w-full h-full object-cover" />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
-                    </div>
-                  )}
-                  <div className="flex items-center gap-3 px-3.5 py-3">
-                    {!featured.image && (
-                      <div className="w-10 h-10 bg-[#C6684F]/10 rounded-xl flex items-center justify-center flex-shrink-0">
-                        <Dumbbell size={18} className="text-[#C6684F]" />
+                  <div className="flex items-center">
+                    {featured.image ? (
+                      <div className="w-16 h-16 flex-shrink-0 rounded-l-2xl overflow-hidden">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={featured.image} alt={featured.title} className="w-full h-full object-cover" />
+                      </div>
+                    ) : (
+                      <div className="w-16 h-16 flex-shrink-0 bg-[#C6684F]/10 flex items-center justify-center">
+                        <Dumbbell size={20} className="text-[#C6684F]" />
                       </div>
                     )}
-                    <div className="flex-1 min-w-0">
+                    <div className="flex-1 min-w-0 px-3 py-2.5">
                       <p className="text-sm font-semibold text-text truncate">{featured.title}</p>
                       <p className="text-xs text-text-secondary truncate">{featured.description || 'Programme de la semaine'}</p>
                     </div>
-                    <ExternalLink size={14} className="text-[#C6684F] flex-shrink-0" />
+                    <ExternalLink size={14} className="text-[#C6684F] flex-shrink-0 mr-3.5" />
                   </div>
                 </Card>
               </button>
