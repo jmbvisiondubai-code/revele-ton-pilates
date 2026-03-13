@@ -18,6 +18,7 @@ import {
   Copy,
   Check,
   Video,
+  MessageCircle,
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/client'
@@ -80,6 +81,7 @@ export default function DashboardPage() {
   const [replayImage, setReplayImage] = useState<string | null>(null)
   const [codeCopied, setCodeCopied] = useState(false)
   const [privateAppt, setPrivateAppt] = useState<PrivateAppointment | null>(null)
+  const [unreadMsg, setUnreadMsg] = useState<{ count: number; lastContent: string | null; senderName: string | null }>({ count: 0, lastContent: null, senderName: null })
   function openExternal(url: string) {
     const a = document.createElement('a')
     a.href = url; a.target = '_blank'; a.rel = 'noopener noreferrer'
@@ -137,6 +139,33 @@ export default function DashboardPage() {
         .limit(1)
         .maybeSingle()
       if (apptData) setPrivateAppt(apptData as PrivateAppointment)
+
+      // Unread messages
+      const { count: dmCount } = await supabase
+        .from('direct_messages')
+        .select('id', { count: 'exact', head: true })
+        .eq('receiver_id', user.id)
+        .is('read_at', null)
+      if (dmCount && dmCount > 0) {
+        const { data: lastMsg } = await supabase
+          .from('direct_messages')
+          .select('content, sender_id')
+          .eq('receiver_id', user.id)
+          .is('read_at', null)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .single()
+        let senderName: string | null = null
+        if (lastMsg?.sender_id) {
+          const { data: senderProfile } = await supabase
+            .from('profiles')
+            .select('first_name')
+            .eq('id', lastMsg.sender_id)
+            .single()
+          senderName = senderProfile?.first_name ?? null
+        }
+        setUnreadMsg({ count: dmCount, lastContent: lastMsg?.content ?? null, senderName })
+      }
 
       const { data: settings } = await supabase
         .from('app_settings')
@@ -205,6 +234,34 @@ export default function DashboardPage() {
 
         {/* ── LEFT COLUMN (2/3) ── */}
         <div className="lg:col-span-2 space-y-4">
+
+          {/* Unread message card */}
+          {unreadMsg.count > 0 && (
+            <motion.div initial="hidden" animate="visible" custom={0.5} variants={fadeInUp}>
+              <Link href="/messages">
+                <div className="relative group rounded-2xl bg-white border border-[#C6684F]/20 hover:border-[#C6684F]/40 shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden">
+                  <div className="absolute left-0 top-0 bottom-0 w-1 bg-[#C6684F]" />
+                  <div className="flex items-center gap-3 p-4 pl-5">
+                    <div className="relative w-10 h-10 bg-[#C6684F]/10 rounded-full flex items-center justify-center flex-shrink-0">
+                      <MessageCircle size={18} className="text-[#C6684F]" />
+                      <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 bg-[#C6684F] text-white text-[10px] font-bold rounded-full flex items-center justify-center leading-none">
+                        {unreadMsg.count}
+                      </span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-[#2C2C2C]">
+                        {unreadMsg.senderName ? `${unreadMsg.senderName} t'a écrit` : 'Nouveau message'}
+                      </p>
+                      {unreadMsg.lastContent && (
+                        <p className="text-xs text-[#6B6359] truncate mt-0.5">{unreadMsg.lastContent}</p>
+                      )}
+                    </div>
+                    <ChevronRight size={16} className="text-[#DCCFBF] group-hover:text-[#C6684F] flex-shrink-0 transition-colors" />
+                  </div>
+                </div>
+              </Link>
+            </motion.div>
+          )}
 
           {/* Next live — premium elegant card */}
           {nextLive && (
