@@ -211,94 +211,45 @@ export default function DashboardPage() {
             </motion.div>
           )}
 
-          {/* Programme Hebdo */}
-          {featured && (
-            <motion.div initial="hidden" animate="visible" custom={2} variants={fadeInUp}>
+          {/* Programme Hebdo + Replay — compact row */}
+          <motion.div initial="hidden" animate="visible" custom={2} variants={fadeInUp} className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {/* Programme Hebdo */}
+            {featured && (
               <button onClick={() => openExternal(featured.url)} className="w-full text-left">
-                <Card hover className="relative overflow-hidden p-0 lg:p-0">
-                  {featured.image ? (
-                    <div className="flex flex-col sm:flex-row">
-                      <div className="relative w-full sm:w-40 lg:w-48 flex-shrink-0">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={featured.image}
-                          alt={featured.title}
-                          className="w-full h-36 sm:h-full object-cover rounded-t-2xl sm:rounded-l-2xl sm:rounded-tr-none"
-                        />
-                      </div>
-                      <div className="flex-1 p-4 lg:p-5 flex flex-col justify-between">
-                        <div>
-                          <BadgePill variant="accent">
-                            <Dumbbell size={12} />
-                            Programme de la semaine
-                          </BadgePill>
-                          <h3 className="font-[family-name:var(--font-heading)] text-xl lg:text-2xl mt-2 text-text">{featured.title}</h3>
-                          {featured.description && (
-                            <p className="text-sm text-text-secondary mt-1 line-clamp-2">{featured.description}</p>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-1.5 mt-3 text-xs font-semibold text-[#C6684F]">
-                          Accéder <ExternalLink size={11} />
-                        </div>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="p-4 lg:p-5 relative overflow-hidden">
-                      <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full -translate-y-1/2 translate-x-1/2" />
-                      <div className="flex items-start justify-between relative">
-                        <div>
-                          <BadgePill variant="accent">
-                            <Dumbbell size={12} />
-                            Programme de la semaine
-                          </BadgePill>
-                          <h3 className="font-[family-name:var(--font-heading)] text-xl lg:text-2xl mt-2 text-text">{featured.title}</h3>
-                          {featured.description && (
-                            <p className="text-sm text-text-secondary mt-1">{featured.description}</p>
-                          )}
-                          <div className="flex items-center gap-1.5 mt-3 text-xs font-semibold text-[#C6684F]">
-                            Accéder sur Uscreen <ExternalLink size={11} />
-                          </div>
-                        </div>
-                        <div className="mt-2 w-11 h-11 bg-primary rounded-full flex items-center justify-center shadow-sm flex-shrink-0">
-                          <ExternalLink size={18} className="text-white" />
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </Card>
-              </button>
-            </motion.div>
-          )}
-
-          {/* Replay */}
-          {replayUrl && (
-            <motion.div initial="hidden" animate="visible" custom={3} variants={fadeInUp}>
-              <Card className="relative overflow-hidden border-[#7C3AED]/15 bg-gradient-to-br from-[#7C3AED]/5 to-[#A855F7]/5 lg:p-5">
-                <div className="absolute top-0 right-0 w-28 h-28 bg-[#7C3AED]/5 rounded-full -translate-y-1/2 translate-x-1/2" />
-                <div className="relative">
-                  <div className="flex items-start gap-4">
-                    <div className="w-12 h-12 bg-[#7C3AED]/10 rounded-xl flex items-center justify-center flex-shrink-0">
-                      <Play size={20} className="text-[#7C3AED] ml-0.5" />
+                <Card hover className="h-full">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-[#C6684F]/10 rounded-xl flex items-center justify-center flex-shrink-0">
+                      <Dumbbell size={18} className="text-[#C6684F]" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <BadgePill variant="accent">
-                        <span className="text-[#7C3AED]">Replay disponible</span>
-                      </BadgePill>
-                      <h3 className="font-[family-name:var(--font-heading)] text-lg mt-1.5 text-text">
-                        Revoir le dernier live
-                      </h3>
-                      <p className="text-sm text-text-secondary mt-0.5">
-                        Accède au replay du dernier cours collectif
-                      </p>
+                      <p className="text-sm font-semibold text-text truncate">{featured.title}</p>
+                      <p className="text-xs text-text-secondary truncate">{featured.description || 'Programme de la semaine'}</p>
                     </div>
+                    <ExternalLink size={14} className="text-[#C6684F] flex-shrink-0" />
                   </div>
+                </Card>
+              </button>
+            )}
 
-                  {replayCode && (
-                    <div className="mt-4 flex items-center gap-3 bg-white/60 rounded-xl px-4 py-3 border border-[#7C3AED]/10">
-                      <div className="flex-1 min-w-0">
-                        <p className="text-[10px] uppercase tracking-wider text-text-muted font-semibold mb-0.5">Code d&apos;accès</p>
-                        <p className="text-lg font-mono font-bold text-[#7C3AED] tracking-widest">{replayCode}</p>
-                      </div>
+            {/* Replay */}
+            {replayUrl && (
+              <button onClick={() => openExternal(replayUrl)} className="w-full text-left">
+                <Card hover className="h-full border-[#7C3AED]/10 bg-[#7C3AED]/[0.03]">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-[#7C3AED]/10 rounded-xl flex items-center justify-center flex-shrink-0">
+                      <Play size={18} className="text-[#7C3AED] ml-0.5" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-text">Replay</p>
+                      {replayCode ? (
+                        <p className="text-xs text-text-secondary">
+                          Code : <span className="font-mono font-bold text-[#7C3AED]">{replayCode}</span>
+                        </p>
+                      ) : (
+                        <p className="text-xs text-text-secondary">Dernier cours collectif</p>
+                      )}
+                    </div>
+                    {replayCode && (
                       <button
                         onClick={(e) => {
                           e.stopPropagation()
@@ -306,26 +257,17 @@ export default function DashboardPage() {
                           setCodeCopied(true)
                           setTimeout(() => setCodeCopied(false), 2000)
                         }}
-                        className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-[#7C3AED]/10 hover:bg-[#7C3AED]/20 transition-colors text-[#7C3AED] text-xs font-medium"
+                        className="p-1.5 rounded-lg bg-[#7C3AED]/10 hover:bg-[#7C3AED]/20 transition-colors text-[#7C3AED] flex-shrink-0"
                       >
                         {codeCopied ? <Check size={14} /> : <Copy size={14} />}
-                        {codeCopied ? 'Copié !' : 'Copier'}
                       </button>
-                    </div>
-                  )}
-
-                  <button
-                    onClick={() => openExternal(replayUrl)}
-                    className="mt-3 w-full flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-[#7C3AED] to-[#A855F7] text-white text-sm font-semibold rounded-xl shadow-md shadow-[#7C3AED]/20 hover:shadow-lg hover:shadow-[#7C3AED]/30 transition-all"
-                  >
-                    <Play size={16} className="ml-0.5" />
-                    Regarder le replay
-                    <ExternalLink size={13} />
-                  </button>
-                </div>
-              </Card>
-            </motion.div>
-          )}
+                    )}
+                    <ExternalLink size={14} className="text-[#7C3AED] flex-shrink-0" />
+                  </div>
+                </Card>
+              </button>
+            )}
+          </motion.div>
 
           {/* Community */}
           <motion.div initial="hidden" animate="visible" custom={4} variants={fadeInUp}>
