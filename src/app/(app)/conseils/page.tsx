@@ -61,6 +61,7 @@ export default function ConseilsPage() {
   const [comments, setComments] = useState<ArticleComment[]>([])
   const [commentText, setCommentText] = useState('')
   const [postingComment, setPostingComment] = useState(false)
+  const [commentError, setCommentError] = useState<string | null>(null)
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const commentInputRef = useRef<HTMLTextAreaElement>(null)
   const supabase = createClient()
@@ -116,28 +117,33 @@ export default function ConseilsPage() {
   }
 
   async function postComment() {
+    setCommentError(null)
     if (!commentText.trim() || !openArticle || !currentUserId) {
-      alert(`Impossible d'envoyer : texte=${!!commentText.trim()}, article=${!!openArticle}, userId=${currentUserId}`)
+      setCommentError(`Impossible d'envoyer (userId: ${currentUserId ? 'ok' : 'manquant'})`)
       return
     }
     setPostingComment(true)
-    const { data, error } = await supabase
-      .from('article_comments')
-      .insert({ article_id: openArticle.id, user_id: currentUserId, content: commentText.trim() })
-      .select('*')
-      .single()
-    if (error) {
-      alert(`Erreur commentaire : ${error.message} (code: ${error.code})`)
+    try {
+      const { data, error } = await supabase
+        .from('article_comments')
+        .insert({ article_id: openArticle.id, user_id: currentUserId, content: commentText.trim() })
+        .select('*')
+        .single()
+      if (error) {
+        setCommentError(`Erreur: ${error.message} (${error.code})`)
+        return
+      }
+      if (data) {
+        const { data: prof } = await supabase.from('profiles').select('username, avatar_url').eq('id', currentUserId).single()
+        const comment: ArticleComment = { ...data, profiles: prof ?? undefined }
+        setComments(prev => [...prev, comment])
+        setCommentText('')
+      }
+    } catch (err: unknown) {
+      setCommentError(`Exception: ${err instanceof Error ? err.message : String(err)}`)
+    } finally {
       setPostingComment(false)
-      return
     }
-    if (data) {
-      const { data: prof } = await supabase.from('profiles').select('username, avatar_url').eq('id', currentUserId).single()
-      const comment: ArticleComment = { ...data, profiles: prof ?? undefined }
-      setComments(prev => [...prev, comment])
-      setCommentText('')
-    }
-    setPostingComment(false)
   }
 
   async function deleteComment(id: string) {
@@ -251,6 +257,13 @@ export default function ConseilsPage() {
                 </div>
               ))}
             </div>
+
+            {/* Comment error */}
+            {commentError && (
+              <div className="mb-3 p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-600">
+                {commentError}
+              </div>
+            )}
 
             {/* Comment input */}
             <div className="flex gap-3 items-end">
