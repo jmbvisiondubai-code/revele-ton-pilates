@@ -158,11 +158,17 @@ export default function ClientesPage() {
   async function handleLevelChange(newLevel: string) {
     if (!selected || savingLevel) return
     setSavingLevel(true)
-    const { error } = await supabase.from('profiles').update({ practice_level: newLevel }).eq('id', selected.id)
-    if (!error) {
-      setSelected(prev => prev ? { ...prev, practice_level: newLevel } : prev)
-      setClients(prev => prev.map(c => c.id === selected.id ? { ...c, practice_level: newLevel } : c))
-    }
+    try {
+      const res = await fetch('/api/admin/update-profile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: selected.id, updates: { practice_level: newLevel } }),
+      })
+      if (res.ok) {
+        setSelected(prev => prev ? { ...prev, practice_level: newLevel } : prev)
+        setClients(prev => prev.map(c => c.id === selected.id ? { ...c, practice_level: newLevel } : c))
+      }
+    } catch { /* silent */ }
     setSavingLevel(false)
   }
 
