@@ -325,15 +325,24 @@ export default function CoursPage() {
               </div>
 
               {/* Add to calendar */}
-              <a
-                href={getCalendarUrl(nextLive)}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center justify-center gap-2 w-full mt-3 py-2.5 rounded-xl border border-[#DCCFBF] text-sm font-medium text-[#6B6359] hover:border-[#C6684F] hover:text-[#C6684F] active:bg-[#F2E8DF] transition-colors"
-              >
-                <CalendarPlus size={14} />
-                Ajouter à mon agenda
-              </a>
+              <div className="flex gap-2 mt-3">
+                <a
+                  href={getCalendarUrl(nextLive)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-center gap-2 flex-1 py-2.5 rounded-xl border border-[#DCCFBF] text-sm font-medium text-[#6B6359] hover:border-[#C6684F] hover:text-[#C6684F] active:bg-[#F2E8DF] transition-colors"
+                >
+                  <CalendarPlus size={14} />
+                  Google Agenda
+                </a>
+                <a
+                  href={`/api/calendar?id=${nextLive.id}`}
+                  className="flex items-center justify-center gap-2 flex-1 py-2.5 rounded-xl border border-[#DCCFBF] text-sm font-medium text-[#6B6359] hover:border-[#C6684F] hover:text-[#C6684F] active:bg-[#F2E8DF] transition-colors"
+                >
+                  <CalendarPlus size={14} />
+                  Autre agenda
+                </a>
+              </div>
 
               {/* Zoom link */}
               <div className="flex gap-2 mt-3">
