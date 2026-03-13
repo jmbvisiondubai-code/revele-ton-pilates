@@ -23,37 +23,18 @@ function toCalendarDate(date: Date) {
   return date.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '')
 }
 
-function downloadIcs(live: LiveSession) {
+function getCalendarUrl(live: LiveSession) {
   const start = new Date(live.scheduled_at)
   const end = new Date(start.getTime() + live.duration_minutes * 60000)
   const typeLabel = SESSION_TYPE_LABELS[live.session_type]?.label ?? 'Live'
-  const description = [live.description, live.equipment ? `Matériel : ${live.equipment}` : ''].filter(Boolean).join('\\n')
-  const ics = [
-    'BEGIN:VCALENDAR',
-    'VERSION:2.0',
-    'PRODID:-//Révèle ton Pilates//FR',
-    'BEGIN:VEVENT',
-    `DTSTART:${toCalendarDate(start)}`,
-    `DTEND:${toCalendarDate(end)}`,
-    `SUMMARY:${typeLabel} — ${live.title}`,
-    `DESCRIPTION:${description}`,
-    'BEGIN:VALARM',
-    'TRIGGER:-PT30M',
-    'ACTION:DISPLAY',
-    'DESCRIPTION:Rappel',
-    'END:VALARM',
-    'END:VEVENT',
-    'END:VCALENDAR',
-  ].join('\r\n')
-  const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = `live-${live.id}.ics`
-  document.body.appendChild(a)
-  a.click()
-  document.body.removeChild(a)
-  URL.revokeObjectURL(url)
+  const details = [live.description, live.equipment ? `Matériel : ${live.equipment}` : ''].filter(Boolean).join('\n')
+  const params = new URLSearchParams({
+    action: 'TEMPLATE',
+    text: `${typeLabel} — ${live.title}`,
+    dates: `${toCalendarDate(start)}/${toCalendarDate(end)}`,
+    details,
+  })
+  return `https://calendar.google.com/calendar/render?${params}`
 }
 
 type Tab = 'lives' | 'vod' | 'replays'
@@ -348,7 +329,7 @@ export default function CoursPage() {
 
               {/* Add to calendar */}
               <button
-                onClick={() => downloadIcs(nextLive)}
+                onClick={() => openExternal(getCalendarUrl(nextLive))}
                 className="flex items-center justify-center gap-2 w-full mt-3 py-2.5 rounded-xl border border-[#DCCFBF] text-sm font-medium text-[#6B6359] hover:border-[#C6684F] hover:text-[#C6684F] active:bg-[#F2E8DF] transition-colors"
               >
                 <CalendarPlus size={14} />
