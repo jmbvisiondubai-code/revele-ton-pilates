@@ -40,6 +40,10 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# Capacitor native projects (generated, rebuild with `npx cap add`)
+/android/
+/ios/
+
 # PWA generated files (next-pwa auto-generated only)
 /public/workbox-*.js
 /public/workbox-*.js.map
