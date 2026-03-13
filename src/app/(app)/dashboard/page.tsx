@@ -159,20 +159,26 @@ export default function DashboardPage() {
       )}
 
       {/* Header */}
-      <motion.div initial="hidden" animate="visible" custom={0} variants={fadeInUp} className="mb-6">
-        <h1 className="font-[family-name:var(--font-heading)] text-2xl lg:text-3xl text-text leading-snug">
-          {getGreeting(profile.username)}
-        </h1>
-        <div className="flex items-center gap-4 mt-3 max-w-sm">
-          <StreakBadge count={profile.current_streak} />
-          <div className="flex-1">
-            <ProgressBar value={weeklyProgress} size="sm" color="success" />
-            <p className="text-xs text-text-muted mt-1">
-              Cette semaine : {Math.min(profile.total_sessions, profile.weekly_rhythm)}/{profile.weekly_rhythm} sessions
-            </p>
-          </div>
-        </div>
-      </motion.div>
+      {(() => {
+        const greeting = getGreeting(profile.username)
+        return (
+          <motion.div initial="hidden" animate="visible" custom={0} variants={fadeInUp} className="mb-6">
+            <p className="text-sm font-medium text-[#C6684F] tracking-wide">{greeting.salut}</p>
+            <h1 className="font-[family-name:var(--font-heading)] text-2xl lg:text-3xl text-text leading-snug mt-1">
+              {greeting.message}
+            </h1>
+            <div className="flex items-center gap-4 mt-4 max-w-sm">
+              <StreakBadge count={profile.current_streak} />
+              <div className="flex-1">
+                <ProgressBar value={weeklyProgress} size="sm" color="success" />
+                <p className="text-xs text-text-muted mt-1">
+                  Cette semaine : {Math.min(profile.total_sessions, profile.weekly_rhythm)}/{profile.weekly_rhythm} sessions
+                </p>
+              </div>
+            </div>
+          </motion.div>
+        )
+      })()}
 
       {/* Desktop: 2-col grid / Mobile: single col */}
       <div className="lg:grid lg:grid-cols-3 lg:gap-6 space-y-4 lg:space-y-0">

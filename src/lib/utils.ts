@@ -34,17 +34,17 @@ export function safeUrl(url: string): string {
   return /^https?:\/\//i.test(url) ? url : `https://${url}`
 }
 
-export function getGreeting(firstName: string): string {
+export function getGreeting(firstName: string): { salut: string; message: string } {
   const hour = new Date().getHours()
 
   if (hour < 12) {
-    return `Bonjour ${firstName}, prête à te reconnecter ?`
+    return { salut: `Bonjour ${firstName}`, message: 'Prête à te reconnecter à ton corps ?' }
   } else if (hour < 17) {
-    return `Bon après-midi ${firstName}, un moment pour toi ?`
+    return { salut: `Bon après-midi ${firstName}`, message: 'Accorde-toi un moment pour toi' }
   } else if (hour < 21) {
-    return `Belle soirée ${firstName}, un moment pour toi ?`
+    return { salut: `Belle soirée ${firstName}`, message: 'Le moment idéal pour relâcher les tensions' }
   } else {
-    return `Bonne nuit ${firstName}, détends-toi en douceur`
+    return { salut: `Bonne nuit ${firstName}`, message: 'Détends-toi en douceur avant de dormir' }
   }
 }
 
