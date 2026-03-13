@@ -24,13 +24,14 @@ function getCalendarUrl(live: LiveSession) {
   const end = new Date(start.getTime() + live.duration_minutes * 60000)
   const fmt = (d: Date) => d.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '')
   const typeLabel = SESSION_TYPE_LABELS[live.session_type]?.label ?? 'Live'
-  const details = [live.description, live.equipment ? `Matériel : ${live.equipment}` : ''].filter(Boolean).join('\n')
+  const details = [live.description, live.equipment ? `Matériel : ${live.equipment}` : '', live.meeting_url ? `Lien Zoom : ${live.meeting_url}` : ''].filter(Boolean).join('\n')
   const params = new URLSearchParams({
     action: 'TEMPLATE',
     text: `${typeLabel} — ${live.title}`,
     dates: `${fmt(start)}/${fmt(end)}`,
     details,
   })
+  if (live.meeting_url) params.set('location', live.meeting_url)
   return `https://calendar.google.com/calendar/render?${params}`
 }
 
@@ -324,8 +325,8 @@ export default function CoursPage() {
                 )}
               </div>
 
-              {/* Add to calendar */}
-              <div className="flex gap-2 mt-3">
+              {/* Add to calendar — only if registered */}
+              {isRegistered && <div className="flex gap-2 mt-3">
                 <a
                   href={getCalendarUrl(nextLive)}
                   target="_blank"
@@ -342,7 +343,7 @@ export default function CoursPage() {
                   <CalendarPlus size={14} />
                   Autre agenda
                 </a>
-              </div>
+              </div>}
 
               {/* Zoom link */}
               <div className="flex gap-2 mt-3">

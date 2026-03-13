@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
   const start = new Date(live.scheduled_at)
   const end = new Date(start.getTime() + live.duration_minutes * 60000)
   const typeLabel = SESSION_LABELS[live.session_type] ?? 'Live'
-  const desc = [live.description, live.equipment ? `Matériel : ${live.equipment}` : ''].filter(Boolean).join('\\n')
+  const desc = [live.description, live.equipment ? `Matériel : ${live.equipment}` : '', live.meeting_url ? `Lien Zoom : ${live.meeting_url}` : ''].filter(Boolean).join('\\n')
 
   const ics = [
     'BEGIN:VCALENDAR',
@@ -46,6 +46,7 @@ export async function GET(request: NextRequest) {
     `DTEND:${toIcsDate(end)}`,
     `SUMMARY:${typeLabel} — ${live.title}`,
     `DESCRIPTION:${desc}`,
+    ...(live.meeting_url ? [`LOCATION:${live.meeting_url}`] : []),
     'BEGIN:VALARM',
     'TRIGGER:-PT30M',
     'ACTION:DISPLAY',
