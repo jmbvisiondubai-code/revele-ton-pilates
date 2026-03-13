@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Home, Play, Users, Heart, BookOpen, User, Settings } from 'lucide-react'
+import { Home, Play, Users, TrendingUp, BookOpen, User } from 'lucide-react'
 import Image from 'next/image'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/client'
 import { useAuthStore } from '@/stores/auth-store'
@@ -11,9 +11,9 @@ import { useAuthStore } from '@/stores/auth-store'
 const navItems = [
   { href: '/dashboard',  label: 'Accueil',     icon: Home },
   { href: '/cours',      label: 'Cours',        icon: Play },
-  { href: '/suivi',      label: 'Mon suivi',    icon: Heart },
+  { href: '/suivi',      label: 'Mon suivi',    icon: TrendingUp },
   { href: '/communaute', label: 'Communauté',   icon: Users },
-  { href: '/conseils',   label: 'Conseils',     icon: BookOpen },
+  { href: '/conseils',   label: 'Articles',     icon: BookOpen },
 ]
 
 export function SideNav() {

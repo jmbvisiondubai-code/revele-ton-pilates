@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { motion } from 'framer-motion'
-import { Home, Play, Users, Heart, BookOpen } from 'lucide-react'
+import { Home, Play, Users, TrendingUp, BookOpen } from 'lucide-react'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/client'
 import { useAuthStore } from '@/stores/auth-store'
 
@@ -13,11 +13,11 @@ const leftItems = [
   { href: '/cours',       label: 'Cours',        icon: Play },
 ]
 
-const centerItem = { href: '/suivi', label: 'Mon suivi', icon: Heart }
+const centerItem = { href: '/suivi', label: 'Mon suivi', icon: TrendingUp }
 
 const rightItems = [
   { href: '/communaute',  label: 'Communauté',   icon: Users },
-  { href: '/conseils',    label: 'Conseils',     icon: BookOpen },
+  { href: '/conseils',    label: 'Articles',     icon: BookOpen },
 ]
 
 export function BottomNav() {
@@ -113,18 +113,18 @@ export function BottomNav() {
         <Link
           key={item.href}
           href={item.href}
-          className="relative flex flex-col items-center -mt-6"
+          className="relative flex flex-col items-center -mt-6 mx-1"
         >
           {/* Protruding circle button */}
-          <div className={`relative w-14 h-14 rounded-full flex items-center justify-center shadow-lg transition-all duration-200 ${
+          <div className={`relative w-14 h-14 rounded-full flex items-center justify-center transition-all duration-200 ${
             isActive
-              ? 'bg-[#C6684F] shadow-[#C6684F]/30'
-              : 'bg-[#C6684F] shadow-[#C6684F]/20'
+              ? 'bg-[#C6684F] shadow-lg shadow-[#C6684F]/30 scale-105'
+              : 'bg-[#E8D5C4] shadow-md shadow-[#DCCFBF]/40'
           }`}>
             <Icon
               size={26}
               strokeWidth={isActive ? 2.5 : 2}
-              className="text-white"
+              className={isActive ? 'text-white' : 'text-[#A8543D]'}
             />
             {badge > 0 && (
               <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 bg-white text-[#C6684F] text-[10px] font-bold rounded-full flex items-center justify-center leading-none border-2 border-[#C6684F]">
@@ -175,7 +175,7 @@ export function BottomNav() {
 
   return (
     <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-bg-card/90 backdrop-blur-lg border-t border-border-light safe-bottom">
-      <div className="max-w-lg mx-auto flex items-end justify-around px-1 pt-3 pb-1.5">
+      <div className="max-w-md mx-auto flex items-end justify-evenly px-2 pt-3 pb-1.5">
         {leftItems.map((item) => renderItem(item))}
         {renderItem(centerItem, true)}
         {rightItems.map((item) => renderItem(item))}
