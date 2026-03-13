@@ -10,15 +10,15 @@ const supabase = createClient(
 )
 
 export async function POST(req: NextRequest) {
-  const { userId, title, body, url, tag } = await req.json()
-  if (!userId || !title) {
+  const { userId, broadcast, title, body, url, tag } = await req.json()
+  if ((!userId && !broadcast) || !title) {
     return NextResponse.json({ error: 'Missing fields' }, { status: 400 })
   }
 
-  const { data: subs } = await supabase
-    .from('push_subscriptions')
-    .select('endpoint, p256dh, auth')
-    .eq('user_id', userId)
+  // broadcast: true → send to ALL subscribed users
+  const query = supabase.from('push_subscriptions').select('endpoint, p256dh, auth')
+  if (!broadcast) query.eq('user_id', userId)
+  const { data: subs } = await query
 
   if (!subs?.length) return NextResponse.json({ ok: true, sent: 0 })
 

@@ -114,6 +114,19 @@ export default function AdminLivesPage() {
       await supabase.from('live_sessions').update(payload).eq('id', editing.id)
     } else {
       await supabase.from('live_sessions').insert(payload)
+      // Notify all subscribed users about new live
+      const dateStr = format(new Date(form.scheduled_at), "EEEE d MMMM 'à' HH'h'mm", { locale: fr })
+      fetch('/api/push/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          broadcast: true,
+          title: '🎥 Nouveau live programmé !',
+          body: `${form.title} — ${dateStr}`,
+          url: '/cours',
+          tag: 'new-live',
+        }),
+      }).catch(() => {})
     }
     setSaving(false)
     setShowForm(false)

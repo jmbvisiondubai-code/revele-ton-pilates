@@ -80,6 +80,20 @@ export default function AdminArticlesPage() {
       await supabase.from('articles').update(payload).eq('id', editing.id)
     } else {
       await supabase.from('articles').insert(payload)
+      // Notify all subscribed users about new article
+      if (form.is_published) {
+        fetch('/api/push/send', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            broadcast: true,
+            title: '📖 Nouvel article !',
+            body: form.title,
+            url: '/conseils',
+            tag: 'new-article',
+          }),
+        }).catch(() => {})
+      }
     }
     setSaving(false)
     setShowForm(false)
@@ -87,7 +101,22 @@ export default function AdminArticlesPage() {
   }
 
   async function togglePublish(article: Article) {
-    await supabase.from('articles').update({ is_published: !article.is_published }).eq('id', article.id)
+    const willPublish = !article.is_published
+    await supabase.from('articles').update({ is_published: willPublish }).eq('id', article.id)
+    // Notify when publishing (not when unpublishing)
+    if (willPublish) {
+      fetch('/api/push/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          broadcast: true,
+          title: '📖 Nouvel article !',
+          body: article.title,
+          url: '/conseils',
+          tag: `new-article-${article.id}`,
+        }),
+      }).catch(() => {})
+    }
     loadArticles()
   }
 
