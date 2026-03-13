@@ -177,15 +177,19 @@ export interface Notification {
   created_at: string
 }
 
+export type SessionType = 'vod' | 'live' | 'libre'
+
 export interface CourseCompletion {
   id: string
   user_id: string
-  course_id: string
+  course_id: string | null
   completed_at: string
   duration_watched_minutes: number | null
   rating: number | null
   feedback: string | null
   program_session_id: string | null
+  session_type: SessionType
+  libre_label: string | null
 }
 
 export interface UserBadge {

@@ -69,6 +69,8 @@ type Completion = {
   id: string
   completed_at: string
   duration_watched_minutes: number | null
+  session_type: string | null
+  libre_label: string | null
   courses: { title: string; duration_minutes: number } | null
 }
 
@@ -132,7 +134,7 @@ export default function ProfilPage() {
       // Load recent completions with course titles
       const { data: completions } = await supabase
         .from('course_completions')
-        .select('id, completed_at, duration_watched_minutes, courses(title, duration_minutes)')
+        .select('id, completed_at, duration_watched_minutes, session_type, libre_label, courses(title, duration_minutes)')
         .eq('user_id', user.id)
         .order('completed_at', { ascending: false })
         .limit(10)
@@ -663,7 +665,9 @@ export default function ProfilPage() {
                         <CheckCircle2 size={14} className="text-success" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm text-text truncate">{c.courses?.title ?? 'Cours'}</p>
+                        <p className="text-sm text-text truncate">
+                          {c.courses?.title ?? c.libre_label ?? (c.session_type === 'libre' ? 'Pratique libre' : c.session_type === 'live' ? 'Cours live' : 'Cours')}
+                        </p>
                         <p className="text-xs text-text-muted">
                           {new Date(c.completed_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
                           {' · '}{c.duration_watched_minutes ?? c.courses?.duration_minutes ?? '?'} min
