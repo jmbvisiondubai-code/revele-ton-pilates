@@ -84,12 +84,16 @@ export default function ConseilsPage() {
   }, [])
 
   async function loadComments(articleId: string) {
-    const { data } = await supabase
+    const { data: rawComments } = await supabase
       .from('article_comments')
-      .select('*, profiles(username, avatar_url)')
+      .select('*')
       .eq('article_id', articleId)
       .order('created_at', { ascending: true })
-    if (data) setComments(data as ArticleComment[])
+    if (!rawComments?.length) { setComments([]); return }
+    const userIds = [...new Set(rawComments.map(c => c.user_id))]
+    const { data: profiles } = await supabase.from('profiles').select('id, username, avatar_url').in('id', userIds)
+    const profileMap = new Map((profiles ?? []).map(p => [p.id, p]))
+    setComments(rawComments.map(c => ({ ...c, profiles: profileMap.get(c.user_id) ?? undefined })) as ArticleComment[])
   }
 
   async function markAsRead(rec: Recommendation) {
@@ -120,14 +124,15 @@ export default function ConseilsPage() {
     const { data, error } = await supabase
       .from('article_comments')
       .insert({ article_id: openArticle.id, user_id: currentUserId, content: commentText.trim() })
-      .select('*, profiles(username, avatar_url)')
+      .select('*')
       .single()
     if (error) {
       console.error('[postComment] error:', error)
-      alert(`Erreur: ${error.message}`)
     }
     if (data) {
-      setComments(prev => [...prev, data as ArticleComment])
+      const { data: prof } = await supabase.from('profiles').select('username, avatar_url').eq('id', currentUserId).single()
+      const comment: ArticleComment = { ...data, profiles: prof ?? undefined }
+      setComments(prev => [...prev, comment])
       setCommentText('')
     }
     setPostingComment(false)
