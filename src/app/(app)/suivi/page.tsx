@@ -4,12 +4,13 @@ import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import {
   ChevronRight, Trophy, Clock, Sparkles, Flame,
-  ArrowLeft, ExternalLink, BookOpen,
+  ArrowLeft, ExternalLink, BookOpen, Calendar, Target,
+  Award, Play, TrendingUp, Star,
 } from 'lucide-react'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/client'
 import { useAuthStore } from '@/stores/auth-store'
 import { Card } from '@/components/ui'
-import type { Recommendation, Profile } from '@/types/database'
+import type { Recommendation, Profile, Badge, SessionType } from '@/types/database'
 
 const REC_CATEGORIES: { key: string; label: string; emoji: string }[] = [
   { key: 'mouvement', label: 'Mouvement', emoji: '🧘‍♀️' },
@@ -19,6 +20,39 @@ const REC_CATEGORIES: { key: string; label: string; emoji: string }[] = [
   { key: 'cours', label: 'Cours', emoji: '🎯' },
   { key: 'autre', label: 'Autre', emoji: '💬' },
 ]
+
+const LEVEL_LABELS: Record<string, string> = {
+  debutante: 'Débutante',
+  initiee: 'Initiée',
+  intermediaire: 'Intermédiaire',
+  avancee: 'Avancée',
+}
+
+const LEVEL_ORDER = ['debutante', 'initiee', 'intermediaire', 'avancee']
+
+const GOAL_LABELS: Record<string, { label: string; emoji: string }> = {
+  posture: { label: 'Posture', emoji: '🧍‍♀️' },
+  souplesse: { label: 'Souplesse', emoji: '🤸‍♀️' },
+  renforcement: { label: 'Renforcement', emoji: '💪' },
+  gestion_stress: { label: 'Gestion du stress', emoji: '🧘' },
+  post_partum: { label: 'Post-partum', emoji: '🤱' },
+  soulagement_douleurs: { label: 'Soulagement douleurs', emoji: '🩹' },
+  tonicite: { label: 'Tonicité', emoji: '⚡' },
+  energie: { label: 'Énergie', emoji: '🔋' },
+  connexion_corps_esprit: { label: 'Corps & esprit', emoji: '🌸' },
+}
+
+const DAY_LABELS: Record<string, string> = {
+  lundi: 'Lun', mardi: 'Mar', mercredi: 'Mer', jeudi: 'Jeu',
+  vendredi: 'Ven', samedi: 'Sam', dimanche: 'Dim',
+}
+const ALL_DAYS = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche']
+
+const SESSION_TYPE_LABELS: Record<SessionType, { label: string; color: string }> = {
+  vod: { label: 'VOD', color: '#C6684F' },
+  live: { label: 'Live', color: '#7C6BAF' },
+  libre: { label: 'Libre', color: '#5B9A6B' },
+}
 
 function getRecCat(key: string | null) {
   return REC_CATEGORIES.find(c => c.key === key) ?? { label: 'Conseil', emoji: '✨' }
@@ -46,7 +80,31 @@ function openExternal(url: string) {
   }
 }
 
+function relativeDate(dateStr: string) {
+  const d = new Date(dateStr)
+  const now = new Date()
+  const diffMs = now.getTime() - d.getTime()
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
+  if (diffDays === 0) return "Aujourd'hui"
+  if (diffDays === 1) return 'Hier'
+  if (diffDays < 7) return `Il y a ${diffDays} jours`
+  return d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
+}
+
 type Tab = 'parcours' | 'recommandations'
+
+interface Completion {
+  id: string
+  completed_at: string
+  duration_watched_minutes: number | null
+  session_type: SessionType
+  libre_label: string | null
+  courses: { title: string; duration_minutes: number } | null
+}
+
+interface EarnedBadge extends Badge {
+  earned_at: string
+}
 
 const fadeInUp = {
   hidden: { opacity: 0, y: 12 },
@@ -60,6 +118,9 @@ export default function SuiviPage() {
   const [recs, setRecs] = useState<Recommendation[]>([])
   const [unreadRecs, setUnreadRecs] = useState(0)
   const [openRec, setOpenRec] = useState<Recommendation | null>(null)
+  const [sessionsThisWeek, setSessionsThisWeek] = useState(0)
+  const [recentCompletions, setRecentCompletions] = useState<Completion[]>([])
+  const [earnedBadges, setEarnedBadges] = useState<EarnedBadge[]>([])
 
   const supabase = createClient()
   const { profile, setProfile } = useAuthStore()
@@ -70,24 +131,43 @@ export default function SuiviPage() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { setLoading(false); return }
 
-      // Ensure profile is in store
-      let prof = profile
-      if (!prof) {
-        const { data } = await supabase.from('profiles').select('*').eq('id', user.id).single()
-        if (data) { setProfile(data); prof = data }
+      // Ensure profile is in store (fresh fetch)
+      const { data: profileData } = await supabase.from('profiles').select('*').eq('id', user.id).single()
+      const prof = profileData as Profile | null
+      if (prof) { setProfile(prof); setUserProfile(prof) }
+
+      // Fetch in parallel: recommendations, completions, weekly count, badges
+      const startOfWeek = new Date()
+      startOfWeek.setDate(startOfWeek.getDate() - ((startOfWeek.getDay() + 6) % 7)) // Monday
+      startOfWeek.setHours(0, 0, 0, 0)
+
+      const [recsRes, completionsRes, weekCountRes, allBadgesRes, userBadgesRes] = await Promise.all([
+        supabase.from('recommendations').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
+        supabase.from('course_completions')
+          .select('id, completed_at, duration_watched_minutes, session_type, libre_label, courses(title, duration_minutes)')
+          .eq('user_id', user.id).order('completed_at', { ascending: false }).limit(10),
+        supabase.from('course_completions').select('id', { count: 'exact', head: true })
+          .eq('user_id', user.id).gte('completed_at', startOfWeek.toISOString()),
+        supabase.from('badges').select('*'),
+        supabase.from('user_badges').select('badge_id, earned_at').eq('user_id', user.id),
+      ])
+
+      if (recsRes.data) {
+        setRecs(recsRes.data as Recommendation[])
+        setUnreadRecs(recsRes.data.filter((r: Recommendation) => !r.is_read).length)
       }
-      setUserProfile(prof)
 
-      // Fetch personal recommendations
-      const { data: personal } = await supabase
-        .from('recommendations')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
+      if (completionsRes.data) setRecentCompletions(completionsRes.data as unknown as Completion[])
+      setSessionsThisWeek(weekCountRes.count ?? 0)
 
-      if (personal) {
-        setRecs(personal as Recommendation[])
-        setUnreadRecs(personal.filter((r: Recommendation) => !r.is_read).length)
+      if (allBadgesRes.data && userBadgesRes.data) {
+        const earned: EarnedBadge[] = []
+        for (const ub of userBadgesRes.data) {
+          const badge = allBadgesRes.data.find(b => b.id === ub.badge_id)
+          if (badge) earned.push({ ...badge, earned_at: ub.earned_at } as EarnedBadge)
+        }
+        earned.sort((a, b) => new Date(b.earned_at).getTime() - new Date(a.earned_at).getTime())
+        setEarnedBadges(earned)
       }
 
       setLoading(false)
@@ -233,8 +313,9 @@ export default function SuiviPage() {
 
           {/* ── MON PARCOURS TAB ── */}
           {tab === 'parcours' && userProfile && (
-            <motion.div initial="hidden" animate="visible" custom={0} variants={fadeInUp} className="space-y-5">
-              {/* Stats grid */}
+            <motion.div initial="hidden" animate="visible" custom={0} variants={fadeInUp} className="space-y-6">
+
+              {/* ─── Stats grid ─── */}
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
                 <Card className="text-center py-5">
                   <Trophy size={24} className="mx-auto text-[#C6684F] mb-2" />
@@ -258,54 +339,181 @@ export default function SuiviPage() {
                 </Card>
               </div>
 
-              {/* Weekly progress */}
+              {/* ─── Weekly progress ─── */}
               {userProfile.weekly_rhythm > 0 && (
                 <Card>
-                  <div className="flex items-center justify-between mb-3">
-                    <p className="text-sm font-semibold text-[#2C2C2C]">Objectif hebdomadaire</p>
-                    <p className="text-sm text-[#C6684F] font-medium">
-                      {Math.min(userProfile.total_sessions, userProfile.weekly_rhythm)}/{userProfile.weekly_rhythm}
-                    </p>
+                  <div className="flex items-center gap-2 mb-3">
+                    <Target size={16} className="text-[#C6684F]" />
+                    <p className="text-sm font-semibold text-[#2C2C2C]">Objectif de la semaine</p>
+                    <span className="ml-auto text-sm text-[#C6684F] font-bold">
+                      {sessionsThisWeek}/{userProfile.weekly_rhythm}
+                    </span>
                   </div>
-                  <div className="w-full h-2.5 bg-[#F2E8DF] rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-[#C6684F] rounded-full transition-all duration-500"
-                      style={{ width: `${Math.min(100, (userProfile.total_sessions / userProfile.weekly_rhythm) * 100)}%` }}
+                  <div className="w-full h-3 bg-[#F2E8DF] rounded-full overflow-hidden">
+                    <motion.div
+                      className="h-full bg-gradient-to-r from-[#C6684F] to-[#D4856F] rounded-full"
+                      initial={{ width: 0 }}
+                      animate={{ width: `${Math.min(100, (sessionsThisWeek / userProfile.weekly_rhythm) * 100)}%` }}
+                      transition={{ duration: 0.8, ease: 'easeOut' }}
                     />
+                  </div>
+                  {sessionsThisWeek >= userProfile.weekly_rhythm && (
+                    <p className="text-xs text-[#5B9A6B] font-medium mt-2 flex items-center gap-1">
+                      <Star size={12} /> Objectif atteint, bravo !
+                    </p>
+                  )}
+                </Card>
+              )}
+
+              {/* ─── Preferred days ─── */}
+              {userProfile.preferred_days.length > 0 && (
+                <Card>
+                  <div className="flex items-center gap-2 mb-3">
+                    <Calendar size={16} className="text-[#C6684F]" />
+                    <p className="text-sm font-semibold text-[#2C2C2C]">Ton planning</p>
+                    {userProfile.preferred_time && (
+                      <span className="ml-auto text-xs text-[#6B6359] bg-[#F2E8DF] px-2.5 py-0.5 rounded-full capitalize">
+                        {userProfile.preferred_time}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex gap-2">
+                    {ALL_DAYS.map(day => {
+                      const isPreferred = userProfile.preferred_days.includes(day)
+                      return (
+                        <div key={day} className={`flex-1 py-2 rounded-lg text-center text-xs font-medium transition-all ${
+                          isPreferred
+                            ? 'bg-[#C6684F]/10 text-[#C6684F] border border-[#C6684F]/20'
+                            : 'bg-[#F8F4F0] text-[#BFAE9F]'
+                        }`}>
+                          {DAY_LABELS[day] ?? day.slice(0, 3)}
+                        </div>
+                      )
+                    })}
                   </div>
                 </Card>
               )}
 
-              {/* Goals */}
+              {/* ─── Level progression ─── */}
+              {userProfile.practice_level && (
+                <Card>
+                  <div className="flex items-center gap-2 mb-4">
+                    <TrendingUp size={16} className="text-[#C6684F]" />
+                    <p className="text-sm font-semibold text-[#2C2C2C]">Progression</p>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    {LEVEL_ORDER.map((lvl, i) => {
+                      const currentIdx = LEVEL_ORDER.indexOf(userProfile.practice_level!)
+                      const isReached = i <= currentIdx
+                      const isCurrent = i === currentIdx
+                      return (
+                        <div key={lvl} className="flex-1 flex flex-col items-center gap-1.5">
+                          <div className={`w-full h-2 rounded-full transition-all ${
+                            isReached ? 'bg-[#C6684F]' : 'bg-[#F2E8DF]'
+                          }`} />
+                          <span className={`text-[10px] font-medium ${
+                            isCurrent ? 'text-[#C6684F] font-bold' : isReached ? 'text-[#6B6359]' : 'text-[#BFAE9F]'
+                          }`}>
+                            {LEVEL_LABELS[lvl] ?? lvl}
+                          </span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                  {userProfile.start_level && userProfile.start_level !== userProfile.practice_level && (
+                    <p className="text-xs text-[#6B6359] mt-3 flex items-center gap-1">
+                      <BookOpen size={12} />
+                      Niveau de depart : <span className="font-medium capitalize">{LEVEL_LABELS[userProfile.start_level] ?? userProfile.start_level}</span>
+                    </p>
+                  )}
+                </Card>
+              )}
+
+              {/* ─── Goals ─── */}
               {userProfile.goals.length > 0 && (
                 <div>
-                  <h3 className="text-sm font-semibold text-[#2C2C2C] mb-3">Tes objectifs</h3>
-                  <div className="flex flex-wrap gap-2">
-                    {userProfile.goals.map(g => (
-                      <span key={g} className="px-3 py-1.5 bg-[#F2E8DF] text-[#6B6359] text-xs font-medium rounded-full">
-                        {g.replace(/_/g, ' ')}
-                      </span>
+                  <h3 className="text-sm font-semibold text-[#2C2C2C] mb-3 flex items-center gap-2">
+                    <Target size={15} className="text-[#C6684F]" /> Tes objectifs
+                  </h3>
+                  <div className="grid grid-cols-2 lg:grid-cols-3 gap-2">
+                    {userProfile.goals.map(g => {
+                      const info = GOAL_LABELS[g]
+                      return (
+                        <div key={g} className="flex items-center gap-2.5 px-3 py-2.5 bg-white rounded-xl border border-[#EDE5DA]">
+                          <span className="text-lg">{info?.emoji ?? '🎯'}</span>
+                          <span className="text-xs font-medium text-[#2C2C2C]">{info?.label ?? g.replace(/_/g, ' ')}</span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* ─── Earned badges ─── */}
+              {earnedBadges.length > 0 && (
+                <div>
+                  <h3 className="text-sm font-semibold text-[#2C2C2C] mb-3 flex items-center gap-2">
+                    <Award size={15} className="text-[#C6684F]" /> Badges obtenus
+                    <span className="ml-auto text-xs text-[#A09488] font-normal">{earnedBadges.length} badge{earnedBadges.length > 1 ? 's' : ''}</span>
+                  </h3>
+                  <div className="grid grid-cols-3 lg:grid-cols-4 gap-3">
+                    {earnedBadges.slice(0, 8).map(badge => (
+                      <motion.div
+                        key={badge.id}
+                        className="flex flex-col items-center text-center p-3 bg-white rounded-2xl border border-[#EDE5DA]"
+                        whileHover={{ y: -2 }}
+                      >
+                        <span className="text-2xl mb-1.5">{badge.icon}</span>
+                        <p className="text-[11px] font-semibold text-[#2C2C2C] leading-tight">{badge.name}</p>
+                        <p className="text-[9px] text-[#A09488] mt-0.5">
+                          {new Date(badge.earned_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
+                        </p>
+                      </motion.div>
                     ))}
                   </div>
                 </div>
               )}
 
-              {/* Practice level */}
-              {userProfile.practice_level && (
-                <Card className="bg-[#C6684F]/5 border-[#C6684F]/10">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-[#C6684F]/10 flex items-center justify-center">
-                      <BookOpen size={18} className="text-[#C6684F]" />
-                    </div>
-                    <div>
-                      <p className="text-xs text-[#6B6359]">Niveau</p>
-                      <p className="text-sm font-semibold text-[#2C2C2C] capitalize">{userProfile.practice_level.replace('e', 'e')}</p>
-                    </div>
+              {/* ─── Recent sessions ─── */}
+              {recentCompletions.length > 0 && (
+                <div>
+                  <h3 className="text-sm font-semibold text-[#2C2C2C] mb-3 flex items-center gap-2">
+                    <Play size={15} className="text-[#C6684F]" /> Dernières séances
+                  </h3>
+                  <div className="space-y-2">
+                    {recentCompletions.slice(0, 6).map(c => {
+                      const typeInfo = SESSION_TYPE_LABELS[c.session_type] ?? SESSION_TYPE_LABELS.vod
+                      const title = c.courses?.title ?? c.libre_label ?? 'Séance libre'
+                      const duration = c.duration_watched_minutes ?? c.courses?.duration_minutes ?? 0
+                      return (
+                        <Card key={c.id} className="!p-3">
+                          <div className="flex items-center gap-3">
+                            <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
+                              style={{ backgroundColor: `${typeInfo.color}15` }}>
+                              <Play size={14} style={{ color: typeInfo.color }} />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-[#2C2C2C] truncate">{title}</p>
+                              <div className="flex items-center gap-2 mt-0.5">
+                                <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full"
+                                  style={{ backgroundColor: `${typeInfo.color}15`, color: typeInfo.color }}>
+                                  {typeInfo.label}
+                                </span>
+                                {duration > 0 && (
+                                  <span className="text-[10px] text-[#A09488]">{formatDuration(duration)}</span>
+                                )}
+                              </div>
+                            </div>
+                            <span className="text-[10px] text-[#BFAE9F] flex-shrink-0">{relativeDate(c.completed_at)}</span>
+                          </div>
+                        </Card>
+                      )
+                    })}
                   </div>
-                </Card>
+                </div>
               )}
 
-              {/* Member since */}
+              {/* ─── Member since ─── */}
               <p className="text-xs text-[#DCCFBF] text-center pt-2">
                 Membre depuis {new Date(userProfile.created_at).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}
               </p>
