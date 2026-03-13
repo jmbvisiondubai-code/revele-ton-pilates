@@ -41,6 +41,7 @@ export default function CoursPage() {
   const [iosPrompt, setIosPrompt] = useState<string | null>(null)
   const [isRegistered, setIsRegistered] = useState(false)
   const [registering, setRegistering] = useState(false)
+  const [regError, setRegError] = useState<string | null>(null)
   const { profile } = useAuthStore()
   const supabase = createClient()
 
@@ -127,12 +128,18 @@ export default function CoursPage() {
   }
 
   async function registerForLive() {
-    if (!nextLive || !profile) return
+    if (!nextLive) return
+    setRegError(null)
+    // Use auth user id directly for RLS compatibility
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) { setRegError('Tu dois être connectée pour t\'inscrire.'); return }
     setRegistering(true)
     const { error } = await supabase
       .from('live_registrations')
-      .insert({ user_id: profile.id, live_session_id: nextLive.id })
-    if (!error) {
+      .insert({ user_id: user.id, live_session_id: nextLive.id })
+    if (error) {
+      setRegError(error.message.includes('duplicate') ? 'Tu es déjà inscrite !' : 'Erreur lors de l\'inscription. Réessaie.')
+    } else {
       setIsRegistered(true)
       setNextLive(prev => prev ? { ...prev, registered_count: prev.registered_count + 1 } : prev)
     }
@@ -140,14 +147,19 @@ export default function CoursPage() {
   }
 
   async function unregisterFromLive() {
-    if (!nextLive || !profile) return
+    if (!nextLive) return
+    setRegError(null)
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
     setRegistering(true)
     const { error } = await supabase
       .from('live_registrations')
       .delete()
-      .eq('user_id', profile.id)
+      .eq('user_id', user.id)
       .eq('live_session_id', nextLive.id)
-    if (!error) {
+    if (error) {
+      setRegError('Erreur lors de l\'annulation. Réessaie.')
+    } else {
       setIsRegistered(false)
       setNextLive(prev => prev ? { ...prev, registered_count: Math.max(0, prev.registered_count - 1) } : prev)
     }
@@ -251,6 +263,9 @@ export default function CoursPage() {
 
               {/* Registration */}
               <div className="mt-4">
+                {regError && (
+                  <div className="mb-2 text-xs text-red-500 bg-red-50 rounded-lg px-3 py-2">{regError}</div>
+                )}
                 {isRegistered ? (
                   <div className="flex items-center gap-2 sm:gap-3">
                     <div className="flex-1 flex items-center gap-2 bg-emerald-50 text-emerald-700 rounded-xl px-3 py-2.5 text-sm font-medium min-w-0">
