@@ -799,18 +799,39 @@ export default function CommunautePage() {
                             <p className="text-sm text-[#2C2C2C] leading-relaxed">{post.content}</p>
                             {/* bottom bar: like left, comment right */}
                             <div className="flex items-center justify-between mt-3 pt-2 border-t border-[#EDD5C5]/50">
-                              <button onClick={() => toggleReaction(post.id, 'coeur')}
-                                className={`flex items-center gap-1.5 text-xs transition-colors ${hasLiked ? 'text-[#C6684F]' : 'text-[#A09488] hover:text-[#C6684F]'}`}>
-                                <Heart size={14} fill={hasLiked ? '#C6684F' : 'none'} />
-                                {likeCount > 0 && <span className="font-medium">{likeCount}</span>}
-                                {!likeCount && <span>J&apos;aime</span>}
-                              </button>
+                              <div className="flex items-center gap-2">
+                                <button onClick={() => toggleReaction(post.id, 'coeur')}
+                                  className={`flex items-center gap-1.5 text-xs transition-colors ${hasLiked ? 'text-[#C6684F]' : 'text-[#A09488] hover:text-[#C6684F]'}`}>
+                                  <Heart size={14} fill={hasLiked ? '#C6684F' : 'none'} />
+                                  {!likeCount && <span>J&apos;aime</span>}
+                                </button>
+                                {likeCount > 0 && (
+                                  <button onClick={() => setOpenReactions(openReactions === post.id ? null : post.id)}
+                                    className="text-[10px] text-[#6B6359] font-medium hover:underline">
+                                    {likeCount} {likeCount === 1 ? 'j\u0027aime' : 'j\u0027aime'}
+                                  </button>
+                                )}
+                              </div>
                               <button onClick={() => loadComments(post.id)}
                                 className="flex items-center gap-1 text-xs text-[#A09488] hover:text-[#C6684F] transition-colors">
                                 <span>💬</span>
                                 {post.comment_count > 0 ? `${post.comment_count} message${post.comment_count > 1 ? 's' : ''}` : 'Commenter'}
                               </button>
                             </div>
+                            {/* Who liked */}
+                            <AnimatePresence>
+                              {openReactions === post.id && post.reaction_users.length > 0 && (
+                                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
+                                  className="mt-1.5 flex flex-wrap gap-1">
+                                  {post.reaction_users.filter(u => u.reaction_type === 'coeur').map(u => (
+                                    <span key={u.user_id} className="flex items-center gap-1 bg-white border border-[#EDD5C5] rounded-full px-2 py-0.5 text-[10px] text-[#6B6359]">
+                                      <Heart size={8} fill="#C6684F" className="text-[#C6684F]" />
+                                      {u.user_id === myId ? 'Toi' : u.username}
+                                    </span>
+                                  ))}
+                                </motion.div>
+                              )}
+                            </AnimatePresence>
                             {/* comments section */}
                             {openComments === post.id && (
                               <div className="mt-3 text-left border-t border-[#EDD5C5] pt-3">
