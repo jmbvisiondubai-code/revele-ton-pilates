@@ -24,6 +24,7 @@ import { useRouter } from 'next/navigation'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/client'
 import { useAuthStore } from '@/stores/auth-store'
 import { Card, ProgressBar, StreakBadge, BadgePill } from '@/components/ui'
+import { downloadIcs } from '@/lib/download-ics'
 import { getGreeting, formatDuration } from '@/lib/utils'
 import type { Profile, DailyInspiration, LiveSession, LiveSessionType, PrivateAppointment } from '@/types/database'
 
@@ -361,15 +362,13 @@ export default function DashboardPage() {
                         <CalendarPlus size={14} />
                         Google Agenda
                       </a>
-                      <a
-                        href={`/api/calendar/rdv?id=${privateAppt.id}`}
-                        download="rdv.ics"
+                      <button
+                        onClick={(e) => { e.stopPropagation(); downloadIcs(`/api/calendar/rdv?id=${privateAppt.id}`, 'rdv.ics') }}
                         className="flex items-center justify-center gap-2 flex-1 py-2.5 rounded-xl border border-[#7C3AED]/20 text-sm font-medium text-[#6B6359] hover:border-[#7C3AED] hover:text-[#7C3AED] active:bg-[#7C3AED]/5 transition-colors"
-                        onClick={e => e.stopPropagation()}
                       >
                         <CalendarPlus size={14} />
                         Autre agenda
-                      </a>
+                      </button>
                     </div>
                   </div>
                 </div>

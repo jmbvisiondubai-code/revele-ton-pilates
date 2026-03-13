@@ -6,6 +6,7 @@ import { Clock, Monitor, Video, ExternalLink, Radio, Film, ChevronRight, Play, U
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/client'
 import { useAuthStore } from '@/stores/auth-store'
 import { Card, Button } from '@/components/ui'
+import { downloadIcs } from '@/lib/download-ics'
 import type { LiveSession, LiveSessionType, VodCategory, PrivateAppointment } from '@/types/database'
 
 const SESSION_TYPE_LABELS: Record<LiveSessionType, { label: string; emoji: string }> = {
@@ -342,14 +343,13 @@ export default function CoursPage() {
                   <CalendarPlus size={14} />
                   Google Agenda
                 </a>
-                <a
-                  href={`/api/calendar?id=${nextLive.id}`}
-                  download="live.ics"
+                <button
+                  onClick={() => downloadIcs(`/api/calendar?id=${nextLive.id}`, 'live.ics')}
                   className="flex items-center justify-center gap-2 flex-1 py-2.5 rounded-xl border border-[#DCCFBF] text-sm font-medium text-[#6B6359] hover:border-[#C6684F] hover:text-[#C6684F] active:bg-[#F2E8DF] transition-colors"
                 >
                   <CalendarPlus size={14} />
                   Autre agenda
-                </a>
+                </button>
               </div>}
 
               {/* Zoom link */}
@@ -421,14 +421,13 @@ export default function CoursPage() {
                           <CalendarPlus size={14} />
                           Google Agenda
                         </a>
-                        <a
-                          href={`/api/calendar/rdv?id=${appt.id}`}
-                          download="rdv.ics"
+                        <button
+                          onClick={() => downloadIcs(`/api/calendar/rdv?id=${appt.id}`, 'rdv.ics')}
                           className="flex items-center justify-center gap-2 flex-1 py-2.5 rounded-xl border border-[#7C3AED]/20 text-sm font-medium text-[#6B6359] hover:border-[#7C3AED] hover:text-[#7C3AED] active:bg-[#7C3AED]/5 transition-colors"
                         >
                           <CalendarPlus size={14} />
                           Autre agenda
-                        </a>
+                        </button>
                       </div>
                     </div>
                   </div>
