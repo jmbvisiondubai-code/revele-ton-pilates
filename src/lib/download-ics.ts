@@ -1,7 +1,6 @@
 /**
  * Download an .ics file programmatically.
- * Works in regular browsers AND WebViews (Capacitor/native apps)
- * where <a download> doesn't trigger a real download.
+ * Uses multiple strategies to work across browsers, PWAs, and WebViews.
  */
 export async function downloadIcs(url: string, filename = 'event.ics') {
   try {
@@ -11,11 +10,12 @@ export async function downloadIcs(url: string, filename = 'event.ics') {
       return
     }
     const text = await res.text()
-    // Verify it's actually an ICS file
     if (!text.startsWith('BEGIN:VCALENDAR')) {
       alert('Cet événement n\u2019est pas encore disponible dans l\u2019agenda.')
       return
     }
+
+    // Strategy 1: Blob URL with <a download> (works in most browsers)
     const blob = new Blob([text], { type: 'text/calendar;charset=utf-8' })
     const blobUrl = URL.createObjectURL(blob)
     const a = document.createElement('a')
@@ -24,11 +24,17 @@ export async function downloadIcs(url: string, filename = 'event.ics') {
     a.style.display = 'none'
     document.body.appendChild(a)
     a.click()
-    // Cleanup
+    document.body.removeChild(a)
+
+    // Strategy 2: If blob didn't work (WebView), try data URI after a short delay
     setTimeout(() => {
       URL.revokeObjectURL(blobUrl)
-      document.body.removeChild(a)
-    }, 200)
+      // In WebViews, the blob click often does nothing silently.
+      // Open a data URI as fallback — Android will propose calendar apps.
+      const encoded = encodeURIComponent(text)
+      const dataUri = `data:text/calendar;charset=utf-8,${encoded}`
+      window.open(dataUri, '_blank')
+    }, 500)
   } catch {
     alert('Impossible de télécharger le fichier agenda. Vérifie ta connexion.')
   }
