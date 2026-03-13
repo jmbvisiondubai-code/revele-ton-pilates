@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { motion } from 'framer-motion'
-import { Home, Play, Users, Heart, BookOpen, User } from 'lucide-react'
+import { Home, Play, Users, Heart, BookOpen } from 'lucide-react'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/client'
 import { useAuthStore } from '@/stores/auth-store'
 
@@ -18,10 +18,7 @@ const centerItem = { href: '/suivi', label: 'Mon suivi', icon: Heart }
 const rightItems = [
   { href: '/communaute',  label: 'Communauté',   icon: Users },
   { href: '/conseils',    label: 'Conseils',     icon: BookOpen },
-  { href: '/profil',      label: 'Profil',       icon: User },
 ]
-
-const allItems = [...leftItems, centerItem, ...rightItems]
 
 export function BottomNav() {
   const pathname = usePathname()

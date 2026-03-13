@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Home, Play, Users, Heart, BookOpen, User } from 'lucide-react'
+import { Home, Play, Users, Heart, BookOpen, User, Settings } from 'lucide-react'
 import Image from 'next/image'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/client'
 import { useAuthStore } from '@/stores/auth-store'
@@ -14,7 +14,6 @@ const navItems = [
   { href: '/suivi',      label: 'Mon suivi',    icon: Heart },
   { href: '/communaute', label: 'Communauté',   icon: Users },
   { href: '/conseils',   label: 'Conseils',     icon: BookOpen },
-  { href: '/profil',     label: 'Mon profil',   icon: User },
 ]
 
 export function SideNav() {
@@ -124,9 +123,28 @@ export function SideNav() {
         })}
       </nav>
 
-      {/* Footer */}
-      <div className="px-6 py-4 border-t border-[#DCCFBF]">
-        <p className="text-xs text-[#A09488]">MJ Pilates © 2025</p>
+      {/* Profile + Footer */}
+      <div className="px-3 py-3 border-t border-[#DCCFBF]">
+        <Link
+          href="/profil"
+          className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
+            pathname === '/profil' || pathname.startsWith('/profil/')
+              ? 'bg-[#F2E8DF] text-[#C6684F]'
+              : 'text-[#6B6359] hover:bg-[#FAF6F1] hover:text-[#2C2C2C]'
+          }`}
+        >
+          <div className="w-7 h-7 rounded-full overflow-hidden flex-shrink-0 border border-[#DCCFBF]">
+            {profile?.avatar_url ? (
+              <Image src={profile.avatar_url} alt={profile.username || 'Profil'} width={28} height={28} className="w-full h-full object-cover" />
+            ) : (
+              <div className="w-full h-full bg-[#F2E8DF] flex items-center justify-center">
+                <User size={14} strokeWidth={1.8} className="text-[#A09488]" />
+              </div>
+            )}
+          </div>
+          <span className="truncate">{profile?.username || 'Mon profil'}</span>
+        </Link>
+        <p className="text-[10px] text-[#A09488] text-center mt-2">MJ Pilates © 2025</p>
       </div>
     </aside>
   )
