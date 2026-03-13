@@ -84,6 +84,11 @@ BEGIN
     RETURN NEW;
   END IF;
 
+  -- Skip admin users (Marjorie doesn't need celebration posts)
+  IF EXISTS (SELECT 1 FROM public.profiles WHERE id = NEW.user_id AND is_admin = TRUE) THEN
+    RETURN NEW;
+  END IF;
+
   v_marjorie_id := public.get_marjorie_id();
 
   INSERT INTO public.community_posts (user_id, content, is_from_marjorie, is_automated,
