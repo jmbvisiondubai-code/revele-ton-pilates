@@ -13,7 +13,6 @@ const config: CapacitorConfig = {
   },
 
   android: {
-    // Plein écran sans barre système Android
     backgroundColor: '#FAF6F1',
     allowMixedContent: false,
     captureInput: true,
@@ -38,7 +37,7 @@ const config: CapacitorConfig = {
     StatusBar: {
       style: 'LIGHT',
       backgroundColor: '#FAF6F1',
-      overlaysWebView: true,
+      overlaysWebView: false,
     },
   },
 }
