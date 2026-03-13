@@ -30,10 +30,18 @@ export async function GET(request: NextRequest) {
 
   if (!live) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
+  // Get Zoom URL from app_settings (meeting_url on live may be null)
+  const { data: zoomSetting } = await supabase
+    .from('app_settings')
+    .select('value')
+    .eq('key', 'zoom_url')
+    .single()
+  const meetingUrl = live.meeting_url || zoomSetting?.value || null
+
   const start = new Date(live.scheduled_at)
   const end = new Date(start.getTime() + live.duration_minutes * 60000)
   const typeLabel = SESSION_LABELS[live.session_type] ?? 'Live'
-  const desc = [live.description, live.equipment ? `Matériel : ${live.equipment}` : '', live.meeting_url ? `Lien Zoom : ${live.meeting_url}` : ''].filter(Boolean).join('\\n')
+  const desc = [live.description, live.equipment ? `Matériel : ${live.equipment}` : '', meetingUrl ? `Lien Zoom : ${meetingUrl}` : ''].filter(Boolean).join('\\n')
 
   const ics = [
     'BEGIN:VCALENDAR',
@@ -46,7 +54,7 @@ export async function GET(request: NextRequest) {
     `DTEND:${toIcsDate(end)}`,
     `SUMMARY:${typeLabel} — ${live.title}`,
     `DESCRIPTION:${desc}`,
-    ...(live.meeting_url ? [`LOCATION:${live.meeting_url}`] : []),
+    ...(meetingUrl ? [`LOCATION:${meetingUrl}`] : []),
     'BEGIN:VALARM',
     'TRIGGER:-PT30M',
     'ACTION:DISPLAY',

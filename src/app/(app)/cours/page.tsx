@@ -19,19 +19,19 @@ import { COLOR_CLASSES } from '@/app/admin/cours/page'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
 
-function getCalendarUrl(live: LiveSession) {
+function getCalendarUrl(live: LiveSession, meetingUrl: string | null) {
   const start = new Date(live.scheduled_at)
   const end = new Date(start.getTime() + live.duration_minutes * 60000)
   const fmt = (d: Date) => d.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '')
   const typeLabel = SESSION_TYPE_LABELS[live.session_type]?.label ?? 'Live'
-  const details = [live.description, live.equipment ? `Matériel : ${live.equipment}` : '', live.meeting_url ? `Lien Zoom : ${live.meeting_url}` : ''].filter(Boolean).join('\n')
+  const details = [live.description, live.equipment ? `Matériel : ${live.equipment}` : '', meetingUrl ? `Lien Zoom : ${meetingUrl}` : ''].filter(Boolean).join('\n')
   const params = new URLSearchParams({
     action: 'TEMPLATE',
     text: `${typeLabel} — ${live.title}`,
     dates: `${fmt(start)}/${fmt(end)}`,
     details,
   })
-  if (live.meeting_url) params.set('location', live.meeting_url)
+  if (meetingUrl) params.set('location', meetingUrl)
   return `https://calendar.google.com/calendar/render?${params}`
 }
 
@@ -328,7 +328,7 @@ export default function CoursPage() {
               {/* Add to calendar — only if registered */}
               {isRegistered && <div className="flex gap-2 mt-3">
                 <a
-                  href={getCalendarUrl(nextLive)}
+                  href={getCalendarUrl(nextLive, zoomUrl)}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center justify-center gap-2 flex-1 py-2.5 rounded-xl border border-[#DCCFBF] text-sm font-medium text-[#6B6359] hover:border-[#C6684F] hover:text-[#C6684F] active:bg-[#F2E8DF] transition-colors"
