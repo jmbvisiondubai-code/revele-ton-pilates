@@ -13,7 +13,7 @@ interface CardProps {
 
 const paddingStyles = {
   sm: 'p-4',
-  md: 'p-5',
+  md: 'p-5 lg:p-6',
   lg: 'p-6',
 }
 
@@ -28,7 +28,7 @@ export function Card({
     bg-bg-card
     rounded-[var(--radius-lg)]
     border border-border-light
-    shadow-[0_2px_12px_rgba(0,0,0,0.04)]
+    shadow-[0_2px_12px_rgba(0,0,0,0.04)] lg:shadow-[0_4px_20px_rgba(0,0,0,0.06)]
     ${paddingStyles[padding]}
     ${className}
   `
@@ -36,7 +36,7 @@ export function Card({
   if (hover) {
     return (
       <motion.div
-        whileHover={{ y: -2, boxShadow: '0 8px 30px rgba(0,0,0,0.08)' }}
+        whileHover={{ y: -3, boxShadow: '0 12px 40px rgba(0,0,0,0.10)' }}
         transition={{ type: 'spring' as const, stiffness: 300, damping: 25 }}
         className={classes}
         onClick={onClick}

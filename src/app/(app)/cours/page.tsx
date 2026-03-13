@@ -218,20 +218,20 @@ export default function CoursPage() {
   ]
 
   return (
-    <div className="px-5 pt-6 pb-4 lg:px-8 lg:pt-8 max-w-3xl mx-auto">
+    <div className="px-5 pt-6 pb-4 lg:px-8 xl:px-12 lg:pt-8 max-w-5xl mx-auto">
       {/* Header */}
-      <div className="mb-5">
-        <h1 className="font-[family-name:var(--font-heading)] text-3xl text-text">Tes cours</h1>
-        <p className="text-text-secondary mt-1 text-sm">Lives collectifs, VOD Uscreen & replays</p>
+      <div className="mb-5 lg:mb-8">
+        <h1 className="font-[family-name:var(--font-heading)] text-3xl lg:text-4xl text-text">Tes cours</h1>
+        <p className="text-text-secondary mt-1 text-sm lg:text-base">Lives collectifs, VOD Uscreen & replays</p>
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 bg-[#F2E8DF] rounded-xl p-1 mb-6">
+      <div className="flex gap-1 bg-[#F2E8DF] rounded-xl p-1 mb-6 lg:max-w-md">
         {tabs.map((t) => (
           <button
             key={t.key}
             onClick={() => setTab(t.key)}
-            className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium transition-all ${
+            className={`flex-1 flex items-center justify-center gap-1.5 py-2 lg:py-2.5 rounded-lg text-sm lg:text-base font-medium transition-all ${
               tab === t.key
                 ? 'bg-white text-[#C6684F] shadow-sm'
                 : 'text-[#6B6359] hover:text-[#2C2C2C]'
@@ -456,7 +456,7 @@ export default function CoursPage() {
           </div>
 
           {/* Category grid */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 lg:gap-4">
             {vodCategories.map((cat, i) => (
               <motion.button
                 key={cat.id}

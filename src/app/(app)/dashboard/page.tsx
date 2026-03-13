@@ -205,15 +205,15 @@ export default function DashboardPage() {
   const weeklyProgress = Math.min(100, (profile.total_sessions / Math.max(1, profile.weekly_rhythm)) * 100)
 
   return (
-    <div className="px-5 pt-6 pb-4 lg:px-8 lg:pt-8 max-w-5xl mx-auto">
+    <div className="px-5 pt-6 pb-4 lg:px-8 xl:px-12 lg:pt-8 max-w-6xl mx-auto">
 
       {/* Header */}
       {(() => {
         const greeting = getGreeting(profile.username)
         return (
-          <motion.div initial="hidden" animate="visible" custom={0} variants={fadeInUp} className="mb-6">
+          <motion.div initial="hidden" animate="visible" custom={0} variants={fadeInUp} className="mb-6 lg:mb-8">
             <p className="text-sm font-medium text-[#C6684F] tracking-wide">{greeting.salut}</p>
-            <h1 className="font-[family-name:var(--font-heading)] text-2xl lg:text-3xl text-text leading-snug mt-1">
+            <h1 className="font-[family-name:var(--font-heading)] text-2xl lg:text-4xl text-text leading-snug mt-1">
               {greeting.message}
             </h1>
             <div className="flex items-center gap-4 mt-4 max-w-sm">
@@ -230,10 +230,10 @@ export default function DashboardPage() {
       })()}
 
       {/* Desktop: 2-col grid / Mobile: single col */}
-      <div className="lg:grid lg:grid-cols-3 lg:gap-6 space-y-4 lg:space-y-0">
+      <div className="lg:grid lg:grid-cols-3 xl:grid-cols-7 lg:gap-6 xl:gap-8 space-y-4 lg:space-y-0">
 
         {/* ── LEFT COLUMN (2/3) ── */}
-        <div className="lg:col-span-2 space-y-4">
+        <div className="lg:col-span-2 xl:col-span-4 space-y-4">
 
           {/* Unread message card */}
           {unreadMsg.count > 0 && (
@@ -541,12 +541,12 @@ export default function DashboardPage() {
         </div>
 
         {/* ── RIGHT COLUMN (1/3) ── */}
-        <div className="space-y-4">
+        <div className="xl:col-span-3 space-y-4">
 
           {/* Stats */}
           <motion.div initial="hidden" animate="visible" custom={1.5} variants={fadeInUp}>
             <h2 className="font-[family-name:var(--font-heading)] text-lg text-text mb-3">Ton parcours</h2>
-            <div className="grid grid-cols-3 lg:grid-cols-1 gap-3">
+            <div className="grid grid-cols-3 lg:grid-cols-1 xl:grid-cols-3 gap-3">
               <Card padding="sm" className="lg:flex lg:items-center lg:gap-4 text-center lg:text-left">
                 <Trophy size={22} className="mx-auto lg:mx-0 text-alert mb-1 lg:mb-0 flex-shrink-0" />
                 <div>

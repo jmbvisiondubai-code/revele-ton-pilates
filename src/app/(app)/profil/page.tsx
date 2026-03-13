@@ -307,7 +307,7 @@ export default function ProfilPage() {
   }
 
   return (
-    <div className="px-5 pt-6 pb-4 lg:px-8 lg:pt-8 max-w-5xl mx-auto">
+    <div className="px-5 pt-6 pb-4 lg:px-8 xl:px-12 lg:pt-8 max-w-6xl mx-auto">
       {/* Crop modal */}
       {cropSrc && (
         <div className="fixed inset-0 z-50 bg-black flex flex-col" style={{ height: '100dvh' }}>

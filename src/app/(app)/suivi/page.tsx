@@ -170,7 +170,7 @@ export default function SuiviPage() {
   if (openRec) {
     const cat = getRecCat(openRec.category)
     return (
-      <div className="px-5 pt-4 pb-8 lg:px-8 max-w-3xl mx-auto">
+      <div className="px-5 pt-4 pb-8 lg:px-8 xl:px-12 max-w-5xl mx-auto">
         <button onClick={() => setOpenRec(null)}
           className="flex items-center gap-2 text-sm text-[#6B6359] hover:text-[#2C2C2C] mb-5 transition-colors">
           <ArrowLeft size={16} /> Retour
@@ -208,22 +208,22 @@ export default function SuiviPage() {
 
   // ── Main page ───────────────────────────────────────────────────────
   return (
-    <div className="px-5 pt-6 pb-4 lg:px-8 lg:pt-8 max-w-3xl mx-auto">
+    <div className="px-5 pt-6 pb-4 lg:px-8 xl:px-12 lg:pt-8 max-w-5xl mx-auto">
       {/* Header */}
-      <div className="mb-5">
-        <h1 className="font-[family-name:var(--font-heading)] text-3xl text-text">Mon suivi</h1>
-        <p className="text-text-secondary mt-1 text-sm">Ton espace personnel avec Marjorie</p>
+      <div className="mb-5 lg:mb-8">
+        <h1 className="font-[family-name:var(--font-heading)] text-3xl lg:text-4xl text-text">Mon suivi</h1>
+        <p className="text-text-secondary mt-1 text-sm lg:text-base">Ton espace personnel avec Marjorie</p>
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 bg-[#F2E8DF] rounded-xl p-1 mb-6">
+      <div className="flex gap-1 bg-[#F2E8DF] rounded-xl p-1 mb-6 lg:max-w-md">
         {([
           { key: 'messages' as Tab, label: 'Messages' },
           { key: 'recommandations' as Tab, label: 'Conseils', badge: unreadRecs },
           { key: 'parcours' as Tab, label: 'Mon parcours' },
         ]).map(t => (
           <button key={t.key} onClick={() => setTab(t.key)}
-            className={`flex-1 relative py-2 rounded-lg text-sm font-medium transition-all ${
+            className={`flex-1 relative py-2 lg:py-2.5 rounded-lg text-sm lg:text-base font-medium transition-all ${
               tab === t.key ? 'bg-white text-[#C6684F] shadow-sm' : 'text-[#6B6359] hover:text-[#2C2C2C]'
             }`}
           >
@@ -343,7 +343,7 @@ export default function SuiviPage() {
           {tab === 'parcours' && userProfile && (
             <motion.div initial="hidden" animate="visible" custom={0} variants={fadeInUp} className="space-y-5">
               {/* Stats grid */}
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
                 <Card className="text-center py-5">
                   <Trophy size={24} className="mx-auto text-[#C6684F] mb-2" />
                   <p className="text-3xl font-bold text-[#2C2C2C]">{userProfile.total_sessions}</p>

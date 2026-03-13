@@ -175,7 +175,7 @@ export default function ConseilsPage() {
   if (openArticle) {
     const cat = ARTICLE_CATS[openArticle.category]
     return (
-      <div className="px-5 pt-4 pb-8 lg:px-8 max-w-3xl mx-auto">
+      <div className="px-5 pt-4 pb-8 lg:px-8 max-w-5xl mx-auto">
         <button onClick={() => setOpenArticle(null)}
           className="flex items-center gap-2 text-sm text-[#6B6359] hover:text-[#2C2C2C] mb-5 transition-colors">
           <ArrowLeft size={16} /> Retour aux articles
@@ -379,10 +379,10 @@ export default function ConseilsPage() {
 
   // ── Main list view ───────────────────────────────────────────────────
   return (
-    <div className="px-5 pt-6 pb-4 lg:px-8 lg:pt-8 max-w-3xl mx-auto">
-      <div className="mb-5">
-        <h1 className="font-[family-name:var(--font-heading)] text-3xl text-text">Conseils</h1>
-        <p className="text-text-secondary mt-1 text-sm">Articles et conseils pour toutes</p>
+    <div className="px-5 pt-6 pb-4 lg:px-8 xl:px-12 lg:pt-8 max-w-5xl mx-auto">
+      <div className="mb-5 lg:mb-8">
+        <h1 className="font-[family-name:var(--font-heading)] text-3xl lg:text-4xl text-text">Conseils</h1>
+        <p className="text-text-secondary mt-1 text-sm lg:text-base">Articles et conseils pour toutes</p>
       </div>
 
       {loading ? (
@@ -394,7 +394,7 @@ export default function ConseilsPage() {
               {recentArticles.length > 0 && (
                 <div>
                   <h2 className="font-[family-name:var(--font-heading)] text-lg text-[#2C2C2C] mb-3">Récent</h2>
-                  <div className="space-y-2">
+                  <div className="space-y-2 lg:grid lg:grid-cols-2 lg:gap-3 lg:space-y-0">
                     {recentArticles.map((article, i) => {
                       const cat = ARTICLE_CATS[article.category]
                       return (
@@ -435,7 +435,7 @@ export default function ConseilsPage() {
                     <p className="text-[#6B6359] text-sm">Aucun article pour l'instant.</p>
                   </div>
                 ) : (
-                  <div className="space-y-3">
+                  <div className="space-y-3 lg:grid lg:grid-cols-2 lg:gap-4 lg:space-y-0">
                     {filteredArticles.map((article, i) => (
                       <motion.button key={article.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: i * 0.04 }}

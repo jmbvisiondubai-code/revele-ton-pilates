@@ -22,7 +22,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <PushSetup />
       <SideNav />
       <TopBar />
-      <div className="lg:ml-[272px] pb-20 lg:pb-8">
+      <div className="lg:ml-[272px] pb-20 lg:pb-8 lg:pt-2 lg:min-h-screen">
         {children}
       </div>
       <BottomNav />
