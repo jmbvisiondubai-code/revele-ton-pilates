@@ -102,7 +102,7 @@ export default function ConseilsPage() {
     const userIds = [...new Set(rawComments.map(c => c.user_id))]
     const [{ data: profiles }, { data: likes }] = await Promise.all([
       supabase.from('profiles').select('id, username, avatar_url').in('id', userIds),
-      supabase.from('comment_likes').select('comment_id, user_id').in('comment_id', commentIds),
+      supabase.from('article_comment_likes').select('comment_id, user_id').in('comment_id', commentIds),
     ])
     const profileMap = new Map((profiles ?? []).map(p => [p.id, p]))
     const likesByComment = new Map<string, { count: number; mine: boolean }>()
@@ -191,9 +191,9 @@ export default function ConseilsPage() {
       ...c, liked_by_me: !liked, like_count: liked ? c.like_count - 1 : c.like_count + 1,
     }))
     if (liked) {
-      await supabase.from('comment_likes').delete().eq('comment_id', commentId).eq('user_id', currentUserId)
+      await supabase.from('article_comment_likes').delete().eq('comment_id', commentId).eq('user_id', currentUserId)
     } else {
-      await supabase.from('comment_likes').insert({ comment_id: commentId, user_id: currentUserId })
+      await supabase.from('article_comment_likes').insert({ comment_id: commentId, user_id: currentUserId })
     }
   }
 
