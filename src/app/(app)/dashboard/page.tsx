@@ -12,6 +12,9 @@ import {
   Radio,
   ExternalLink,
   Dumbbell,
+  Play,
+  Copy,
+  Check,
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/client'
@@ -46,6 +49,9 @@ export default function DashboardPage() {
   const [inspiration, setInspiration] = useState<DailyInspiration | null>(null)
   const [nextLive, setNextLive] = useState<LiveSession | null>(null)
   const [featured, setFeatured] = useState<FeaturedCard | null>(null)
+  const [replayUrl, setReplayUrl] = useState<string | null>(null)
+  const [replayCode, setReplayCode] = useState<string | null>(null)
+  const [codeCopied, setCodeCopied] = useState(false)
   const [iosPrompt, setIosPrompt] = useState(false)
 
   function openExternal(url: string) {
@@ -106,7 +112,7 @@ export default function DashboardPage() {
       const { data: settings } = await supabase
         .from('app_settings')
         .select('key, value')
-        .in('key', ['featured_title', 'featured_description', 'featured_url', 'featured_image'])
+        .in('key', ['featured_title', 'featured_description', 'featured_url', 'featured_image', 'vimeo_replay_url', 'vimeo_replay_code'])
       if (settings && settings.length > 0) {
         const get = (k: string) => settings.find((s: { key: string; value: string | null }) => s.key === k)?.value ?? null
         const url = get('featured_url')
@@ -118,6 +124,10 @@ export default function DashboardPage() {
             image: get('featured_image'),
           })
         }
+        const replay = get('vimeo_replay_url')
+        const code = get('vimeo_replay_code')
+        if (replay) setReplayUrl(replay)
+        if (code) setReplayCode(code)
       }
     }
 
@@ -257,6 +267,63 @@ export default function DashboardPage() {
                   )}
                 </Card>
               </button>
+            </motion.div>
+          )}
+
+          {/* Replay */}
+          {replayUrl && (
+            <motion.div initial="hidden" animate="visible" custom={3} variants={fadeInUp}>
+              <Card className="relative overflow-hidden border-[#7C3AED]/15 bg-gradient-to-br from-[#7C3AED]/5 to-[#A855F7]/5 lg:p-5">
+                <div className="absolute top-0 right-0 w-28 h-28 bg-[#7C3AED]/5 rounded-full -translate-y-1/2 translate-x-1/2" />
+                <div className="relative">
+                  <div className="flex items-start gap-4">
+                    <div className="w-12 h-12 bg-[#7C3AED]/10 rounded-xl flex items-center justify-center flex-shrink-0">
+                      <Play size={20} className="text-[#7C3AED] ml-0.5" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <BadgePill variant="accent">
+                        <span className="text-[#7C3AED]">Replay disponible</span>
+                      </BadgePill>
+                      <h3 className="font-[family-name:var(--font-heading)] text-lg mt-1.5 text-text">
+                        Revoir le dernier live
+                      </h3>
+                      <p className="text-sm text-text-secondary mt-0.5">
+                        Accède au replay du dernier cours collectif
+                      </p>
+                    </div>
+                  </div>
+
+                  {replayCode && (
+                    <div className="mt-4 flex items-center gap-3 bg-white/60 rounded-xl px-4 py-3 border border-[#7C3AED]/10">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[10px] uppercase tracking-wider text-text-muted font-semibold mb-0.5">Code d&apos;accès</p>
+                        <p className="text-lg font-mono font-bold text-[#7C3AED] tracking-widest">{replayCode}</p>
+                      </div>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          navigator.clipboard.writeText(replayCode)
+                          setCodeCopied(true)
+                          setTimeout(() => setCodeCopied(false), 2000)
+                        }}
+                        className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-[#7C3AED]/10 hover:bg-[#7C3AED]/20 transition-colors text-[#7C3AED] text-xs font-medium"
+                      >
+                        {codeCopied ? <Check size={14} /> : <Copy size={14} />}
+                        {codeCopied ? 'Copié !' : 'Copier'}
+                      </button>
+                    </div>
+                  )}
+
+                  <button
+                    onClick={() => openExternal(replayUrl)}
+                    className="mt-3 w-full flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-[#7C3AED] to-[#A855F7] text-white text-sm font-semibold rounded-xl shadow-md shadow-[#7C3AED]/20 hover:shadow-lg hover:shadow-[#7C3AED]/30 transition-all"
+                  >
+                    <Play size={16} className="ml-0.5" />
+                    Regarder le replay
+                    <ExternalLink size={13} />
+                  </button>
+                </div>
+              </Card>
             </motion.div>
           )}
 
