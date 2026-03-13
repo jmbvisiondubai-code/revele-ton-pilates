@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
+import { motion } from 'framer-motion'
 import { User, MessageCircle } from 'lucide-react'
 import { useAuthStore } from '@/stores/auth-store'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/client'
@@ -49,17 +50,17 @@ export function TopBar() {
   }, [isMessagesActive])
 
   return (
-    <header className="lg:hidden sticky top-0 z-40 bg-bg-card/90 backdrop-blur-lg border-b border-border-light">
-      <div className="flex items-center justify-between px-5 py-3">
+    <header className="lg:hidden sticky top-0 z-40 bg-white/80 backdrop-blur-xl border-b border-[#EDD5C5]/50 shadow-[0_1px_8px_rgba(198,104,79,0.06)]">
+      <div className="flex items-center justify-between px-5 py-2.5">
         {/* Logo */}
         <Link href="/dashboard" className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-lg overflow-hidden flex-shrink-0">
-            <Image src="/icon-192.png" alt="RTP" width={32} height={32} className="w-full h-full object-cover" />
+          <div className="w-9 h-9 rounded-xl overflow-hidden flex-shrink-0 shadow-sm shadow-[#C6684F]/10 ring-1 ring-[#EDD5C5]/40">
+            <Image src="/icon-192.png" alt="RTP" width={36} height={36} className="w-full h-full object-cover" />
           </div>
-          <div className="leading-none">
-            <p className="font-serif text-[13px] font-semibold text-[#2C2C2C]">Révèle ton</p>
-            <p className="font-serif text-[13px] font-semibold text-[#C6684F]">Pilates</p>
-          </div>
+          <p className="font-[family-name:var(--font-heading)] text-[15px] font-bold tracking-wide">
+            <span className="text-[#2C2C2C]">Révèle ton </span>
+            <span className="text-[#C6684F]">Pilates</span>
+          </p>
         </Link>
 
         {/* Right actions */}
@@ -67,39 +68,56 @@ export function TopBar() {
           {/* Messages */}
           <Link
             href="/messages"
-            className={`relative w-9 h-9 rounded-full flex items-center justify-center transition-colors ${
+            className={`relative w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200 ${
               isMessagesActive ? 'bg-[#C6684F]/10 text-[#C6684F]' : 'text-[#A09488] hover:text-[#C6684F] hover:bg-[#F2E8DF]'
             }`}
           >
-            <MessageCircle size={20} strokeWidth={isMessagesActive ? 2.2 : 1.8} />
+            <MessageCircle size={21} strokeWidth={isMessagesActive ? 2.2 : 1.8} />
             {unreadCount > 0 && (
-              <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 bg-[#C6684F] text-white text-[10px] font-bold rounded-full flex items-center justify-center leading-none">
+              <motion.span
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 bg-[#C6684F] text-white text-[10px] font-bold rounded-full flex items-center justify-center leading-none shadow-sm shadow-[#C6684F]/30"
+              >
                 {unreadCount > 99 ? '99+' : unreadCount}
-              </span>
+              </motion.span>
             )}
           </Link>
 
           {/* Avatar → Profile */}
           <Link
             href="/profil"
-            className={`relative flex-shrink-0 w-9 h-9 rounded-full overflow-hidden border-2 transition-all duration-200 ${
-              isProfileActive
-                ? 'border-[#C6684F] shadow-md shadow-[#C6684F]/20'
-                : 'border-[#DCCFBF] hover:border-[#C6684F]/50'
-            }`}
+            className="relative flex-shrink-0"
           >
-            {profile?.avatar_url ? (
-              <Image
-                src={profile.avatar_url}
-                alt={profile.username || 'Profil'}
-                width={36}
-                height={36}
-                className="w-full h-full object-cover"
+            <motion.div
+              className={`w-11 h-11 rounded-full overflow-hidden border-2 transition-all duration-300 ${
+                isProfileActive
+                  ? 'border-[#C6684F] shadow-lg shadow-[#C6684F]/25'
+                  : 'border-[#EDD5C5] hover:border-[#C6684F]/50 shadow-sm shadow-[#C6684F]/10'
+              }`}
+              whileTap={{ scale: 0.92 }}
+            >
+              {profile?.avatar_url ? (
+                <Image
+                  src={profile.avatar_url}
+                  alt={profile.username || 'Profil'}
+                  width={44}
+                  height={44}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <div className="w-full h-full bg-gradient-to-br from-[#F2E8DF] to-[#E8D5C4] flex items-center justify-center">
+                  <User size={18} strokeWidth={1.8} className="text-[#A09488]" />
+                </div>
+              )}
+            </motion.div>
+            {/* Subtle ring animation when active */}
+            {isProfileActive && (
+              <motion.div
+                className="absolute inset-0 rounded-full border-2 border-[#C6684F]/30"
+                animate={{ scale: [1, 1.15, 1], opacity: [0.5, 0, 0.5] }}
+                transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
               />
-            ) : (
-              <div className="w-full h-full bg-[#F2E8DF] flex items-center justify-center">
-                <User size={16} strokeWidth={1.8} className="text-[#A09488]" />
-              </div>
             )}
           </Link>
         </div>
