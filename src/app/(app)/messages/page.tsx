@@ -61,7 +61,6 @@ export default function MessagesPage() {
   const [convs,          setConvs]          = useState<ConvPreview[]>([])
   const [loadingConvs,   setLoadingConvs]   = useState(true)
   const [showList,       setShowList]       = useState(true)
-  const [showCommunaute, setShowCommunaute] = useState(false)
   const [showArchived,   setShowArchived]   = useState(false)
   const [convSwipeId,    setConvSwipeId]    = useState<string | null>(null)
   const [convMenuId,     setConvMenuId]     = useState<string | null>(null)
@@ -533,7 +532,6 @@ export default function MessagesPage() {
     if (typeof window !== 'undefined') sessionStorage.setItem('dm_active_conv', conv.partner.id)
     setActiveId(conv.partner.id)
     setActiveProfile(conv.partner)
-    setShowCommunaute(false)
     setShowList(false)
     setConvSwipeId(null)
   }
@@ -583,27 +581,11 @@ export default function MessagesPage() {
       {/* ── Conversation list ──────────────────────────────────────────── */}
       <div className={`flex flex-col border-r border-[#EDE5DA] bg-white w-full lg:w-80 flex-shrink-0 ${showList ? 'flex' : 'hidden'} lg:flex`}>
         <div className="px-4 py-4 border-b border-[#EDE5DA] flex-shrink-0">
-          <h1 className="font-serif text-xl font-semibold text-[#2C2C2C]">Messages</h1>
+          <h1 className="font-serif text-xl font-semibold text-[#2C2C2C]">Messages privés</h1>
+          <p className="text-xs text-[#A09488] mt-0.5">Tes échanges avec Marjorie</p>
         </div>
 
         <div className="flex-1 overflow-y-auto">
-          {/* Communauté button */}
-          <button
-            onClick={() => {
-              if (typeof window !== 'undefined' && window.innerWidth < 1024) router.push('/communaute')
-              else { setShowCommunaute(true); setActiveId(null); setActiveProfile(null); setShowList(false) }
-            }}
-            className={`w-full flex items-center gap-3 px-4 py-3 hover:bg-[#FAF6F1] transition-colors border-b border-[#EDE5DA] flex-shrink-0 text-left ${showCommunaute && !activeId ? 'bg-[#F2E8DF]' : ''}`}
-          >
-            <div className="w-11 h-11 rounded-full bg-[#F2E8DF] flex items-center justify-center flex-shrink-0">
-              <MessageSquare size={20} className="text-[#C6684F]" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="font-medium text-sm text-[#2C2C2C]">Communauté</p>
-              <p className="text-xs text-[#A09488] truncate">Discussion de groupe</p>
-            </div>
-          </button>
-
           {/* DM list */}
           {loadingConvs ? (
             <div className="flex justify-center py-8">
@@ -639,7 +621,7 @@ export default function MessagesPage() {
                   </div>
                   {/* Row */}
                   <div
-                    className={`relative flex items-center gap-3 px-4 py-3 bg-white cursor-pointer transition-colors group/row ${activeId === conv.partner.id && !showCommunaute ? '!bg-[#F2E8DF]' : 'hover:bg-[#FAF6F1]'}`}
+                    className={`relative flex items-center gap-3 px-4 py-3 bg-white cursor-pointer transition-colors group/row ${activeId === conv.partner.id ? '!bg-[#F2E8DF]' : 'hover:bg-[#FAF6F1]'}`}
                     style={{ transform: convSwipeId === conv.partner.id ? `translateX(-${isAdmin ? 160 : 80}px)` : 'translateX(0)', transition: 'transform 0.25s ease' }}
                     onClick={() => { if (convSwipeId === conv.partner.id) { setConvSwipeId(null); return } setConvMenuId(null); setConvMenuPos(null); openConversation(conv) }}
                     onTouchStart={(e) => convTouchStart(conv, e)}
@@ -723,10 +705,10 @@ export default function MessagesPage() {
       </div>
 
       {/* ── Right panel ───────────────────────────────────────────────────── */}
-      <div className={`flex-col overflow-hidden bg-[#FAF6F1] ${activeId || showCommunaute || !showList ? 'flex flex-1' : 'hidden'} lg:flex lg:flex-1`}>
+      <div className={`flex-col overflow-hidden bg-[#FAF6F1] ${activeId || !showList ? 'flex flex-1' : 'hidden'} lg:flex lg:flex-1`}>
 
         {/* No selection (desktop) */}
-        {!activeId && !showCommunaute ? (
+        {!activeId ? (
           <div className="flex-1 flex flex-col items-center justify-center text-center px-8">
             <div className="w-16 h-16 rounded-2xl bg-[#F2E8DF] flex items-center justify-center mb-4">
               <MessageSquare size={28} className="text-[#C6684F]" />
@@ -734,10 +716,6 @@ export default function MessagesPage() {
             <p className="font-serif text-lg text-[#2C2C2C] font-semibold mb-1">Sélectionnez une conversation</p>
             <p className="text-sm text-[#A09488]">Choisissez une discussion dans la liste à gauche</p>
           </div>
-
-        /* Community iframe */
-        ) : showCommunaute && !activeId ? (
-          <iframe src="/communaute" className="w-full h-0 flex-1 border-0" title="Communauté" />
 
         /* DM chat */
         ) : (
@@ -752,7 +730,7 @@ export default function MessagesPage() {
               <div className="flex items-center gap-3 px-4 py-3">
                 <button
                   className="lg:hidden mr-1 text-[#6B6359]"
-                  onClick={() => { sessionStorage.removeItem('dm_active_conv'); setShowList(true); setActiveId(null); setMessages([]); setShowCommunaute(false) }}
+                  onClick={() => { sessionStorage.removeItem('dm_active_conv'); setShowList(true); setActiveId(null); setMessages([]) }}
                 >
                   <ArrowLeft size={20} />
                 </button>
