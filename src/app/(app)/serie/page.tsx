@@ -91,54 +91,82 @@ export default function SeriePage() {
           <div className="relative inline-flex items-center justify-center mb-5">
             {streak >= 7 ? (
               <>
-                {/* Warm ambient glow */}
+                {/* Outer warm halo */}
                 <motion.div
-                  className="absolute w-40 h-40 rounded-full bg-[#E8500E]/8 blur-3xl"
-                  animate={{ opacity: [0.5, 0.8, 0.5], scale: [1, 1.06, 1] }}
+                  className="absolute w-52 h-52 rounded-full bg-[#E8500E]/6 blur-[50px]"
+                  animate={{ opacity: [0.4, 0.7, 0.4], scale: [1, 1.08, 1] }}
                   transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
                 />
+                {/* Inner warm glow */}
+                <motion.div
+                  className="absolute w-32 h-32 rounded-full bg-[#FF6B35]/10 blur-2xl"
+                  animate={{ opacity: [0.5, 0.9, 0.5], scale: [1, 1.12, 1] }}
+                  transition={{ duration: 2.8, repeat: Infinity, ease: 'easeInOut' }}
+                />
 
-                {/* Stacked flame layers — Whoop style */}
+                {/* Stacked flame layers — max intensity */}
                 <motion.div
                   className="relative"
-                  animate={{ y: [0, -5, 0] }}
+                  animate={{ y: [0, -7, 0] }}
                   transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
                 >
-                  {/* Outer flame — large, red-orange */}
-                  <Flame size={88} className="relative text-[#E85D2A]" strokeWidth={1.2} />
+                  {/* Base flame — deep red, largest */}
+                  <Flame size={110} className="relative text-[#D4421A]" strokeWidth={1.1} />
 
-                  {/* Mid flame — warm orange, offset up */}
+                  {/* Outer flame — red-orange */}
                   <motion.div
                     className="absolute inset-0 flex items-center justify-center"
-                    animate={{ y: [0, -2, 0] }}
-                    transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut' }}
+                    animate={{ y: [0, -3, 0], scale: [1, 1.03, 1] }}
+                    transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
                   >
-                    <Flame size={60} className="text-[#FF8A3A] mt-1" strokeWidth={1.3} />
+                    <Flame size={82} className="text-[#E85D2A]" strokeWidth={1.2} />
                   </motion.div>
 
-                  {/* Inner core — yellow-white, smaller */}
+                  {/* Mid flame — warm orange */}
                   <motion.div
                     className="absolute inset-0 flex items-center justify-center"
-                    animate={{ y: [0, -3, 0], scale: [1, 1.04, 1] }}
-                    transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}
+                    animate={{ y: [0, -4, 0] }}
+                    transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
                   >
-                    <Flame size={36} className="text-[#FFD36E] mt-3" strokeWidth={1.5} />
+                    <Flame size={56} className="text-[#FF8A3A] mt-2" strokeWidth={1.3} />
                   </motion.div>
 
-                  {/* Embers floating up */}
+                  {/* Inner core — golden yellow */}
+                  <motion.div
+                    className="absolute inset-0 flex items-center justify-center"
+                    animate={{ y: [0, -5, 0], scale: [1, 1.06, 1] }}
+                    transition={{ duration: 1.6, repeat: Infinity, ease: 'easeInOut' }}
+                  >
+                    <Flame size={32} className="text-[#FFD36E] mt-4" strokeWidth={1.5} />
+                  </motion.div>
+
+                  {/* White-hot center */}
+                  <motion.div
+                    className="absolute inset-0 flex items-center justify-center"
+                    animate={{ y: [0, -3, 0], opacity: [0.7, 1, 0.7] }}
+                    transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut' }}
+                  >
+                    <Flame size={18} className="text-[#FFF5E0] mt-5" strokeWidth={2} />
+                  </motion.div>
+
+                  {/* Embers — more, wider spread */}
                   {[
-                    { left: '25%', delay: 0, dur: 2.8 },
-                    { left: '55%', delay: 0.9, dur: 3.2 },
-                    { left: '72%', delay: 1.8, dur: 2.5 },
+                    { left: '15%', delay: 0, dur: 2.6, size: 4 },
+                    { left: '30%', delay: 0.5, dur: 3.0, size: 3 },
+                    { left: '55%', delay: 1.2, dur: 2.8, size: 4 },
+                    { left: '70%', delay: 0.3, dur: 3.4, size: 3 },
+                    { left: '82%', delay: 1.8, dur: 2.4, size: 3 },
+                    { left: '42%', delay: 2.1, dur: 2.9, size: 2 },
                   ].map((e, i) => (
                     <motion.span
                       key={i}
-                      className="absolute w-1 h-1 rounded-full bg-[#FF8A3A]"
-                      style={{ left: e.left, top: '15%' }}
+                      className="absolute rounded-full bg-[#FF8A3A]"
+                      style={{ left: e.left, top: '10%', width: e.size, height: e.size }}
                       animate={{
-                        y: [0, -30, -50],
-                        x: [0, (i % 2 === 0 ? 6 : -6), (i % 2 === 0 ? 10 : -10)],
-                        opacity: [0, 0.8, 0],
+                        y: [0, -45 - i * 8, -70 - i * 5],
+                        x: [0, (i % 2 === 0 ? 8 : -8), (i % 2 === 0 ? 14 : -14)],
+                        opacity: [0, 0.9, 0],
+                        scale: [0.5, 1, 0.2],
                       }}
                       transition={{ duration: e.dur, repeat: Infinity, delay: e.delay, ease: 'easeOut' }}
                     />

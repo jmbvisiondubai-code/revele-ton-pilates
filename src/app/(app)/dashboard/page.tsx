@@ -387,27 +387,43 @@ export default function DashboardPage() {
                 {profile.current_streak >= 7 ? (
                   <>
                     <motion.div
-                      className="relative w-5 h-5"
+                      className="relative w-6 h-6"
                       animate={{ y: [0, -1.5, 0] }}
                       transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
                     >
+                      {/* Base — deep red */}
+                      <Flame size={24} className="absolute inset-0 text-[#D4421A]" strokeWidth={1.3} />
                       {/* Outer — red-orange */}
-                      <Flame size={20} className="absolute inset-0 text-[#E85D2A]" strokeWidth={1.5} />
-                      {/* Mid — warm orange */}
                       <motion.div
                         className="absolute inset-0 flex items-center justify-center"
                         animate={{ y: [0, -0.5, 0] }}
-                        transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut' }}
+                        transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
                       >
-                        <Flame size={14} className="text-[#FF8A3A] mt-[2px]" strokeWidth={1.5} />
+                        <Flame size={18} className="text-[#E85D2A]" strokeWidth={1.4} />
+                      </motion.div>
+                      {/* Mid — warm orange */}
+                      <motion.div
+                        className="absolute inset-0 flex items-center justify-center"
+                        animate={{ y: [0, -1, 0] }}
+                        transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+                      >
+                        <Flame size={13} className="text-[#FF8A3A] mt-[2px]" strokeWidth={1.5} />
                       </motion.div>
                       {/* Core — golden */}
                       <motion.div
                         className="absolute inset-0 flex items-center justify-center"
-                        animate={{ y: [0, -1, 0], scale: [1, 1.05, 1] }}
-                        transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}
+                        animate={{ y: [0, -1, 0], scale: [1, 1.06, 1] }}
+                        transition={{ duration: 1.6, repeat: Infinity, ease: 'easeInOut' }}
                       >
-                        <Flame size={8} className="text-[#FFD36E] mt-[4px]" strokeWidth={2} />
+                        <Flame size={8} className="text-[#FFD36E] mt-[3px]" strokeWidth={2} />
+                      </motion.div>
+                      {/* White-hot center */}
+                      <motion.div
+                        className="absolute inset-0 flex items-center justify-center"
+                        animate={{ opacity: [0.6, 1, 0.6] }}
+                        transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut' }}
+                      >
+                        <Flame size={4} className="text-[#FFF5E0] mt-[4px]" strokeWidth={2.5} />
                       </motion.div>
                     </motion.div>
                     <span className="text-[15px] font-bold text-[#C6684F]">{profile.current_streak}</span>
