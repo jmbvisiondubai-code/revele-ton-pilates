@@ -179,14 +179,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <span className="font-semibold text-[15px] text-[#1d1d1f] tracking-tight">MJ Pilates</span>
           <span className="text-[11px] font-medium text-[#86868b] bg-black/[0.04] px-2 py-0.5 rounded-md">Admin</span>
         </div>
-        <div className="flex-1" />
-        <button
-          onClick={() => { setCollapsed(c => !c); if (collapsed) setSidebarWidth(DEFAULT_WIDTH) }}
-          className="p-1.5 rounded-xl hover:bg-black/[0.04] text-[#8a8a8e] hover:text-[#3c3c43] transition-all"
-          title={collapsed ? 'Ouvrir le menu' : 'Réduire le menu'}
-        >
-          {collapsed ? <PanelLeft size={17} /> : <PanelLeftClose size={17} />}
-        </button>
       </div>
 
       <div className="flex">
@@ -310,6 +302,20 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               <span className="flex-shrink-0"><Trash2 size={16} /></span>
               {!collapsed && 'Corbeille'}
             </Link>
+
+            {/* Toggle collapse */}
+            <button
+              onClick={() => { setCollapsed(c => !c); if (collapsed) setSidebarWidth(DEFAULT_WIDTH) }}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-medium text-[#aeaeb2] hover:text-[#3c3c43] hover:bg-black/[0.03] transition-all whitespace-nowrap overflow-hidden ${
+                collapsed ? 'justify-center' : ''
+              }`}
+              title={collapsed ? 'Ouvrir le menu' : 'Réduire le menu'}
+            >
+              <span className="flex-shrink-0">
+                {collapsed ? <PanelLeft size={16} /> : <PanelLeftClose size={16} />}
+              </span>
+              {!collapsed && 'Réduire'}
+            </button>
           </div>
 
           {/* Resize handle — only when expanded */}
