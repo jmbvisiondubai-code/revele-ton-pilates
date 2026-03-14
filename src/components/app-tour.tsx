@@ -23,8 +23,8 @@ const TOUR_STEPS: TourStep[] = [
   // ── Dashboard ──
   {
     target: 'dashboard-greeting',
-    title: 'Ton espace personnel',
-    description: 'Ici tu retrouves ton message de bienvenue, ta série en cours et ta progression de la semaine.',
+    title: 'Ton tableau de bord',
+    description: 'Ta progression et ta série en cours.',
     emoji: '👋',
     page: '/dashboard',
     position: 'bottom',
@@ -32,7 +32,7 @@ const TOUR_STEPS: TourStep[] = [
   {
     target: 'dashboard-programmes',
     title: 'Programme & Replay',
-    description: 'Accède au programme hebdomadaire de Marjorie et au replay de la dernière session live.',
+    description: 'Le programme hebdo et le dernier replay.',
     emoji: '🎯',
     page: '/dashboard',
     position: 'top',
@@ -40,8 +40,8 @@ const TOUR_STEPS: TourStep[] = [
   },
   {
     target: 'dashboard-stats',
-    title: 'Ton parcours en chiffres',
-    description: 'Nombre de sessions, temps de pratique et meilleure série : suis ta progression ici.',
+    title: 'Tes stats',
+    description: 'Sessions, temps de pratique et meilleure série.',
     emoji: '📊',
     page: '/dashboard',
     position: 'top',
@@ -50,7 +50,7 @@ const TOUR_STEPS: TourStep[] = [
   {
     target: 'dashboard-inspiration',
     title: 'Inspiration du jour',
-    description: 'Chaque jour, une citation ou un conseil de Marjorie pour te motiver.',
+    description: 'Une citation de Marjorie chaque jour.',
     emoji: '✨',
     page: '/dashboard',
     position: 'top',
@@ -60,22 +60,21 @@ const TOUR_STEPS: TourStep[] = [
   // ── Cours ──
   {
     target: 'cours-tabs',
-    title: 'Tes cours de Pilates',
-    description: 'Navigue entre les sessions live avec Marjorie, les replays et la bibliothèque de cours vidéo.',
+    title: 'Tes cours',
+    description: 'Lives, replays et bibliothèque vidéo.',
     emoji: '🎬',
     page: '/cours',
     position: 'bottom',
   },
   {
     target: 'cours-vod',
-    title: 'Bibliothèque vidéo',
-    description: 'Plus de 180 cours classés par thème : programme, full body, souplesse, accessoires...',
+    title: 'Bibliothèque VOD',
+    description: '+180 cours classés par thème.',
     emoji: '📚',
     page: '/cours',
     position: 'top',
     scrollTo: true,
     prepare: () => {
-      // Switch to VOD tab (3rd button in the tabs container)
       const tabs = document.querySelectorAll('[data-tour="cours-tabs"] button')
       const vodTab = tabs[2] as HTMLElement | undefined
       vodTab?.click()
@@ -86,7 +85,7 @@ const TOUR_STEPS: TourStep[] = [
   {
     target: 'communaute-feed',
     title: 'La communauté',
-    description: 'Partage tes réussites, encourage les autres clientes et échange dans un espace bienveillant.',
+    description: 'Échange et partage avec les autres clientes.',
     emoji: '💬',
     page: '/communaute',
     position: 'bottom',
@@ -94,7 +93,7 @@ const TOUR_STEPS: TourStep[] = [
   {
     target: 'communaute-compose',
     title: 'Publie un message',
-    description: 'Écris un message, partage une photo ou un lien. Tu peux aussi mentionner quelqu\'un avec @.',
+    description: 'Écris, partage une photo ou mentionne quelqu\'un.',
     emoji: '✏️',
     page: '/communaute',
     position: 'top',
@@ -103,8 +102,8 @@ const TOUR_STEPS: TourStep[] = [
   // ── Navigation ──
   {
     target: 'nav-messages',
-    title: 'Tes messages privés',
-    description: 'Discute directement avec Marjorie. Elle t\'a déjà envoyé un petit message de bienvenue !',
+    title: 'Messages privés',
+    description: 'Marjorie t\'a envoyé un message !',
     emoji: '💌',
     page: '/communaute',
     position: 'bottom',
@@ -112,7 +111,7 @@ const TOUR_STEPS: TourStep[] = [
   {
     target: 'nav-profil',
     title: 'Ton profil',
-    description: 'Personnalise ton espace, consulte tes badges et gère tes préférences.',
+    description: 'Tes badges et tes préférences.',
     emoji: '👤',
     page: '/communaute',
     position: 'bottom',
@@ -120,7 +119,7 @@ const TOUR_STEPS: TourStep[] = [
   {
     target: 'nav-menu',
     title: 'Menu rapide',
-    description: 'Appuie ici pour enregistrer une séance ou consulter ton suivi de progression.',
+    description: 'Enregistre une séance ou consulte ton suivi.',
     emoji: '🌟',
     page: '/communaute',
     position: 'top',

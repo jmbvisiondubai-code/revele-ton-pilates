@@ -449,10 +449,11 @@ export default function CoursPage() {
           </div>
 
           {/* Category grid */}
-          <div data-tour="cours-vod" className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 lg:gap-4">
+          <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 lg:gap-4">
             {vodCategories.map((cat, i) => (
               <motion.button
                 key={cat.id}
+                data-tour={i === 0 ? 'cours-vod' : undefined}
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.03 }}
