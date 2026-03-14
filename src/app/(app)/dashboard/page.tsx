@@ -364,15 +364,18 @@ export default function DashboardPage() {
   return (
     <div className="px-5 pt-6 pb-8 lg:px-8 xl:px-12 lg:pt-8 max-w-2xl lg:max-w-3xl mx-auto">
 
-      {/* ─── TOP BAR: greeting + streak ─── */}
+      {/* ─── GREETING ─── */}
       {(() => {
-        const greeting = getGreeting(profile.username)
+        const greeting = getGreeting(profile.first_name || profile.username)
         return (
-          <motion.div data-tour="dashboard-greeting" initial="hidden" animate="visible" custom={0} variants={fadeInUp} className="mb-8">
-            <h1 className="font-[family-name:var(--font-heading)] text-[22px] text-[#1D1D1F] leading-tight">
+          <motion.div data-tour="dashboard-greeting" initial="hidden" animate="visible" custom={0} variants={fadeInUp} className="mb-10">
+            <p className="text-[12px] font-semibold tracking-[0.1em] uppercase text-[#C6684F] mb-2">
+              {format(new Date(), "EEEE d MMMM yyyy", { locale: fr })}
+            </p>
+            <h1 className="font-[family-name:var(--font-heading)] text-[26px] text-[#1D1D1F] leading-snug">
               {greeting.salut}
             </h1>
-            <p className="text-[13px] text-[#86868B] mt-1">
+            <p className="text-[14px] text-[#9B8E82] mt-1.5 italic">
               {greeting.message}
             </p>
           </motion.div>
