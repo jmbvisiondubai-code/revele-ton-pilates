@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
   }
 
   // 3. Whitelist allowed fields
-  const allowedFields = ['practice_level', 'is_teacher']
+  const allowedFields = ['practice_level', 'is_teacher', 'subscription_start']
   const safeUpdates: Record<string, unknown> = {}
   for (const key of Object.keys(updates)) {
     if (allowedFields.includes(key)) {
