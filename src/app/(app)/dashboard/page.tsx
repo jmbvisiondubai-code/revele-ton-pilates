@@ -383,30 +383,27 @@ export default function DashboardPage() {
                   </p>
                 </div>
               </div>
-              <Link href="/serie" className={`relative flex items-center gap-1.5 rounded-full px-3 py-1.5 transition-colors ${
+              <Link href="/serie" className={`relative flex items-center gap-1.5 rounded-full px-3 py-1.5 overflow-hidden transition-colors ${
                 profile.current_streak >= 7
-                  ? 'bg-gradient-to-r from-[#C6684F]/15 to-[#FF6B35]/15 hover:from-[#C6684F]/25 hover:to-[#FF6B35]/25'
+                  ? 'bg-[#1D1D1F] hover:bg-[#2D2D2F]'
                   : 'bg-[#C6684F]/10 hover:bg-[#C6684F]/20'
               }`}>
                 {profile.current_streak >= 7 ? (
                   <>
-                    {/* Glow pulse behind flame */}
+                    {/* Subtle warm glow — slow breathing */}
                     <motion.span
-                      className="absolute left-2 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-[#FF6B35]/30 blur-[6px]"
-                      animate={{ scale: [1, 1.6, 1], opacity: [0.4, 0.8, 0.4] }}
-                      transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}
+                      className="absolute inset-0 bg-gradient-to-r from-[#C6684F]/20 via-[#E8500E]/10 to-transparent rounded-full"
+                      animate={{ opacity: [0.3, 0.6, 0.3] }}
+                      transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
                     />
                     <motion.div
-                      className="relative"
-                      animate={{
-                        scale: [1, 1.15, 0.95, 1.1, 1],
-                        rotate: [0, -3, 3, -2, 0],
-                      }}
-                      transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+                      className="relative z-10"
+                      animate={{ y: [0, -1, 0] }}
+                      transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
                     >
-                      <Flame size={16} className="text-[#E8500E] drop-shadow-[0_0_4px_rgba(232,80,14,0.5)]" />
+                      <Flame size={15} className="text-[#FF8A5C]" />
                     </motion.div>
-                    <span className="text-[15px] font-bold bg-gradient-to-r from-[#C6684F] to-[#E8500E] bg-clip-text text-transparent">{profile.current_streak}</span>
+                    <span className="relative z-10 text-[15px] font-bold text-white">{profile.current_streak}</span>
                   </>
                 ) : (
                   <>
