@@ -277,7 +277,7 @@ export default function ClientesPage() {
 
       {selected && (
         <div className={`fixed inset-0 z-50 flex bg-black/30 ${viewMode === 'full' ? 'items-center justify-center p-6' : 'items-stretch justify-end'}`} onClick={() => setSelected(null)}>
-          <div className={`bg-white overflow-y-auto shadow-2xl ${viewMode === 'full' ? 'w-full max-w-3xl max-h-[90vh] rounded-2xl' : 'w-full max-w-lg h-full'}`} onClick={e => e.stopPropagation()}>
+          <div className={`bg-white overflow-y-auto shadow-2xl ${viewMode === 'full' ? 'w-full max-w-6xl max-h-[90vh] rounded-2xl' : 'w-full max-w-2xl h-full'}`} onClick={e => e.stopPropagation()}>
             {/* Header */}
             <div className={`sticky top-0 bg-white border-b border-[#DCCFBF] px-5 py-4 flex items-center gap-3 ${viewMode === 'full' ? 'rounded-t-2xl' : ''}`}>
               <div className="w-10 h-10 rounded-full bg-[#F2E8DF] flex items-center justify-center text-[#C6684F] font-semibold">
