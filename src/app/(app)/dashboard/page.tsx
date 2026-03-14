@@ -8,6 +8,7 @@ import {
   Clock,
   Trophy,
   ChevronRight,
+  ChevronLeft,
   Sparkles,
   Radio,
   ExternalLink,
@@ -98,6 +99,7 @@ export default function DashboardPage() {
   const [codeCopied, setCodeCopied] = useState(false)
 
   // Journal state
+  const [weekOffset, setWeekOffset] = useState(0) // 0 = current week, -1 = last week, etc.
   const [selectedDayIndex, setSelectedDayIndex] = useState<number | null>(null)
   const [weekCompletions, setWeekCompletions] = useState<Record<string, CourseCompletion[]>>({})
   const [completionsLoaded, setCompletionsLoaded] = useState(false)
@@ -128,12 +130,12 @@ export default function DashboardPage() {
     document.body.appendChild(a); a.click(); document.body.removeChild(a)
   }
 
-  // Build week days
+  // Build week days (offset-aware)
   const weekDays = (() => {
     const now = new Date()
     const dayOfWeek = now.getDay()
     const monday = new Date(now)
-    monday.setDate(now.getDate() - ((dayOfWeek + 6) % 7))
+    monday.setDate(now.getDate() - ((dayOfWeek + 6) % 7) + weekOffset * 7)
     const weekLabels = ['LUN', 'MAR', 'MER', 'JEU', 'VEN', 'SAM', 'DIM']
     return weekLabels.map((label, i) => {
       const d = new Date(monday)
@@ -145,9 +147,9 @@ export default function DashboardPage() {
     })
   })()
 
-  // Default selected day = today
+  // Default selected day = today (current week) or Monday (other weeks)
   const todayIndex = weekDays.findIndex(d => d.isToday)
-  const activeIndex = selectedDayIndex ?? todayIndex
+  const activeIndex = selectedDayIndex ?? (todayIndex >= 0 ? todayIndex : 0)
   const activeDay = weekDays[activeIndex]
 
   // Fetch week completions
@@ -184,7 +186,7 @@ export default function DashboardPage() {
 
   useEffect(() => {
     fetchWeekCompletions()
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [weekOffset]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     // Skip if cache is still valid
@@ -525,10 +527,40 @@ export default function DashboardPage() {
 
       {/* ─── MON JOURNAL — interactive weekly tracker ─── */}
       <motion.div initial="hidden" animate="visible" custom={1.5} variants={fadeInUp} className="mb-10">
-        <h2 className="text-[18px] font-bold text-[#1D1D1F] mb-4">Mon journal</h2>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-[18px] font-bold text-[#1D1D1F]">Mon journal</h2>
+          <Link href="/journal" className="text-[12px] font-semibold text-[#C6684F] hover:text-[#b05a42] transition-colors flex items-center gap-1">
+            Calendrier <ChevronRight size={14} />
+          </Link>
+        </div>
         <div className="rounded-2xl bg-white border border-[#E8DDD4] overflow-hidden">
-          {/* Week dots */}
-          <div className="px-4 pt-5 pb-4">
+          {/* Week navigation + dots */}
+          <div className="px-4 pt-4 pb-4">
+            <div className="flex items-center justify-between mb-4">
+              <button
+                onClick={() => { setWeekOffset(w => w - 1); setSelectedDayIndex(null) }}
+                className="w-8 h-8 rounded-full flex items-center justify-center text-[#9B8E82] hover:bg-[#F0EBE5] transition-colors"
+              >
+                <ChevronLeft size={18} />
+              </button>
+              <p className="text-[12px] font-semibold text-[#86868B] capitalize">
+                {weekOffset === 0
+                  ? 'Cette semaine'
+                  : weekOffset === -1
+                    ? 'Semaine dernière'
+                    : `${format(weekDays[0].date, "d MMM", { locale: fr })} — ${format(weekDays[6].date, "d MMM", { locale: fr })}`
+                }
+              </p>
+              <button
+                onClick={() => { if (weekOffset < 0) { setWeekOffset(w => w + 1); setSelectedDayIndex(null) } }}
+                className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${
+                  weekOffset < 0 ? 'text-[#9B8E82] hover:bg-[#F0EBE5]' : 'text-[#E8DDD4] cursor-not-allowed'
+                }`}
+                disabled={weekOffset >= 0}
+              >
+                <ChevronRight size={18} />
+              </button>
+            </div>
             <div className="flex items-center justify-between">
               {weekDays.map((day) => {
                 const hasCompletions = (weekCompletions[day.dateKey] || []).length > 0
