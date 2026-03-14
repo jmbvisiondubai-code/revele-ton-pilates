@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import { motion } from 'framer-motion'
-import { Lock } from 'lucide-react'
+import { Lock, CheckCircle, Download, Smartphone } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { Button, Input } from '@/components/ui'
 
@@ -33,6 +33,9 @@ function SignupPage() {
   const [confirmPassword, setConfirmPassword] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
+  const [success, setSuccess] = useState(false)
+  const [createdFirstName, setCreatedFirstName] = useState('')
+  const [apkUrl, setApkUrl] = useState<string | null>(null)
 
   const supabase = createClient()
 
@@ -98,8 +101,18 @@ function SignupPage() {
           .eq('token', token)
       }
 
-      router.push('/onboarding')
-      router.refresh()
+      // Fetch APK download URL from settings
+      const { data: apkSetting } = await supabase
+        .from('app_settings')
+        .select('value')
+        .eq('key', 'apk_download_url')
+        .maybeSingle()
+      if (apkSetting?.value) setApkUrl(apkSetting.value)
+
+      // Sign out so the user connects fresh in the app
+      await supabase.auth.signOut()
+      setCreatedFirstName(firstName.trim())
+      setSuccess(true)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Une erreur est survenue')
     } finally {
@@ -135,6 +148,87 @@ function SignupPage() {
         <Link href="/login" className="inline-block text-sm font-medium text-primary hover:text-accent transition-colors">
           Déjà un compte ? Se connecter
         </Link>
+      </motion.div>
+    )
+  }
+
+  if (success) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.5 }}
+        className="w-full max-w-sm text-center"
+      >
+        <motion.div
+          initial={{ scale: 0 }}
+          animate={{ scale: 1 }}
+          transition={{ delay: 0.2, type: 'spring', stiffness: 200 }}
+          className="w-20 h-20 mx-auto mb-6 bg-[#5B9A6B]/10 rounded-full flex items-center justify-center"
+        >
+          <CheckCircle size={40} className="text-[#5B9A6B]" />
+        </motion.div>
+
+        <h1 className="font-[family-name:var(--font-heading)] text-3xl text-text mb-2">
+          Bienvenue {createdFirstName} !
+        </h1>
+        <p className="text-text-secondary text-sm leading-relaxed mb-8">
+          Ton compte a été créé avec succès.<br />
+          Il ne te reste plus qu&apos;à télécharger l&apos;application et te connecter avec tes identifiants.
+        </p>
+
+        <div className="space-y-3">
+          {apkUrl && (
+            <>
+              <a
+                href={apkUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-center gap-2 w-full py-3.5 rounded-2xl bg-[#C6684F] text-white text-sm font-semibold hover:bg-[#b55a43] transition-colors shadow-md shadow-[#C6684F]/20"
+              >
+                <Download size={18} />
+                Télécharger l&apos;application
+              </a>
+
+              <div className="relative py-4">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-[#EDE5DA]" />
+                </div>
+                <div className="relative flex justify-center">
+                  <span className="bg-[#FAF6F1] px-3 text-xs text-text-muted">puis</span>
+                </div>
+              </div>
+            </>
+          )}
+
+          <div className="bg-white rounded-2xl border border-[#EDE5DA] p-4">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-10 h-10 rounded-full bg-[#C6684F]/10 flex items-center justify-center flex-shrink-0">
+                <Smartphone size={20} className="text-[#C6684F]" />
+              </div>
+              <p className="text-sm font-semibold text-text text-left">Connecte-toi dans l&apos;app</p>
+            </div>
+            <ol className="text-xs text-[#6B6359] space-y-2 text-left">
+              <li className="flex gap-2">
+                <span className="w-5 h-5 rounded-full bg-[#C6684F]/10 text-[#C6684F] text-[10px] font-bold flex items-center justify-center flex-shrink-0">1</span>
+                Installe l&apos;APK téléchargé sur ton téléphone
+              </li>
+              <li className="flex gap-2">
+                <span className="w-5 h-5 rounded-full bg-[#C6684F]/10 text-[#C6684F] text-[10px] font-bold flex items-center justify-center flex-shrink-0">2</span>
+                Ouvre l&apos;application Révèle Ton Pilates
+              </li>
+              <li className="flex gap-2">
+                <span className="w-5 h-5 rounded-full bg-[#C6684F]/10 text-[#C6684F] text-[10px] font-bold flex items-center justify-center flex-shrink-0">3</span>
+                Connecte-toi avec ton email et ton mot de passe
+              </li>
+            </ol>
+          </div>
+        </div>
+
+        <p className="text-[11px] text-text-muted mt-6 leading-relaxed">
+          Tu as déjà l&apos;application ?<br />
+          Ouvre-la et connecte-toi directement.
+        </p>
       </motion.div>
     )
   }
