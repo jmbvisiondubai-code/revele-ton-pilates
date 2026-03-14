@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/client'
 import { Card } from '@/components/ui'
-import { Users, Clock, Trophy, Star, X, Plus, ExternalLink, ChevronRight, Upload, Link as LinkIcon, Calendar, AlertTriangle, MessageCircle, Maximize2, PanelRight } from 'lucide-react'
+import { Users, Clock, Trophy, Star, X, Plus, ExternalLink, ChevronRight, Upload, Link as LinkIcon, Calendar, AlertTriangle, MessageCircle, Maximize2, PanelRight, Move } from 'lucide-react'
 import { formatDuration, LEVEL_LABELS, formatSubscriptionRemaining } from '@/lib/utils'
 import type { Recommendation, VodCategory } from '@/types/database'
 
@@ -50,6 +50,9 @@ export default function ClientesPage() {
   const [creatingConv, setCreatingConv] = useState(false)
   const [convStatus, setConvStatus] = useState<'none' | 'exists' | 'created'>('none')
   const [viewMode, setViewMode] = useState<'side' | 'full'>('side')
+  const [modalSize, setModalSize] = useState({ w: 0, h: 0 })
+  const modalResizing = useRef(false)
+  const modalStartPos = useRef({ x: 0, y: 0, w: 0, h: 0 })
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const supabase = createClient()
@@ -276,8 +279,19 @@ export default function ClientesPage() {
       )}
 
       {selected && (
-        <div className={`fixed inset-0 z-50 flex bg-black/30 ${viewMode === 'full' ? 'items-center justify-center p-6' : 'items-stretch justify-end'}`} onClick={() => setSelected(null)}>
-          <div className={`bg-white overflow-y-auto shadow-2xl ${viewMode === 'full' ? 'w-[90vw] max-h-[90vh] rounded-2xl' : 'w-full max-w-3xl h-full'}`} onClick={e => e.stopPropagation()}>
+        <div className={`fixed inset-0 z-50 flex bg-black/30 ${viewMode === 'full' ? 'items-center justify-center p-4' : 'items-stretch justify-end'}`} onClick={() => setSelected(null)}>
+          <div
+            className={`bg-white overflow-y-auto shadow-2xl ${viewMode === 'full' ? 'rounded-2xl relative' : 'w-full max-w-3xl h-full'}`}
+            style={viewMode === 'full' ? {
+              width: modalSize.w || '85vw',
+              height: modalSize.h || '85vh',
+              minWidth: 500,
+              minHeight: 400,
+              maxWidth: '95vw',
+              maxHeight: '95vh',
+            } : undefined}
+            onClick={e => e.stopPropagation()}
+          >
             {/* Header */}
             <div className={`sticky top-0 bg-white border-b border-[#DCCFBF] px-5 py-4 flex items-center gap-3 ${viewMode === 'full' ? 'rounded-t-2xl' : ''}`}>
               <div className="w-10 h-10 rounded-full bg-[#F2E8DF] flex items-center justify-center text-[#C6684F] font-semibold">
@@ -553,6 +567,44 @@ export default function ClientesPage() {
                   </div>
                 </div>
               </div>
+              </div>
+            )}
+
+            {/* Resize handle — bottom right corner */}
+            {viewMode === 'full' && (
+              <div
+                onMouseDown={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  modalResizing.current = true
+                  const el = e.currentTarget.parentElement
+                  if (!el) return
+                  modalStartPos.current = { x: e.clientX, y: e.clientY, w: el.offsetWidth, h: el.offsetHeight }
+                  document.body.style.cursor = 'nwse-resize'
+                  document.body.style.userSelect = 'none'
+
+                  function onMove(ev: MouseEvent) {
+                    if (!modalResizing.current) return
+                    const dw = ev.clientX - modalStartPos.current.x
+                    const dh = ev.clientY - modalStartPos.current.y
+                    const newW = Math.max(500, Math.min(window.innerWidth * 0.95, modalStartPos.current.w + dw))
+                    const newH = Math.max(400, Math.min(window.innerHeight * 0.95, modalStartPos.current.h + dh))
+                    setModalSize({ w: newW, h: newH })
+                  }
+                  function onUp() {
+                    modalResizing.current = false
+                    document.body.style.cursor = ''
+                    document.body.style.userSelect = ''
+                    window.removeEventListener('mousemove', onMove)
+                    window.removeEventListener('mouseup', onUp)
+                  }
+                  window.addEventListener('mousemove', onMove)
+                  window.addEventListener('mouseup', onUp)
+                }}
+                className="absolute bottom-2 right-2 w-8 h-8 rounded-lg bg-[#F2E8DF] hover:bg-[#E8DDD4] flex items-center justify-center cursor-nwse-resize transition-colors"
+                title="Redimensionner"
+              >
+                <Move size={14} className="text-[#9B8E82] rotate-45" />
               </div>
             )}
           </div>
