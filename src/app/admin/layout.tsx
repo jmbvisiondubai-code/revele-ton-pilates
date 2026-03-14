@@ -187,7 +187,21 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           className="sticky top-[49px] h-[calc(100vh-49px)] backdrop-blur-xl bg-white/60 border-r border-black/[0.06] flex flex-col transition-[width] duration-300 ease-out relative flex-shrink-0"
           style={{ width: effectiveWidth }}
         >
-          <div className="flex-1 px-2.5 py-3 space-y-0.5 overflow-y-auto overflow-x-hidden scrollbar-thin">
+          {/* Toggle — top of sidebar, ChatGPT style */}
+          <div className={`px-2.5 pt-3 pb-1 flex items-center ${collapsed ? 'justify-center' : 'justify-between'}`}>
+            {!collapsed && (
+              <span className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[#86868b] pl-1">Menu</span>
+            )}
+            <button
+              onClick={() => { setCollapsed(c => !c); if (collapsed) setSidebarWidth(DEFAULT_WIDTH) }}
+              className="p-1.5 rounded-lg hover:bg-black/[0.05] text-[#8a8a8e] hover:text-[#3c3c43] transition-all"
+              title={collapsed ? 'Ouvrir le menu' : 'Réduire le menu'}
+            >
+              {collapsed ? <PanelLeft size={16} /> : <PanelLeftClose size={16} />}
+            </button>
+          </div>
+
+          <div className="flex-1 px-2.5 py-1 space-y-0.5 overflow-y-auto overflow-x-hidden scrollbar-thin">
 
             {/* Dashboard link */}
             {STANDALONE_TOP.map(item => (
@@ -303,19 +317,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               {!collapsed && 'Corbeille'}
             </Link>
 
-            {/* Toggle collapse */}
-            <button
-              onClick={() => { setCollapsed(c => !c); if (collapsed) setSidebarWidth(DEFAULT_WIDTH) }}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-medium text-[#aeaeb2] hover:text-[#3c3c43] hover:bg-black/[0.03] transition-all whitespace-nowrap overflow-hidden ${
-                collapsed ? 'justify-center' : ''
-              }`}
-              title={collapsed ? 'Ouvrir le menu' : 'Réduire le menu'}
-            >
-              <span className="flex-shrink-0">
-                {collapsed ? <PanelLeft size={16} /> : <PanelLeftClose size={16} />}
-              </span>
-              {!collapsed && 'Réduire'}
-            </button>
           </div>
 
           {/* Resize handle — only when expanded */}
