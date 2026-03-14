@@ -370,10 +370,10 @@ export default function DashboardPage() {
         return (
           <motion.div data-tour="dashboard-greeting" initial="hidden" animate="visible" custom={0} variants={fadeInUp} className="mb-8">
             <h1 className="font-[family-name:var(--font-heading)] text-[22px] text-[#1D1D1F] leading-tight">
-              {greeting.message}
+              {greeting.salut}
             </h1>
-            <p className="text-[12px] text-[#86868B] mt-1 capitalize">
-              {format(new Date(), "EEEE d MMMM", { locale: fr })}
+            <p className="text-[13px] text-[#86868B] mt-1">
+              {greeting.message}
             </p>
           </motion.div>
         )
