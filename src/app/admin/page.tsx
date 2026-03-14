@@ -3,7 +3,11 @@
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
-import { Video, Calendar, BookOpen, Users, Trophy, Clock, Flame, TrendingUp, Play, ChevronRight, AlertCircle } from 'lucide-react'
+import {
+  Video, Calendar, BookOpen, Users, Trophy, Clock, Flame, TrendingUp,
+  Play, ChevronRight, AlertCircle, MessageSquare, Star, Activity,
+  Sparkles, ArrowUpRight, Zap,
+} from 'lucide-react'
 import { formatDuration, LEVEL_LABELS } from '@/lib/utils'
 
 type ClientRow = {
@@ -103,9 +107,6 @@ export default function AdminPage() {
   function formatDate(iso: string) {
     return new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
   }
-  function formatDateTime(iso: string) {
-    return new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
-  }
   function timeAgo(iso: string) {
     const diff = Date.now() - new Date(iso).getTime()
     const mins = Math.floor(diff / 60000)
@@ -116,115 +117,174 @@ export default function AdminPage() {
     return `il y a ${days}j`
   }
 
+  const now = new Date()
+  const hour = now.getHours()
+  const greeting = hour < 12 ? 'Bonjour' : hour < 18 ? 'Bon après-midi' : 'Bonsoir'
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <div className="w-6 h-6 border-2 border-[#C6684F] border-t-transparent rounded-full animate-spin" />
+        <div className="relative">
+          <div className="w-10 h-10 border-2 border-[#C6684F]/20 border-t-[#C6684F] rounded-full animate-spin" />
+          <Sparkles size={14} className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-[#C6684F]" />
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="font-serif text-2xl text-[#2C2C2C]">Tableau de bord</h2>
-        <span className="text-xs text-[#A09488]">{new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</span>
+    <div className="max-w-6xl mx-auto space-y-8">
+
+      {/* ── Header with greeting ── */}
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#2C2C2C] via-[#3d3530] to-[#4a3f37] p-8 text-white">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-[#C6684F]/10 rounded-full -translate-y-1/2 translate-x-1/3 blur-3xl" />
+        <div className="absolute bottom-0 left-0 w-48 h-48 bg-[#C6684F]/5 rounded-full translate-y-1/2 -translate-x-1/4 blur-2xl" />
+        <div className="relative">
+          <div className="flex items-center gap-2 text-[#C6684F] mb-1">
+            <Sparkles size={14} />
+            <span className="text-xs font-medium tracking-wider uppercase">Espace Admin</span>
+          </div>
+          <h1 className="font-serif text-3xl font-light">{greeting}, Marjorie</h1>
+          <p className="text-white/50 text-sm mt-2">
+            {now.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+          </p>
+        </div>
+
+        {/* Quick stats row */}
+        <div className="relative grid grid-cols-4 gap-4 mt-8">
+          {[
+            { value: stats.members, label: 'Clientes', icon: Users },
+            { value: totalCompletions, label: 'Cours complétés', icon: Trophy },
+            { value: formatDuration(totalMinutes), label: 'Pratique totale', icon: Clock },
+            { value: upcomingLives.length, label: 'Lives à venir', icon: Calendar },
+          ].map(({ value, label, icon: Icon }) => (
+            <div key={label} className="text-center">
+              <div className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-white/5 mb-2">
+                <Icon size={14} className="text-[#C6684F]" />
+              </div>
+              <div className="text-2xl font-bold text-white">{value}</div>
+              <div className="text-[11px] text-white/40 mt-0.5">{label}</div>
+            </div>
+          ))}
+        </div>
       </div>
 
-      {/* ── Stats cards ── */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      {/* ── Action cards ── */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {[
-          { label: 'Membres', value: stats.members, icon: Users, href: '/admin/clientes', color: '#C6684F', sub: `${avgSessionsPerClient} séances/moy` },
-          { label: 'Cours complétés', value: totalCompletions, icon: Trophy, href: '/admin/clientes', color: '#7a9e7e', sub: formatDuration(totalMinutes) + ' total' },
-          { label: 'Sessions Live', value: stats.lives, icon: Calendar, href: '/admin/lives', color: '#9e8a7a', sub: `${upcomingLives.length} à venir` },
-          { label: 'Replays dispo', value: replaysAvailable, icon: Play, href: '/admin/lives', color: '#7a8a9e', sub: `sur ${replaysTotal} sessions` },
-        ].map(({ label, value, icon: Icon, href, color, sub }) => (
-          <Link key={label} href={href} className="bg-white rounded-2xl p-5 border border-[#DCCFBF] hover:shadow-md transition-all hover:border-[#C6684F]/30 group">
-            <div className="flex items-center justify-between mb-3">
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center transition-colors" style={{ backgroundColor: color + '15' }}>
-                <Icon size={18} style={{ color }} />
+          { label: 'Cours VOD', value: stats.courses, icon: Video, href: '/admin/cours', gradient: 'from-[#C6684F] to-[#E8926F]' },
+          { label: 'Sessions Live', value: stats.lives, icon: Calendar, href: '/admin/lives', gradient: 'from-[#8B7355] to-[#A89070]' },
+          { label: 'Articles', value: stats.articles, icon: BookOpen, href: '/admin/articles', gradient: 'from-[#5B8A6B] to-[#7BA98B]' },
+          { label: 'Replays', value: `${replaysAvailable}/${replaysTotal}`, icon: Play, href: '/admin/lives', gradient: 'from-[#6B7FA0] to-[#8B9FBB]' },
+        ].map(({ label, value, icon: Icon, href, gradient }) => (
+          <Link key={label} href={href}
+            className="group relative overflow-hidden rounded-2xl p-5 text-white transition-all hover:scale-[1.02] hover:shadow-xl active:scale-[0.98]">
+            <div className={`absolute inset-0 bg-gradient-to-br ${gradient}`} />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
+            <div className="relative">
+              <div className="flex items-center justify-between mb-6">
+                <Icon size={20} className="text-white/80" />
+                <ArrowUpRight size={16} className="text-white/40 group-hover:text-white/80 transition" />
               </div>
-              <ChevronRight size={14} className="text-[#DCCFBF] group-hover:text-[#C6684F] transition-colors" />
+              <div className="text-3xl font-bold">{value}</div>
+              <div className="text-sm text-white/70 mt-0.5">{label}</div>
             </div>
-            <div className="text-3xl font-bold text-[#2C2C2C]">{value}</div>
-            <div className="text-sm font-medium text-[#2C2C2C] mt-0.5">{label}</div>
-            <div className="text-[11px] text-[#A09488] mt-0.5">{sub}</div>
           </Link>
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* ── Top clientes ── */}
-        <div className="bg-white rounded-2xl border border-[#DCCFBF] overflow-hidden">
-          <div className="flex items-center justify-between px-5 py-4 border-b border-[#F5F0EB]">
-            <h3 className="font-semibold text-[#2C2C2C] flex items-center gap-2">
-              <Users size={16} className="text-[#C6684F]" /> Suivi des clientes
-            </h3>
-            <Link href="/admin/clientes" className="text-xs text-[#C6684F] hover:underline flex items-center gap-1">
+      {/* ── Main content grid ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+
+        {/* ── Top clientes (3 cols) ── */}
+        <div className="lg:col-span-3 bg-white rounded-2xl border border-[#E8E0D8] shadow-sm overflow-hidden">
+          <div className="flex items-center justify-between px-6 py-5 border-b border-[#F5F0EB]">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#C6684F] to-[#E8926F] flex items-center justify-center">
+                <Users size={16} className="text-white" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-[#2C2C2C]">Top Clientes</h3>
+                <p className="text-[11px] text-[#A09488]">{avgSessionsPerClient} séances en moyenne</p>
+              </div>
+            </div>
+            <Link href="/admin/clientes" className="flex items-center gap-1.5 text-xs font-medium text-[#C6684F] hover:text-[#b05a42] transition px-3 py-1.5 rounded-lg hover:bg-[#C6684F]/5">
               Voir tout <ChevronRight size={12} />
             </Link>
           </div>
           <div className="divide-y divide-[#F5F0EB]">
             {clients.length === 0 && (
-              <div className="px-5 py-8 text-center text-sm text-[#A09488]">Aucune cliente inscrite</div>
+              <div className="px-6 py-12 text-center text-sm text-[#A09488]">Aucune cliente inscrite</div>
             )}
             {clients.map((c, i) => (
-              <Link key={c.id} href="/admin/clientes" className="flex items-center gap-3 px-5 py-3 hover:bg-[#FAF6F1] transition-colors">
-                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#C6684F] to-[#E8926F] flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+              <Link key={c.id} href="/admin/clientes"
+                className="flex items-center gap-4 px-6 py-3.5 hover:bg-gradient-to-r hover:from-[#FAF6F1] hover:to-transparent transition-all group">
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${
+                  i === 0 ? 'bg-gradient-to-br from-yellow-400 to-amber-500 text-white shadow-sm shadow-amber-200'
+                  : i === 1 ? 'bg-gradient-to-br from-gray-300 to-gray-400 text-white'
+                  : i === 2 ? 'bg-gradient-to-br from-orange-300 to-orange-400 text-white'
+                  : 'bg-[#F2E8DF] text-[#6B6359]'
+                }`}>
                   {i + 1}
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-medium text-[#2C2C2C] truncate">
-                      {c.first_name || c.username}
+                      {c.first_name} {c.last_name}
                     </span>
-                    <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-[#F2E8DF] text-[#6B6359] flex-shrink-0">
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#F2E8DF] text-[#6B6359] font-medium flex-shrink-0">
                       {LEVEL_LABELS[c.practice_level || ''] || '—'}
                     </span>
                   </div>
-                  <div className="flex items-center gap-3 mt-0.5">
+                  <div className="flex items-center gap-3 mt-1">
                     <span className="text-[11px] text-[#A09488] flex items-center gap-1">
-                      <Trophy size={10} /> {c.total_sessions} séances
+                      <Trophy size={10} className="text-[#C6684F]" /> {c.total_sessions}
                     </span>
                     <span className="text-[11px] text-[#A09488] flex items-center gap-1">
                       <Clock size={10} /> {formatDuration(c.total_practice_minutes)}
                     </span>
                     {c.current_streak > 0 && (
-                      <span className="text-[11px] text-[#C6684F] flex items-center gap-1">
+                      <span className="text-[11px] text-amber-600 flex items-center gap-1 font-medium">
                         <Flame size={10} /> {c.current_streak}j
                       </span>
                     )}
                   </div>
                 </div>
-                <ChevronRight size={14} className="text-[#DCCFBF] flex-shrink-0" />
+                <ChevronRight size={14} className="text-[#DCCFBF] group-hover:text-[#C6684F] transition flex-shrink-0" />
               </Link>
             ))}
           </div>
         </div>
 
-        {/* ── Activité récente ── */}
-        <div className="bg-white rounded-2xl border border-[#DCCFBF] overflow-hidden">
-          <div className="px-5 py-4 border-b border-[#F5F0EB]">
-            <h3 className="font-semibold text-[#2C2C2C] flex items-center gap-2">
-              <TrendingUp size={16} className="text-[#7a9e7e]" /> Activité récente
-            </h3>
+        {/* ── Activité récente (2 cols) ── */}
+        <div className="lg:col-span-2 bg-white rounded-2xl border border-[#E8E0D8] shadow-sm overflow-hidden">
+          <div className="px-6 py-5 border-b border-[#F5F0EB]">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#5B8A6B] to-[#7BA98B] flex items-center justify-center">
+                <Activity size={16} className="text-white" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-[#2C2C2C]">Activité récente</h3>
+                <p className="text-[11px] text-[#A09488]">{totalCompletions} cours complétés au total</p>
+              </div>
+            </div>
           </div>
           <div className="divide-y divide-[#F5F0EB]">
             {recentCompletions.length === 0 && (
-              <div className="px-5 py-8 text-center text-sm text-[#A09488]">Aucune activité</div>
+              <div className="px-6 py-12 text-center text-sm text-[#A09488]">Aucune activité</div>
             )}
             {recentCompletions.map((a, i) => (
-              <div key={i} className="flex items-center gap-3 px-5 py-3">
-                <div className="w-8 h-8 rounded-full bg-[#7a9e7e]/10 flex items-center justify-center flex-shrink-0">
-                  <Trophy size={14} className="text-[#7a9e7e]" />
+              <div key={i} className="flex items-start gap-3 px-6 py-3.5">
+                <div className="w-7 h-7 rounded-full bg-[#5B8A6B]/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <Zap size={12} className="text-[#5B8A6B]" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm text-[#2C2C2C] truncate">
-                    <span className="font-medium">{a.username}</span>{' '}
+                  <p className="text-sm text-[#2C2C2C] leading-snug">
+                    <span className="font-semibold">{a.username}</span>{' '}
                     <span className="text-[#6B6359]">a terminé</span>{' '}
-                    <span className="font-medium">{a.course_title}</span>
+                    <span className="font-medium text-[#C6684F]">{a.course_title}</span>
                   </p>
-                  <p className="text-[11px] text-[#A09488]">{timeAgo(a.completed_at)}</p>
+                  <p className="text-[10px] text-[#A09488] mt-1">{timeAgo(a.completed_at)}</p>
                 </div>
               </div>
             ))}
@@ -232,83 +292,114 @@ export default function AdminPage() {
         </div>
       </div>
 
-      {/* ── Replays & Lives ── */}
+      {/* ── Lives section ── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
         {/* Upcoming lives */}
-        <div className="bg-white rounded-2xl border border-[#DCCFBF] overflow-hidden">
-          <div className="flex items-center justify-between px-5 py-4 border-b border-[#F5F0EB]">
-            <h3 className="font-semibold text-[#2C2C2C] flex items-center gap-2">
-              <Calendar size={16} className="text-[#9e8a7a]" /> Prochains lives
-            </h3>
-            <Link href="/admin/lives" className="text-xs text-[#C6684F] hover:underline flex items-center gap-1">
+        <div className="bg-white rounded-2xl border border-[#E8E0D8] shadow-sm overflow-hidden">
+          <div className="flex items-center justify-between px-6 py-5 border-b border-[#F5F0EB]">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#8B7355] to-[#A89070] flex items-center justify-center">
+                <Calendar size={16} className="text-white" />
+              </div>
+              <h3 className="font-semibold text-[#2C2C2C]">Prochains lives</h3>
+            </div>
+            <Link href="/admin/lives" className="flex items-center gap-1.5 text-xs font-medium text-[#C6684F] hover:text-[#b05a42] transition px-3 py-1.5 rounded-lg hover:bg-[#C6684F]/5">
               Gérer <ChevronRight size={12} />
             </Link>
           </div>
           <div className="divide-y divide-[#F5F0EB]">
             {upcomingLives.length === 0 && (
-              <div className="px-5 py-8 text-center text-sm text-[#A09488]">Aucun live programmé</div>
-            )}
-            {upcomingLives.map(l => (
-              <div key={l.id} className="flex items-center gap-3 px-5 py-3">
-                <div className="w-10 h-10 rounded-xl bg-[#9e8a7a]/10 flex flex-col items-center justify-center flex-shrink-0">
-                  <span className="text-[10px] font-bold text-[#9e8a7a] leading-none">
-                    {new Date(l.scheduled_at).toLocaleDateString('fr-FR', { day: 'numeric' })}
-                  </span>
-                  <span className="text-[8px] text-[#9e8a7a] uppercase leading-none mt-0.5">
-                    {new Date(l.scheduled_at).toLocaleDateString('fr-FR', { month: 'short' })}
-                  </span>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-[#2C2C2C] truncate">{l.title}</p>
-                  <p className="text-[11px] text-[#A09488]">
-                    {new Date(l.scheduled_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
-                    {' · '}{l.duration_minutes}min
-                    {l.registered_count > 0 && ` · ${l.registered_count} inscrite${l.registered_count > 1 ? 's' : ''}`}
-                  </p>
-                </div>
+              <div className="px-6 py-12 text-center">
+                <Calendar size={32} className="text-[#DCCFBF] mx-auto mb-3" />
+                <p className="text-sm text-[#A09488]">Aucun live programmé</p>
               </div>
-            ))}
+            )}
+            {upcomingLives.map(l => {
+              const d = new Date(l.scheduled_at)
+              const isToday = d.toDateString() === now.toDateString()
+              const isTomorrow = d.toDateString() === new Date(now.getTime() + 86400000).toDateString()
+              return (
+                <div key={l.id} className="flex items-center gap-4 px-6 py-4">
+                  <div className={`w-12 h-12 rounded-xl flex flex-col items-center justify-center flex-shrink-0 ${
+                    isToday ? 'bg-[#C6684F] text-white' : 'bg-[#FAF6F1] text-[#6B6359]'
+                  }`}>
+                    <span className="text-xs font-bold leading-none">
+                      {d.toLocaleDateString('fr-FR', { day: 'numeric' })}
+                    </span>
+                    <span className="text-[9px] uppercase leading-none mt-0.5 opacity-70">
+                      {d.toLocaleDateString('fr-FR', { month: 'short' })}
+                    </span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-medium text-[#2C2C2C] truncate">{l.title}</p>
+                      {isToday && <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-[#C6684F]/10 text-[#C6684F] font-bold uppercase">Aujourd&apos;hui</span>}
+                      {isTomorrow && <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 font-bold uppercase">Demain</span>}
+                    </div>
+                    <p className="text-[11px] text-[#A09488] mt-0.5">
+                      {d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                      {' · '}{l.duration_minutes} min
+                      {l.registered_count > 0 && (
+                        <span className="ml-1.5 text-[#5B8A6B] font-medium">{l.registered_count} inscrite{l.registered_count > 1 ? 's' : ''}</span>
+                      )}
+                    </p>
+                  </div>
+                </div>
+              )
+            })}
           </div>
         </div>
 
         {/* Replays */}
-        <div className="bg-white rounded-2xl border border-[#DCCFBF] overflow-hidden">
-          <div className="flex items-center justify-between px-5 py-4 border-b border-[#F5F0EB]">
-            <h3 className="font-semibold text-[#2C2C2C] flex items-center gap-2">
-              <Play size={16} className="text-[#7a8a9e]" /> Replays des sessions
-            </h3>
-            <Link href="/admin/lives" className="text-xs text-[#C6684F] hover:underline flex items-center gap-1">
+        <div className="bg-white rounded-2xl border border-[#E8E0D8] shadow-sm overflow-hidden">
+          <div className="flex items-center justify-between px-6 py-5 border-b border-[#F5F0EB]">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#6B7FA0] to-[#8B9FBB] flex items-center justify-center">
+                <Play size={16} className="text-white" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-[#2C2C2C]">Replays</h3>
+                <p className="text-[11px] text-[#A09488]">{replaysAvailable} disponibles sur {replaysTotal}</p>
+              </div>
+            </div>
+            <Link href="/admin/lives" className="flex items-center gap-1.5 text-xs font-medium text-[#C6684F] hover:text-[#b05a42] transition px-3 py-1.5 rounded-lg hover:bg-[#C6684F]/5">
               Gérer <ChevronRight size={12} />
             </Link>
           </div>
           <div className="divide-y divide-[#F5F0EB]">
             {recentLives.length === 0 && (
-              <div className="px-5 py-8 text-center text-sm text-[#A09488]">Aucune session passée</div>
+              <div className="px-6 py-12 text-center">
+                <Play size={32} className="text-[#DCCFBF] mx-auto mb-3" />
+                <p className="text-sm text-[#A09488]">Aucune session passée</p>
+              </div>
             )}
             {recentLives.map(l => (
-              <div key={l.id} className="flex items-center gap-3 px-5 py-3">
+              <div key={l.id} className="flex items-center gap-4 px-6 py-3.5">
                 <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
-                  l.replay_url ? 'bg-[#7a9e7e]/10' : 'bg-[#C6684F]/10'
+                  l.replay_url
+                    ? 'bg-gradient-to-br from-[#5B8A6B]/10 to-[#5B8A6B]/5'
+                    : 'bg-[#FAF6F1]'
                 }`}>
                   {l.replay_url ? (
-                    <Play size={14} className="text-[#7a9e7e]" />
+                    <Play size={14} className="text-[#5B8A6B]" />
                   ) : (
-                    <AlertCircle size={14} className="text-[#C6684F]" />
+                    <AlertCircle size={14} className="text-[#A09488]" />
                   )}
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-[#2C2C2C] truncate">{l.title}</p>
                   <p className="text-[11px] text-[#A09488]">
-                    {formatDate(l.scheduled_at)} · {l.duration_minutes}min
+                    {formatDate(l.scheduled_at)} · {l.duration_minutes} min
                   </p>
                 </div>
                 {l.replay_url ? (
-                  <span className="text-[10px] px-2 py-1 rounded-full bg-[#7a9e7e]/10 text-[#7a9e7e] font-medium flex-shrink-0">
-                    Replay dispo
+                  <span className="text-[10px] px-2.5 py-1 rounded-full bg-[#5B8A6B]/10 text-[#5B8A6B] font-semibold flex-shrink-0">
+                    Disponible
                   </span>
                 ) : (
-                  <span className="text-[10px] px-2 py-1 rounded-full bg-[#C6684F]/10 text-[#C6684F] font-medium flex-shrink-0">
-                    Pas de replay
+                  <span className="text-[10px] px-2.5 py-1 rounded-full bg-[#F2E8DF] text-[#A09488] font-medium flex-shrink-0">
+                    Manquant
                   </span>
                 )}
               </div>
@@ -318,27 +409,49 @@ export default function AdminPage() {
       </div>
 
       {/* ── Répartition des niveaux ── */}
-      <div className="bg-white rounded-2xl border border-[#DCCFBF] p-5">
-        <h3 className="font-semibold text-[#2C2C2C] mb-4 flex items-center gap-2">
-          <TrendingUp size={16} className="text-[#C6684F]" /> Répartition des niveaux
-        </h3>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          {(['debutante', 'initiee', 'intermediaire', 'avancee'] as const).map(level => {
-            const count = clients.filter(c => c.practice_level === level).length
-            const emojis: Record<string, string> = { debutante: '🌱', initiee: '🌿', intermediaire: '💎', avancee: '👑' }
-            const pct = stats.members > 0 ? Math.round((count / stats.members) * 100) : 0
-            return (
-              <div key={level} className="bg-[#FAF6F1] rounded-xl p-4 text-center">
-                <span className="text-2xl">{emojis[level]}</span>
-                <div className="text-2xl font-bold text-[#2C2C2C] mt-1">{count}</div>
-                <div className="text-xs font-medium text-[#6B6359]">{LEVEL_LABELS[level]}</div>
-                <div className="w-full bg-[#DCCFBF]/30 rounded-full h-1.5 mt-2">
-                  <div className="bg-[#C6684F] h-1.5 rounded-full transition-all" style={{ width: `${pct}%` }} />
+      <div className="bg-white rounded-2xl border border-[#E8E0D8] shadow-sm overflow-hidden">
+        <div className="px-6 py-5 border-b border-[#F5F0EB]">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#C6684F] to-[#E8926F] flex items-center justify-center">
+              <Star size={16} className="text-white" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-[#2C2C2C]">Répartition des niveaux</h3>
+              <p className="text-[11px] text-[#A09488]">{stats.members} clientes au total</p>
+            </div>
+          </div>
+        </div>
+        <div className="p-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {(['debutante', 'initiee', 'intermediaire', 'avancee'] as const).map(level => {
+              const count = clients.filter(c => c.practice_level === level).length
+              const emojis: Record<string, string> = { debutante: '🌱', initiee: '🌿', intermediaire: '💎', avancee: '👑' }
+              const gradients: Record<string, string> = {
+                debutante: 'from-emerald-50 to-green-50 border-emerald-100',
+                initiee: 'from-teal-50 to-cyan-50 border-teal-100',
+                intermediaire: 'from-violet-50 to-purple-50 border-violet-100',
+                avancee: 'from-amber-50 to-yellow-50 border-amber-100',
+              }
+              const barColors: Record<string, string> = {
+                debutante: 'bg-emerald-400',
+                initiee: 'bg-teal-400',
+                intermediaire: 'bg-violet-400',
+                avancee: 'bg-amber-400',
+              }
+              const pct = stats.members > 0 ? Math.round((count / stats.members) * 100) : 0
+              return (
+                <div key={level} className={`rounded-2xl bg-gradient-to-br ${gradients[level]} border p-5 text-center`}>
+                  <span className="text-3xl">{emojis[level]}</span>
+                  <div className="text-3xl font-bold text-[#2C2C2C] mt-2">{count}</div>
+                  <div className="text-xs font-semibold text-[#6B6359] mt-0.5">{LEVEL_LABELS[level]}</div>
+                  <div className="w-full bg-white/60 rounded-full h-2 mt-3 overflow-hidden">
+                    <div className={`${barColors[level]} h-2 rounded-full transition-all duration-700`} style={{ width: `${pct}%` }} />
+                  </div>
+                  <div className="text-[11px] text-[#A09488] font-medium mt-1.5">{pct}%</div>
                 </div>
-                <div className="text-[10px] text-[#A09488] mt-1">{pct}%</div>
-              </div>
-            )
-          })}
+              )
+            })}
+          </div>
         </div>
       </div>
     </div>
