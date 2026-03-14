@@ -193,8 +193,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       <div className="flex">
         {/* ── Sidebar — frosted glass ── */}
         <nav
-          className="sticky top-[49px] h-[calc(100vh-49px)] backdrop-blur-xl bg-white/60 border-r border-black/[0.06] flex flex-col transition-[width] duration-300 ease-out relative flex-shrink-0"
+          className={`sticky top-[49px] h-[calc(100vh-49px)] backdrop-blur-xl bg-white/60 border-r border-black/[0.06] flex flex-col transition-[width] duration-300 ease-out relative flex-shrink-0 ${
+            collapsed ? 'cursor-pointer' : ''
+          }`}
           style={{ width: effectiveWidth }}
+          onClick={collapsed ? () => { setCollapsed(false); setSidebarWidth(DEFAULT_WIDTH) } : undefined}
         >
           <div className="flex-1 px-2.5 py-3 space-y-0.5 overflow-y-auto overflow-x-hidden scrollbar-thin">
 
@@ -313,8 +316,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             </Link>
           </div>
 
-          {/* Resize handle */}
-          {!collapsed && (
+          {/* Resize handle / expand click zone */}
+          {collapsed ? (
+            <button
+              onClick={() => { setCollapsed(false); setSidebarWidth(DEFAULT_WIDTH) }}
+              className="absolute top-0 right-0 w-[6px] h-full cursor-pointer hover:bg-[#C6684F]/20 transition-colors duration-150"
+              title="Ouvrir le menu"
+            />
+          ) : (
             <div
               onMouseDown={onMouseDown}
               className="absolute top-0 right-0 w-[3px] h-full cursor-col-resize hover:bg-[#C6684F]/20 transition-colors duration-150 group"
