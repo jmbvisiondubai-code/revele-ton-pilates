@@ -5,6 +5,7 @@ import { motion } from 'framer-motion'
 import { Clock, Monitor, Video, ExternalLink, Radio, Film, ChevronRight, Play, UserCheck, UserMinus, CalendarClock } from 'lucide-react'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/client'
 import { useAuthStore } from '@/stores/auth-store'
+import { useDataCache, isCacheValid } from '@/stores/data-cache'
 import { Card, Button } from '@/components/ui'
 import { AddToCalendar } from '@/components/add-to-calendar'
 import type { LiveSession, LiveSessionType, VodCategory, PrivateAppointment } from '@/types/database'
@@ -83,6 +84,7 @@ export default function CoursPage() {
   const [regError, setRegError] = useState<string | null>(null)
   const [privateAppts, setPrivateAppts] = useState<PrivateAppointment[]>([])
   const { profile } = useAuthStore()
+  const cache = useDataCache()
   const supabase = createClient()
 
   useEffect(() => {
@@ -95,61 +97,63 @@ export default function CoursPage() {
         return
       }
 
-      const { data: liveData } = await supabase
-        .from('live_sessions')
-        .select('*')
-        .eq('is_cancelled', false)
-        .gte('scheduled_at', new Date().toISOString())
-        .order('scheduled_at', { ascending: true })
-        .limit(1)
-        .single()
-      if (liveData) {
-        setNextLive(liveData as LiveSession)
-        // Check if user is registered
-        const { data: { user } } = await supabase.auth.getUser()
+      // Use cache if valid
+      if (isCacheValid(cache.coursLoadedAt) && cache.coursNextLive) {
+        setNextLive(cache.coursNextLive)
+        setVodCategories(cache.coursVodCategories as VodCategory[])
+        setVimeoUrl(cache.coursVimeoUrl)
+        setVimeoCode(cache.coursVimeoCode)
+        setZoomUrl(cache.coursZoomUrl)
+        setPrivateAppts(cache.coursPrivateAppts)
+        return
+      }
+
+      const { data: { user } } = await supabase.auth.getUser()
+      const now = new Date().toISOString()
+
+      // Fetch all data in parallel
+      const [liveRes, settingsRes, catsRes, apptsRes] = await Promise.all([
+        supabase.from('live_sessions').select('*').eq('is_cancelled', false).gte('scheduled_at', now).order('scheduled_at', { ascending: true }).limit(1).single(),
+        supabase.from('app_settings').select('key, value').in('key', ['vimeo_replay_url', 'vimeo_replay_code', 'collective_zoom_url']),
+        supabase.from('vod_categories').select('*').eq('is_active', true).order('order_index'),
+        user ? supabase.from('private_appointments').select('*').eq('client_id', user.id).in('status', ['pending', 'confirmed']).gte('scheduled_at', now).order('scheduled_at', { ascending: true }) : Promise.resolve({ data: null }),
+      ])
+
+      let liveData: LiveSession | null = null
+      if (liveRes.data) {
+        liveData = liveRes.data as LiveSession
+        setNextLive(liveData)
+        // Check registration in parallel
         if (user) {
-          const { data: reg } = await supabase
-            .from('live_registrations')
-            .select('id')
-            .eq('user_id', user.id)
-            .eq('live_session_id', liveData.id)
-            .maybeSingle()
+          const { data: reg } = await supabase.from('live_registrations').select('id').eq('user_id', user.id).eq('live_session_id', liveData.id).maybeSingle()
           setIsRegistered(!!reg)
         }
       }
 
-      const { data: settings } = await supabase
-        .from('app_settings')
-        .select('key, value')
-        .in('key', ['vimeo_replay_url', 'vimeo_replay_code', 'collective_zoom_url'])
-      if (settings) {
-        const vimeo = settings.find((s: { key: string; value: string | null }) => s.key === 'vimeo_replay_url')
-        const code = settings.find((s: { key: string; value: string | null }) => s.key === 'vimeo_replay_code')
-        const zoom = settings.find((s: { key: string; value: string | null }) => s.key === 'collective_zoom_url')
-        if (vimeo?.value) setVimeoUrl(vimeo.value)
-        if (code?.value) setVimeoCode(code.value)
-        if (zoom?.value) setZoomUrl(zoom.value)
+      let vUrl: string | null = null, vCode: string | null = null, zUrl: string | null = null
+      if (settingsRes.data) {
+        const find = (k: string) => settingsRes.data!.find((s: { key: string; value: string | null }) => s.key === k)?.value ?? null
+        vUrl = find('vimeo_replay_url'); vCode = find('vimeo_replay_code'); zUrl = find('collective_zoom_url')
+        if (vUrl) setVimeoUrl(vUrl)
+        if (vCode) setVimeoCode(vCode)
+        if (zUrl) setZoomUrl(zUrl)
       }
 
-      const { data: cats } = await supabase
-        .from('vod_categories')
-        .select('*')
-        .eq('is_active', true)
-        .order('order_index')
-      if (cats && cats.length > 0) setVodCategories(cats as VodCategory[])
+      const cats = (catsRes.data ?? []) as VodCategory[]
+      if (cats.length > 0) setVodCategories(cats)
 
-      // Load private appointments
-      const { data: { user: currentUser } } = await supabase.auth.getUser()
-      if (currentUser) {
-        const { data: appts } = await supabase
-          .from('private_appointments')
-          .select('*')
-          .eq('client_id', currentUser.id)
-          .in('status', ['pending', 'confirmed'])
-          .gte('scheduled_at', new Date().toISOString())
-          .order('scheduled_at', { ascending: true })
-        if (appts) setPrivateAppts(appts as PrivateAppointment[])
-      }
+      const appts = (apptsRes.data ?? []) as PrivateAppointment[]
+      setPrivateAppts(appts)
+
+      // Save to cache
+      cache.setCoursData({
+        coursNextLive: liveData,
+        coursVodCategories: cats,
+        coursVimeoUrl: vUrl,
+        coursVimeoCode: vCode,
+        coursZoomUrl: zUrl,
+        coursPrivateAppts: appts,
+      })
     }
     loadData()
   // eslint-disable-next-line react-hooks/exhaustive-deps

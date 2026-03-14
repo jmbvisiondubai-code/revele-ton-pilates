@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { Suspense, useState, useEffect, useRef, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
@@ -50,7 +50,15 @@ function ProfileAvatar({ p, size = 44 }: { p: ConvProfile; size?: number }) {
 }
 
 // ── Main page ────────────────────────────────────────────────────────────────
-export default function MessagesPage() {
+export default function MessagesPageWrapper() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center min-h-[60vh]"><div className="animate-pulse-soft text-text-secondary">Chargement...</div></div>}>
+      <MessagesPage />
+    </Suspense>
+  )
+}
+
+function MessagesPage() {
   const { profile, setProfile } = useAuthStore()
   const myId    = profile?.id
   const isAdmin = profile?.is_admin ?? false

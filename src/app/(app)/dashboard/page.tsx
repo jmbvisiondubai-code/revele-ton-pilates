@@ -22,6 +22,7 @@ import {
 import { useRouter } from 'next/navigation'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/client'
 import { useAuthStore } from '@/stores/auth-store'
+import { useDataCache, isCacheValid } from '@/stores/data-cache'
 import { Card, ProgressBar, StreakBadge, BadgePill } from '@/components/ui'
 import { AddToCalendar } from '@/components/add-to-calendar'
 import { getGreeting, formatDuration } from '@/lib/utils'
@@ -73,15 +74,19 @@ const fadeInUp = {
 export default function DashboardPage() {
   const router = useRouter()
   const { profile, setProfile } = useAuthStore()
-  const [inspiration, setInspiration] = useState<DailyInspiration | null>(null)
-  const [nextLive, setNextLive] = useState<LiveSession | null>(null)
-  const [featured, setFeatured] = useState<FeaturedCard | null>(null)
-  const [replayUrl, setReplayUrl] = useState<string | null>(null)
-  const [replayCode, setReplayCode] = useState<string | null>(null)
-  const [replayImage, setReplayImage] = useState<string | null>(null)
+  const cache = useDataCache()
   const [codeCopied, setCodeCopied] = useState(false)
-  const [privateAppt, setPrivateAppt] = useState<PrivateAppointment | null>(null)
-  const [unreadMsg, setUnreadMsg] = useState<{ count: number; lastContent: string | null; senderName: string | null }>({ count: 0, lastContent: null, senderName: null })
+
+  // Use cached data or local state
+  const inspiration = cache.inspiration
+  const nextLive = cache.nextLive
+  const featured = cache.featured
+  const replayUrl = cache.replayUrl
+  const replayCode = cache.replayCode
+  const replayImage = cache.replayImage
+  const privateAppt = cache.privateAppt
+  const unreadMsg = cache.unreadMsg
+
   function openExternal(url: string) {
     const a = document.createElement('a')
     a.href = url; a.target = '_blank'; a.rel = 'noopener noreferrer'
@@ -89,16 +94,21 @@ export default function DashboardPage() {
   }
 
   useEffect(() => {
+    // Skip if cache is still valid
+    if (isCacheValid(cache.dashboardLoadedAt) && profile) return
+
     const supabase = createClient()
 
     async function loadData() {
       if (!isSupabaseConfigured()) {
         setProfile(DEMO_PROFILE)
-        setFeatured({
-          title: 'Programme Hebdo',
-          description: 'Un nouveau programme chaque semaine pour progresser à ton rythme.',
-          url: 'https://vod.marjoriejamin.com/programs/programmehebdo?category_id=233117',
-          image: null,
+        cache.setDashboardData({
+          featured: {
+            title: 'Programme Hebdo',
+            description: 'Un nouveau programme chaque semaine pour progresser à ton rythme.',
+            url: 'https://vod.marjoriejamin.com/programs/programmehebdo?category_id=233117',
+            image: null,
+          },
         })
         return
       }
@@ -106,93 +116,71 @@ export default function DashboardPage() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { router.replace('/login'); return }
 
-      const { data: profileData } = await supabase
-        .from('profiles').select('*').eq('id', user.id).single()
+      // Fetch profile + all data in parallel
+      const today = new Date().toISOString().split('T')[0]
+      const now = new Date().toISOString()
 
-      if (profileData) {
-        setProfile(profileData as Profile)
-      } else {
-        router.replace('/onboarding')
-        return
+      const [profileRes, inspirationRes, liveRes, apptRes, dmCountRes, settingsRes] = await Promise.all([
+        profile ? Promise.resolve({ data: null }) : supabase.from('profiles').select('*').eq('id', user.id).single(),
+        supabase.from('daily_inspirations').select('*').eq('display_date', today).single(),
+        supabase.from('live_sessions').select('*').eq('is_cancelled', false).gte('scheduled_at', now).order('scheduled_at', { ascending: true }).limit(1).single(),
+        supabase.from('private_appointments').select('*').eq('client_id', user.id).in('status', ['pending', 'confirmed']).gte('scheduled_at', now).order('scheduled_at', { ascending: true }).limit(1).maybeSingle(),
+        supabase.from('direct_messages').select('id', { count: 'exact', head: true }).eq('receiver_id', user.id).is('read_at', null),
+        supabase.from('app_settings').select('key, value').in('key', ['featured_title', 'featured_description', 'featured_url', 'featured_image', 'vimeo_replay_url', 'vimeo_replay_code', 'vimeo_replay_image']),
+      ])
+
+      if (!profile) {
+        if (profileRes.data) {
+          setProfile(profileRes.data as Profile)
+        } else {
+          router.replace('/onboarding')
+          return
+        }
       }
 
-      const today = new Date().toISOString().split('T')[0]
-      const { data: inspirationData } = await supabase
-        .from('daily_inspirations').select('*').eq('display_date', today).single()
-      if (inspirationData) setInspiration(inspirationData as DailyInspiration)
+      const cacheUpdate: Record<string, unknown> = {}
 
-      const { data: liveData } = await supabase
-        .from('live_sessions').select('*')
-        .eq('is_cancelled', false)
-        .gte('scheduled_at', new Date().toISOString())
-        .order('scheduled_at', { ascending: true })
-        .limit(1).single()
-      if (liveData) setNextLive(liveData as LiveSession)
+      if (inspirationRes.data) cacheUpdate.inspiration = inspirationRes.data
+      if (liveRes.data) cacheUpdate.nextLive = liveRes.data
+      if (apptRes.data) cacheUpdate.privateAppt = apptRes.data
 
-      const { data: apptData } = await supabase
-        .from('private_appointments')
-        .select('*')
-        .eq('client_id', user.id)
-        .in('status', ['pending', 'confirmed'])
-        .gte('scheduled_at', new Date().toISOString())
-        .order('scheduled_at', { ascending: true })
-        .limit(1)
-        .maybeSingle()
-      if (apptData) setPrivateAppt(apptData as PrivateAppointment)
-
-      // Unread messages
-      const { count: dmCount } = await supabase
-        .from('direct_messages')
-        .select('id', { count: 'exact', head: true })
-        .eq('receiver_id', user.id)
-        .is('read_at', null)
-      if (dmCount && dmCount > 0) {
-        const { data: lastMsg } = await supabase
-          .from('direct_messages')
-          .select('content, sender_id')
-          .eq('receiver_id', user.id)
-          .is('read_at', null)
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .single()
+      // Fetch unread message details only if there are unread messages
+      const dmCount = dmCountRes.count ?? 0
+      if (dmCount > 0) {
+        const [lastMsgRes] = await Promise.all([
+          supabase.from('direct_messages').select('content, sender_id').eq('receiver_id', user.id).is('read_at', null).order('created_at', { ascending: false }).limit(1).single(),
+        ])
         let senderName: string | null = null
-        if (lastMsg?.sender_id) {
-          const { data: senderProfile } = await supabase
-            .from('profiles')
-            .select('first_name')
-            .eq('id', lastMsg.sender_id)
-            .single()
+        if (lastMsgRes.data?.sender_id) {
+          const { data: senderProfile } = await supabase.from('profiles').select('first_name').eq('id', lastMsgRes.data.sender_id).single()
           senderName = senderProfile?.first_name ?? null
         }
-        setUnreadMsg({ count: dmCount, lastContent: lastMsg?.content ?? null, senderName })
+        cacheUpdate.unreadMsg = { count: dmCount, lastContent: lastMsgRes.data?.content ?? null, senderName }
       }
 
-      const { data: settings } = await supabase
-        .from('app_settings')
-        .select('key, value')
-        .in('key', ['featured_title', 'featured_description', 'featured_url', 'featured_image', 'vimeo_replay_url', 'vimeo_replay_code', 'vimeo_replay_image'])
+      // Process settings
+      const settings = settingsRes.data
       if (settings && settings.length > 0) {
         const get = (k: string) => settings.find((s: { key: string; value: string | null }) => s.key === k)?.value ?? null
         const url = get('featured_url')
         if (url) {
-          setFeatured({
+          cacheUpdate.featured = {
             title: get('featured_title') || 'Programme Hebdo',
             description: get('featured_description') || '',
             url,
             image: get('featured_image'),
-          })
+          }
         }
-        const replay = get('vimeo_replay_url')
-        const code = get('vimeo_replay_code')
-        const rImg = get('vimeo_replay_image')
-        if (replay) setReplayUrl(replay)
-        if (code) setReplayCode(code)
-        if (rImg) setReplayImage(rImg)
+        if (get('vimeo_replay_url')) cacheUpdate.replayUrl = get('vimeo_replay_url')
+        if (get('vimeo_replay_code')) cacheUpdate.replayCode = get('vimeo_replay_code')
+        if (get('vimeo_replay_image')) cacheUpdate.replayImage = get('vimeo_replay_image')
       }
+
+      cache.setDashboardData(cacheUpdate)
     }
 
     loadData()
-  }, [setProfile, router])
+  }, [setProfile, router, profile, cache])
 
   if (!profile) {
     return (
