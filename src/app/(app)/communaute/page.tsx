@@ -1655,6 +1655,10 @@ export default function CommunautePage() {
                     if (e.key === 'Escape' && mentionSuggestions.length > 0) { setMentionQuery(null); setMentionSuggestions([]); return }
                     if (e.key === 'Enter' && !e.shiftKey && !mentionSuggestions.length && isDesktop) { e.preventDefault(); handlePost() }
                   }}
+                  autoComplete="on"
+                  autoCorrect="on"
+                  autoCapitalize="sentences"
+                  spellCheck
                   className="flex-1 resize-none bg-transparent text-sm text-text placeholder:text-text-muted focus:outline-none leading-5 max-h-[200px] overflow-y-auto"
                 />
               </div>

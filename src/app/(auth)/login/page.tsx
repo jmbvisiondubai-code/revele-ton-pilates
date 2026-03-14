@@ -93,10 +93,14 @@ export default function LoginPage() {
       <form onSubmit={handleLogin} className="space-y-4">
         <Input
           label="Email ou nom d'utilisateur"
-          type="text"
+          type="email"
+          inputMode="email"
           placeholder="ton@email.com ou @pseudo"
           value={identifier}
           onChange={(e) => setIdentifier(e.target.value)}
+          autoComplete="email"
+          autoCapitalize="off"
+          autoCorrect="off"
           required
         />
 
@@ -106,6 +110,7 @@ export default function LoginPage() {
           placeholder="••••••••"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
+          autoComplete="current-password"
           required
         />
 

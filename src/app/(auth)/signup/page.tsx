@@ -330,6 +330,8 @@ function SignupPage() {
             placeholder="Marie"
             value={firstName}
             onChange={(e) => setFirstName(e.target.value)}
+            autoComplete="given-name"
+            autoCapitalize="words"
             required
           />
           <Input
@@ -338,6 +340,8 @@ function SignupPage() {
             placeholder="Dupont"
             value={lastName}
             onChange={(e) => setLastName(e.target.value)}
+            autoComplete="family-name"
+            autoCapitalize="words"
             required
           />
         </div>
@@ -349,6 +353,9 @@ function SignupPage() {
             placeholder="marie_pilates"
             value={username}
             onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ''))}
+            autoComplete="username"
+            autoCapitalize="off"
+            autoCorrect="off"
             required
           />
           <p className="text-xs text-text-muted mt-1 ml-1">
@@ -359,9 +366,13 @@ function SignupPage() {
         <Input
           label="Email"
           type="email"
+          inputMode="email"
           placeholder="ton@email.com"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
+          autoComplete="email"
+          autoCapitalize="off"
+          autoCorrect="off"
           required
         />
         <Input
@@ -370,6 +381,7 @@ function SignupPage() {
           placeholder="Au moins 6 caractères"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
+          autoComplete="new-password"
           required
         />
         <Input
@@ -378,6 +390,7 @@ function SignupPage() {
           placeholder="Confirme ton mot de passe"
           value={confirmPassword}
           onChange={(e) => setConfirmPassword(e.target.value)}
+          autoComplete="new-password"
           required
         />
 

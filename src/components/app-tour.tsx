@@ -136,28 +136,56 @@ export function AppTour() {
   }, [currentStep, isActive]) // eslint-disable-line react-hooks/exhaustive-deps
 
   function updatePositions(rect: DOMRect, position: 'top' | 'bottom') {
-    setSpotlightRect(rect)
+    // Clamp spotlight to visible viewport (avoid off-screen elements)
+    const safeTop = Math.max(0, rect.top)
+    const safeBottom = Math.min(window.innerHeight, rect.bottom)
+    const safeLeft = Math.max(0, rect.left)
+    const safeRight = Math.min(window.innerWidth, rect.right)
+    const safeRect = {
+      top: safeTop,
+      bottom: safeBottom,
+      left: safeLeft,
+      right: safeRight,
+      width: safeRight - safeLeft,
+      height: safeBottom - safeTop,
+    }
+    setSpotlightRect(safeRect as DOMRect)
 
-    const padding = 12
-    const tooltipWidth = Math.min(300, window.innerWidth - 32)
+    const padding = 14
+    const tooltipHeight = 180 // estimated tooltip height
+    const tooltipWidth = Math.min(280, window.innerWidth - 40)
     const style: React.CSSProperties = { width: tooltipWidth }
+    // Center horizontally relative to element, clamped to screen edges
+    style.left = Math.max(20, Math.min(
+      safeRect.left + safeRect.width / 2 - tooltipWidth / 2,
+      window.innerWidth - tooltipWidth - 20
+    ))
 
     if (position === 'top') {
-      style.bottom = window.innerHeight - rect.top + padding
-      style.left = Math.max(16, Math.min(rect.left + rect.width / 2 - tooltipWidth / 2, window.innerWidth - tooltipWidth - 16))
-      // If tooltip would go off-screen top, switch to bottom
-      if ((window.innerHeight - rect.top + padding + 200) > window.innerHeight) {
-        delete style.bottom
-        style.top = rect.bottom + padding
+      // Place tooltip above the element
+      const spaceAbove = safeRect.top - padding
+      if (spaceAbove >= tooltipHeight) {
+        style.bottom = window.innerHeight - safeRect.top + padding
+      } else {
+        // Not enough space above, place below
+        style.top = safeRect.bottom + padding
       }
     } else {
-      style.top = rect.bottom + padding
-      style.left = Math.max(16, Math.min(rect.left + rect.width / 2 - tooltipWidth / 2, window.innerWidth - tooltipWidth - 16))
-      // If tooltip would go off-screen bottom, switch to top
-      if (rect.bottom + padding + 200 > window.innerHeight) {
-        delete style.top
-        style.bottom = window.innerHeight - rect.top + padding
+      // Place tooltip below the element
+      const spaceBelow = window.innerHeight - safeRect.bottom - padding
+      if (spaceBelow >= tooltipHeight) {
+        style.top = safeRect.bottom + padding
+      } else {
+        // Not enough space below, place above
+        style.bottom = window.innerHeight - safeRect.top + padding
       }
+    }
+
+    // Final safety: ensure tooltip doesn't go beyond viewport
+    if (style.top !== undefined && (style.top as number) + tooltipHeight > window.innerHeight - 80) {
+      // Too close to bottom nav — move up
+      delete style.top
+      style.bottom = window.innerHeight - safeRect.top + padding
     }
 
     setTooltipStyle(style)
