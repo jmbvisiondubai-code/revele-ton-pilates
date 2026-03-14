@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import type { LiveSession } from '@/types/database'
 import type { LiveSessionType } from '@/types/database'
-import { Plus, Pencil, Trash2, X, Settings, Save } from 'lucide-react'
+import { Plus, Pencil, Trash2, X, Settings, Save, Users, UserPlus, UserMinus, Check, ChevronRight, Search } from 'lucide-react'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
 
@@ -28,6 +28,15 @@ export default function AdminLivesPage() {
   const [editing, setEditing] = useState<LiveSession | null>(null)
   const [form, setForm] = useState(EMPTY_FORM)
   const [saving, setSaving] = useState(false)
+
+  // Attendance panel
+  const [attendanceLive, setAttendanceLive] = useState<LiveSession | null>(null)
+  type Registration = { id: string; user_id: string; attended: boolean; first_name: string; last_name: string; username: string; avatar_url: string | null }
+  const [registrations, setRegistrations] = useState<Registration[]>([])
+  const [allClients, setAllClients] = useState<{ id: string; first_name: string; last_name: string; username: string; avatar_url: string | null }[]>([])
+  const [loadingAttendance, setLoadingAttendance] = useState(false)
+  const [addSearch, setAddSearch] = useState('')
+  const [showAddClient, setShowAddClient] = useState(false)
 
   // App settings
   const [vimeoUrl, setVimeoUrl] = useState('')
@@ -142,6 +151,81 @@ export default function AdminLivesPage() {
     loadLives()
   }
 
+  async function openAttendance(live: LiveSession) {
+    setAttendanceLive(live)
+    setLoadingAttendance(true)
+    setShowAddClient(false)
+    setAddSearch('')
+
+    // Fetch registrations with profile info
+    const { data: regs } = await supabase
+      .from('live_registrations')
+      .select('id, user_id, attended, profiles(first_name, last_name, username, avatar_url)')
+      .eq('live_session_id', live.id)
+
+    const mapped = (regs ?? []).map((r: any) => ({
+      id: r.id,
+      user_id: r.user_id,
+      attended: r.attended,
+      first_name: r.profiles?.first_name ?? '',
+      last_name: r.profiles?.last_name ?? '',
+      username: r.profiles?.username ?? '',
+      avatar_url: r.profiles?.avatar_url ?? null,
+    }))
+    setRegistrations(mapped)
+
+    // Fetch all non-admin clients for the "add" feature
+    const { data: clients } = await supabase
+      .from('profiles')
+      .select('id, first_name, last_name, username, avatar_url')
+      .eq('is_admin', false)
+      .is('deleted_at', null)
+      .order('first_name')
+    setAllClients(clients ?? [])
+    setLoadingAttendance(false)
+  }
+
+  async function toggleAttendance(reg: Registration) {
+    const newValue = !reg.attended
+    await supabase.from('live_registrations').update({ attended: newValue }).eq('id', reg.id)
+    setRegistrations(prev => prev.map(r => r.id === reg.id ? { ...r, attended: newValue } : r))
+  }
+
+  async function addParticipant(userId: string) {
+    if (!attendanceLive) return
+    // Insert registration with attended = true
+    const { data, error } = await supabase
+      .from('live_registrations')
+      .insert({ user_id: userId, live_session_id: attendanceLive.id, attended: true })
+      .select('id, user_id, attended')
+      .single()
+    if (error || !data) return
+
+    const client = allClients.find(c => c.id === userId)
+    setRegistrations(prev => [...prev, {
+      id: data.id,
+      user_id: data.user_id,
+      attended: true,
+      first_name: client?.first_name ?? '',
+      last_name: client?.last_name ?? '',
+      username: client?.username ?? '',
+      avatar_url: client?.avatar_url ?? null,
+    }])
+    setShowAddClient(false)
+    setAddSearch('')
+  }
+
+  async function removeParticipant(reg: Registration) {
+    await supabase.from('live_registrations').delete().eq('id', reg.id)
+    setRegistrations(prev => prev.filter(r => r.id !== reg.id))
+  }
+
+  const attendedCount = registrations.filter(r => r.attended).length
+  const availableClients = allClients.filter(c =>
+    !registrations.some(r => r.user_id === c.id) &&
+    (!addSearch || `${c.first_name} ${c.last_name} ${c.username}`.toLowerCase().includes(addSearch.toLowerCase()))
+  )
+
   return (
     <div>
       {/* Settings section */}
@@ -204,41 +288,191 @@ export default function AdminLivesPage() {
             Aucune session live programmée.
           </div>
         )}
-        {lives.map(live => (
-          <div key={live.id} className={`bg-white rounded-xl border p-4 flex items-center gap-4 ${live.is_cancelled ? 'opacity-50 border-red-200' : 'border-[#DCCFBF]'}`}>
-            <div className="w-14 h-14 bg-[#F2E8DF] rounded-xl flex flex-col items-center justify-center text-center flex-shrink-0">
-              <div className="text-xs text-[#C6684F] uppercase">{format(new Date(live.scheduled_at), 'MMM', { locale: fr })}</div>
-              <div className="text-lg font-bold text-[#2C2C2C] leading-none">{format(new Date(live.scheduled_at), 'd')}</div>
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2">
-                <h3 className="font-medium text-[#2C2C2C]">{live.title}</h3>
-                <span className="text-[10px] bg-[#F2E8DF] text-[#C6684F] px-1.5 py-0.5 rounded font-medium">
-                  {SESSION_TYPES.find(t => t.value === live.session_type)?.emoji}{' '}
-                  {SESSION_TYPES.find(t => t.value === live.session_type)?.label ?? 'Cours collectif'}
-                </span>
+        {lives.map(live => {
+          const isPast = new Date(live.scheduled_at) < new Date()
+          return (
+            <div key={live.id} className={`bg-white rounded-xl border p-4 flex items-center gap-4 ${live.is_cancelled ? 'opacity-50 border-red-200' : 'border-[#DCCFBF]'} ${isPast ? 'cursor-pointer hover:bg-[#FAF6F1]' : ''} transition-colors`}
+              onClick={() => isPast && openAttendance(live)}>
+              <div className="w-14 h-14 bg-[#F2E8DF] rounded-xl flex flex-col items-center justify-center text-center flex-shrink-0">
+                <div className="text-xs text-[#C6684F] uppercase">{format(new Date(live.scheduled_at), 'MMM', { locale: fr })}</div>
+                <div className="text-lg font-bold text-[#2C2C2C] leading-none">{format(new Date(live.scheduled_at), 'd')}</div>
               </div>
-              <p className="text-sm text-[#C6684F]">
-                {format(new Date(live.scheduled_at), 'EEEE d MMMM à HH:mm', { locale: fr })} · {live.duration_minutes} min
-              </p>
-              <div className="flex items-center gap-3 mt-0.5">
-                {live.max_participants ? (
-                  <span className="text-xs text-[#6B6359]">{live.registered_count}/{live.max_participants} places</span>
-                ) : (
-                  <span className="text-xs text-[#A09488]">Places illimitées</span>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <h3 className="font-medium text-[#2C2C2C]">{live.title}</h3>
+                  <span className="text-[10px] bg-[#F2E8DF] text-[#C6684F] px-1.5 py-0.5 rounded font-medium">
+                    {SESSION_TYPES.find(t => t.value === live.session_type)?.emoji}{' '}
+                    {SESSION_TYPES.find(t => t.value === live.session_type)?.label ?? 'Cours collectif'}
+                  </span>
+                </div>
+                <p className="text-sm text-[#C6684F]">
+                  {format(new Date(live.scheduled_at), 'EEEE d MMMM à HH:mm', { locale: fr })} · {live.duration_minutes} min
+                </p>
+                <div className="flex items-center gap-3 mt-0.5">
+                  {live.max_participants ? (
+                    <span className="text-xs text-[#6B6359]">{live.registered_count}/{live.max_participants} places</span>
+                  ) : (
+                    <span className="text-xs text-[#A09488]">Places illimitées</span>
+                  )}
+                  {live.equipment && (
+                    <span className="text-xs text-[#6B6359]">· Matériel : {live.equipment}</span>
+                  )}
+                </div>
+              </div>
+              <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
+                {isPast && (
+                  <button onClick={() => openAttendance(live)} className="p-2 text-[#5B9A6B] hover:text-[#4a8a5a]" title="Suivi des présences">
+                    <Users size={16} />
+                  </button>
                 )}
-                {live.equipment && (
-                  <span className="text-xs text-[#6B6359]">· Matériel : {live.equipment}</span>
-                )}
+                <button onClick={() => openEdit(live)} className="p-2 text-[#C6684F] hover:text-[#2C2C2C]"><Pencil size={16} /></button>
+                <button onClick={() => deleteLive(live.id)} className="p-2 text-red-400 hover:text-red-600"><Trash2 size={16} /></button>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <button onClick={() => openEdit(live)} className="p-2 text-[#C6684F] hover:text-[#2C2C2C]"><Pencil size={16} /></button>
-              <button onClick={() => deleteLive(live.id)} className="p-2 text-red-400 hover:text-red-600"><Trash2 size={16} /></button>
-            </div>
-          </div>
-        ))}
+          )
+        })}
       </div>
+
+      {/* Attendance panel */}
+      {attendanceLive && (
+        <div className="fixed inset-0 z-50 flex items-stretch justify-end bg-black/30" onClick={() => setAttendanceLive(null)}>
+          <div className="w-full max-w-lg bg-white h-full overflow-y-auto shadow-2xl" onClick={e => e.stopPropagation()}>
+            {/* Header */}
+            <div className="sticky top-0 bg-white border-b border-[#DCCFBF] px-5 py-4 z-10">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="font-semibold text-[#2C2C2C]">{attendanceLive.title}</h2>
+                  <p className="text-xs text-[#C6684F]">
+                    {format(new Date(attendanceLive.scheduled_at), 'EEEE d MMMM à HH:mm', { locale: fr })}
+                  </p>
+                </div>
+                <button onClick={() => setAttendanceLive(null)} className="p-2 rounded-lg hover:bg-[#F2E8DF] text-[#6B6359]"><X size={18} /></button>
+              </div>
+              <div className="flex items-center gap-4 mt-3">
+                <div className="flex items-center gap-1.5 text-sm">
+                  <Users size={14} className="text-[#6B6359]" />
+                  <span className="text-[#6B6359]">{registrations.length} inscrite{registrations.length > 1 ? 's' : ''}</span>
+                </div>
+                <div className="flex items-center gap-1.5 text-sm">
+                  <Check size={14} className="text-[#5B9A6B]" />
+                  <span className="text-[#5B9A6B] font-medium">{attendedCount} présente{attendedCount > 1 ? 's' : ''}</span>
+                </div>
+              </div>
+            </div>
+
+            {loadingAttendance ? (
+              <div className="flex justify-center py-12"><div className="w-6 h-6 border-2 border-[#C6684F] border-t-transparent rounded-full animate-spin" /></div>
+            ) : (
+              <div className="p-5 space-y-4">
+                {/* Registrations list */}
+                {registrations.length === 0 ? (
+                  <p className="text-sm text-[#A09488] text-center py-6">Aucune inscription pour ce live.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {registrations.map(reg => (
+                      <div key={reg.id} className={`flex items-center gap-3 p-3 rounded-xl border transition-colors ${reg.attended ? 'bg-[#5B9A6B]/5 border-[#5B9A6B]/20' : 'bg-white border-[#DCCFBF]'}`}>
+                        {/* Avatar */}
+                        <div className="w-9 h-9 rounded-full bg-[#F2E8DF] flex items-center justify-center text-[#C6684F] font-semibold text-sm flex-shrink-0">
+                          {reg.avatar_url ? (
+                            <img src={reg.avatar_url} alt="" className="w-full h-full rounded-full object-cover" />
+                          ) : (
+                            (reg.first_name?.[0] ?? '?').toUpperCase()
+                          )}
+                        </div>
+                        {/* Name */}
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-[#2C2C2C] truncate">{reg.first_name} {reg.last_name}</p>
+                          <p className="text-xs text-[#A09488]">@{reg.username}</p>
+                        </div>
+                        {/* Actions */}
+                        <div className="flex items-center gap-1.5 flex-shrink-0">
+                          <button
+                            onClick={() => toggleAttendance(reg)}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                              reg.attended
+                                ? 'bg-[#5B9A6B] text-white hover:bg-[#4a8a5a]'
+                                : 'bg-[#F2E8DF] text-[#6B6359] hover:bg-[#DCCFBF]'
+                            }`}
+                          >
+                            {reg.attended ? 'Présente' : 'Absente'}
+                          </button>
+                          <button
+                            onClick={() => removeParticipant(reg)}
+                            className="p-1.5 rounded-lg hover:bg-red-50 text-[#A09488] hover:text-red-500 transition-colors"
+                            title="Retirer"
+                          >
+                            <UserMinus size={14} />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Add participant */}
+                <div className="border-t border-[#DCCFBF] pt-4">
+                  {!showAddClient ? (
+                    <button
+                      onClick={() => setShowAddClient(true)}
+                      className="flex items-center gap-2 text-sm font-medium text-[#C6684F] hover:text-[#A8543D] transition-colors"
+                    >
+                      <UserPlus size={16} /> Ajouter une participante
+                    </button>
+                  ) : (
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm font-medium text-[#2C2C2C]">Ajouter une participante</p>
+                        <button onClick={() => { setShowAddClient(false); setAddSearch('') }} className="text-[#A09488] hover:text-[#6B6359]">
+                          <X size={14} />
+                        </button>
+                      </div>
+                      <div className="relative">
+                        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#A09488]" />
+                        <input
+                          type="text"
+                          placeholder="Rechercher par nom ou pseudo..."
+                          value={addSearch}
+                          onChange={e => setAddSearch(e.target.value)}
+                          autoFocus
+                          className="w-full pl-9 pr-3 py-2 border border-[#DCCFBF] rounded-lg text-sm focus:outline-none focus:border-[#C6684F]"
+                        />
+                      </div>
+                      <div className="max-h-48 overflow-y-auto space-y-1">
+                        {availableClients.length === 0 ? (
+                          <p className="text-xs text-[#A09488] text-center py-3">
+                            {addSearch ? 'Aucun résultat' : 'Toutes les clientes sont déjà inscrites'}
+                          </p>
+                        ) : (
+                          availableClients.slice(0, 20).map(client => (
+                            <button
+                              key={client.id}
+                              onClick={() => addParticipant(client.id)}
+                              className="w-full flex items-center gap-3 p-2.5 rounded-lg hover:bg-[#FAF6F1] transition-colors text-left"
+                            >
+                              <div className="w-8 h-8 rounded-full bg-[#F2E8DF] flex items-center justify-center text-[#C6684F] font-semibold text-xs flex-shrink-0">
+                                {client.avatar_url ? (
+                                  <img src={client.avatar_url} alt="" className="w-full h-full rounded-full object-cover" />
+                                ) : (
+                                  (client.first_name?.[0] ?? '?').toUpperCase()
+                                )}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium text-[#2C2C2C] truncate">{client.first_name} {client.last_name}</p>
+                                <p className="text-xs text-[#A09488]">@{client.username}</p>
+                              </div>
+                              <UserPlus size={14} className="text-[#5B9A6B] flex-shrink-0" />
+                            </button>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Modal form */}
       {showForm && (
