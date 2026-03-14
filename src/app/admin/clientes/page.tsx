@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/client'
 import { Card } from '@/components/ui'
 import { Users, Clock, Trophy, Star, X, Plus, ExternalLink, ChevronRight, Upload, Link as LinkIcon, Calendar, AlertTriangle, MessageCircle, Maximize2, PanelRight, Move, Check } from 'lucide-react'
@@ -29,6 +30,7 @@ type ClientDetail = ClientSummary & {
 }
 
 export default function ClientesPage() {
+  const router = useRouter()
   const [clients, setClients] = useState<ClientSummary[]>([])
   const [selected, setSelected] = useState<ClientDetail | null>(null)
   const [categories, setCategories] = useState<VodCategory[]>([])
@@ -77,29 +79,42 @@ export default function ClientesPage() {
       setCategories((cats as VodCategory[]) ?? [])
       setLoading(false)
 
-      // Batch-check conversations
-      try {
-        const res = await fetch('/api/admin/check-conversations-batch')
-        if (res.ok) {
-          const data = await res.json()
-          setClientsWithConv(new Set(data.clientIds ?? []))
-        }
-      } catch { /* silent */ }
+      // Batch-check conversations — query direct_messages directly (same as admin messages page)
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        const { data: allDms } = await supabase
+          .from('direct_messages')
+          .select('sender_id, receiver_id')
+          .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
+        const ids = new Set<string>()
+        allDms?.forEach(m => {
+          const otherId = m.sender_id === user.id ? m.receiver_id : m.sender_id
+          ids.add(otherId)
+        })
+        setClientsWithConv(ids)
+      }
     }
     load()
   }, [])
 
   async function checkConversation(clientId: string) {
+    // Use the already-fetched set first for instant feedback
+    if (clientsWithConv.has(clientId)) {
+      setConvStatus('exists')
+      return
+    }
+    // Fallback: direct query
     try {
-      const res = await fetch('/api/admin/check-conversation', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ clientId }),
-      })
-      if (res.ok) {
-        const data = await res.json()
-        setConvStatus(data.exists ? 'exists' : 'none')
-      }
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+      const { data } = await supabase
+        .from('direct_messages')
+        .select('id')
+        .or(`and(sender_id.eq.${user.id},receiver_id.eq.${clientId}),and(sender_id.eq.${clientId},receiver_id.eq.${user.id})`)
+        .limit(1)
+        .maybeSingle()
+      setConvStatus(data ? 'exists' : 'none')
+      if (data) setClientsWithConv(prev => new Set(prev).add(clientId))
     } catch { setConvStatus('none') }
   }
 
@@ -115,6 +130,8 @@ export default function ClientesPage() {
       if (res.ok) {
         setConvStatus('created')
         setClientsWithConv(prev => new Set(prev).add(clientId))
+        // Redirect to admin messages page
+        router.push('/admin/messages')
       }
     } catch { /* silent */ }
     setCreatingConv(false)
