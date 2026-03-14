@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/client'
 import { Card } from '@/components/ui'
-import { ClipboardCheck, CheckCircle2, Circle, ChevronDown, ChevronUp, Search, LayoutGrid, List, Users, StickyNote, X } from 'lucide-react'
+import { ClipboardCheck, CheckCircle2, Circle, ChevronDown, ChevronUp, Search, LayoutGrid, List, Users, StickyNote, X, AlertTriangle } from 'lucide-react'
 import { LEVEL_LABELS } from '@/lib/utils'
 
 type Client = {
@@ -13,6 +13,7 @@ type Client = {
   avatar_url: string | null
   practice_level: string | null
   subscription_start: string | null
+  created_at: string
 }
 
 type Bilan = {
@@ -60,7 +61,7 @@ export default function BilansPage() {
   const [loading, setLoading] = useState(true)
   const [view, setView] = useState<ViewMode>('phases')
   const [search, setSearch] = useState('')
-  const [expandedPhases, setExpandedPhases] = useState<Record<string, boolean>>({ debut: true, milieu: true, fin: true })
+  const [expandedPhases, setExpandedPhases] = useState<Record<string, boolean>>({ aclasser: true, debut: true, milieu: true, fin: true })
   const [notesModal, setNotesModal] = useState<{ userId: string; phase: 'debut' | 'milieu' | 'fin'; notes: string } | null>(null)
   const [savingNotes, setSavingNotes] = useState(false)
 
@@ -73,7 +74,7 @@ export default function BilansPage() {
 
   async function loadData() {
     const [{ data: profiles }, { data: bilanData }] = await Promise.all([
-      supabase.from('profiles').select('id, first_name, last_name, avatar_url, practice_level, subscription_start')
+      supabase.from('profiles').select('id, first_name, last_name, avatar_url, practice_level, subscription_start, created_at')
         .eq('is_admin', false).is('deleted_at', null).order('first_name'),
       supabase.from('bilans').select('*'),
     ])
@@ -127,12 +128,16 @@ export default function BilansPage() {
     return bilans.find(b => b.user_id === userId && b.phase === phase)
   }
 
-  const activeClients = clients.filter(c => c.subscription_start && getClientPhase(c.subscription_start) !== null)
-  const filtered = activeClients.filter(c => {
+  const searchFilter = (c: Client) => {
     if (!search) return true
     const full = `${c.first_name} ${c.last_name}`.toLowerCase()
     return full.includes(search.toLowerCase())
-  })
+  }
+
+  const activeClients = clients.filter(c => c.subscription_start && getClientPhase(c.subscription_start) !== null)
+  const unclassifiedClients = clients.filter(c => !c.subscription_start || getClientPhase(c.subscription_start) === null)
+  const filtered = activeClients.filter(searchFilter)
+  const filteredUnclassified = unclassifiedClients.filter(searchFilter)
 
   // Stats
   const totalBilansDone = bilans.filter(b => b.completed).length
@@ -265,6 +270,53 @@ export default function BilansPage() {
         </div>
       </div>
 
+      {/* À classer banner (all views) */}
+      {filteredUnclassified.length > 0 && (
+        <Card className="overflow-hidden border-dashed border-[#D4A056]">
+          <button
+            onClick={() => setExpandedPhases(prev => ({ ...prev, aclasser: !prev.aclasser }))}
+            className="w-full flex items-center justify-between p-4 hover:bg-[#FDF6EC] transition-colors"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-[#FDF6EC]">
+                <AlertTriangle size={20} className="text-[#D4A056]" />
+              </div>
+              <div className="text-left">
+                <p className="font-medium text-[#2C2C2C]">À classer</p>
+                <p className="text-xs text-[#A09488]">{filteredUnclassified.length} cliente{filteredUnclassified.length > 1 ? 's' : ''} sans date d'abonnement</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-medium text-[#D4A056] bg-[#FDF6EC] px-2 py-1 rounded-full">{filteredUnclassified.length}</span>
+              {expandedPhases.aclasser ? <ChevronUp size={18} className="text-[#A09488]" /> : <ChevronDown size={18} className="text-[#A09488]" />}
+            </div>
+          </button>
+
+          {expandedPhases.aclasser && (
+            <div className="border-t border-[#DCCFBF] p-3 space-y-1">
+              {filteredUnclassified.map(client => (
+                <div key={client.id} className="flex items-center justify-between py-2.5 px-3 rounded-lg bg-white hover:bg-[#F9F5F0] transition-colors">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-8 h-8 rounded-full bg-[#F2E8DF] flex items-center justify-center text-xs font-medium text-[#6B6359] flex-shrink-0">
+                      {client.avatar_url ? (
+                        <img src={client.avatar_url} alt="" className="w-8 h-8 rounded-full object-cover" />
+                      ) : (
+                        getInitials(client.first_name, client.last_name)
+                      )}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-[#2C2C2C] truncate">{client.first_name} {client.last_name}</p>
+                      <p className="text-xs text-[#A09488]">{LEVEL_LABELS[client.practice_level || ''] || 'N/A'} · Inscrite le {new Date(client.created_at).toLocaleDateString('fr-FR')}</p>
+                    </div>
+                  </div>
+                  <span className="text-[10px] text-[#D4A056] bg-[#FDF6EC] px-2 py-0.5 rounded-full font-medium flex-shrink-0">Date manquante</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
+      )}
+
       {/* VIEW: Par phase */}
       {view === 'phases' && (
         <div className="space-y-4">
@@ -336,10 +388,10 @@ export default function BilansPage() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.length === 0 ? (
+                {filtered.length === 0 && filteredUnclassified.length === 0 ? (
                   <tr><td colSpan={5} className="text-center py-6 text-[#A09488]">Aucune cliente</td></tr>
-                ) : (
-                  filtered.map(client => {
+                ) : (<>
+                  {filtered.map(client => {
                     const months = client.subscription_start ? getMonthsElapsed(client.subscription_start) : 0
                     const currentPhase = getClientPhase(client.subscription_start)
                     return (
@@ -380,8 +432,33 @@ export default function BilansPage() {
                         })}
                       </tr>
                     )
-                  })
-                )}
+                  })}
+                  {filteredUnclassified.length > 0 && (
+                    <>
+                      <tr><td colSpan={5} className="px-4 py-2 text-xs font-semibold text-[#D4A056] uppercase tracking-wide bg-[#FDF6EC]">À classer — date manquante ({filteredUnclassified.length})</td></tr>
+                      {filteredUnclassified.map(client => (
+                        <tr key={client.id} className="border-b border-[#F2E8DF] hover:bg-[#FDF6EC]/50 transition-colors">
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-2.5">
+                              <div className="w-7 h-7 rounded-full bg-[#F2E8DF] flex items-center justify-center text-xs font-medium text-[#6B6359] flex-shrink-0">
+                                {client.avatar_url ? (
+                                  <img src={client.avatar_url} alt="" className="w-7 h-7 rounded-full object-cover" />
+                                ) : (
+                                  getInitials(client.first_name, client.last_name)
+                                )}
+                              </div>
+                              <span className="font-medium text-[#2C2C2C]">{client.first_name} {client.last_name}</span>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 text-center text-[#D4A056]">—</td>
+                          <td className="px-4 py-3 text-center text-[#DCCFBF]"><Circle size={20} className="mx-auto opacity-30" /></td>
+                          <td className="px-4 py-3 text-center text-[#DCCFBF]"><Circle size={20} className="mx-auto opacity-30" /></td>
+                          <td className="px-4 py-3 text-center text-[#DCCFBF]"><Circle size={20} className="mx-auto opacity-30" /></td>
+                        </tr>
+                      ))}
+                    </>
+                  )}
+                </>)}
               </tbody>
             </table>
           </div>
@@ -391,10 +468,10 @@ export default function BilansPage() {
       {/* VIEW: Par cliente */}
       {view === 'clientes' && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {filtered.length === 0 ? (
+          {filtered.length === 0 && filteredUnclassified.length === 0 ? (
             <p className="text-sm text-[#A09488] col-span-2 text-center py-6">Aucune cliente</p>
-          ) : (
-            filtered.map(client => {
+          ) : (<>
+            {filtered.map(client => {
               const months = client.subscription_start ? getMonthsElapsed(client.subscription_start) : 0
               const currentPhase = getClientPhase(client.subscription_start)
               const bilansDone = phases.filter(p => getBilan(client.id, p)?.completed).length
@@ -455,8 +532,29 @@ export default function BilansPage() {
                   </div>
                 </Card>
               )
-            })
-          )}
+            })}
+            {filteredUnclassified.map(client => (
+              <Card key={client.id} className="p-4 border-dashed border-[#D4A056]">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-10 h-10 rounded-full bg-[#F2E8DF] flex items-center justify-center text-sm font-medium text-[#6B6359]">
+                    {client.avatar_url ? (
+                      <img src={client.avatar_url} alt="" className="w-10 h-10 rounded-full object-cover" />
+                    ) : (
+                      getInitials(client.first_name, client.last_name)
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-[#2C2C2C] truncate">{client.first_name} {client.last_name}</p>
+                    <p className="text-xs text-[#A09488]">{LEVEL_LABELS[client.practice_level || ''] || 'N/A'} · Inscrite le {new Date(client.created_at).toLocaleDateString('fr-FR')}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 p-2.5 rounded-lg bg-[#FDF6EC]">
+                  <AlertTriangle size={14} className="text-[#D4A056] flex-shrink-0" />
+                  <p className="text-xs text-[#D4A056]">Date de début d'abonnement à renseigner dans la fiche cliente</p>
+                </div>
+              </Card>
+            ))}
+          </>)}
         </div>
       )}
 
