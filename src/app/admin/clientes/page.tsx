@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/client'
 import { Card } from '@/components/ui'
-import { Users, Clock, Trophy, Star, X, Plus, ExternalLink, ChevronRight, Upload, Link as LinkIcon, Calendar, AlertTriangle, MessageCircle, Maximize2, PanelRight, Move } from 'lucide-react'
+import { Users, Clock, Trophy, Star, X, Plus, ExternalLink, ChevronRight, Upload, Link as LinkIcon, Calendar, AlertTriangle, MessageCircle, Maximize2, PanelRight, Move, Check } from 'lucide-react'
 import { formatDuration, LEVEL_LABELS, formatSubscriptionRemaining } from '@/lib/utils'
 import type { Recommendation, VodCategory } from '@/types/database'
 
@@ -49,6 +49,7 @@ export default function ClientesPage() {
   const [uploadingThumb, setUploadingThumb] = useState(false)
   const [creatingConv, setCreatingConv] = useState(false)
   const [convStatus, setConvStatus] = useState<'none' | 'exists' | 'created'>('none')
+  const [clientsWithConv, setClientsWithConv] = useState<Set<string>>(new Set())
   const [viewMode, setViewMode] = useState<'side' | 'full'>('side')
   const [modalSize, setModalSize] = useState({ w: 0, h: 0 })
   const modalResizing = useRef(false)
@@ -75,6 +76,15 @@ export default function ClientesPage() {
       setClients((profiles as ClientSummary[]) ?? [])
       setCategories((cats as VodCategory[]) ?? [])
       setLoading(false)
+
+      // Batch-check conversations
+      try {
+        const res = await fetch('/api/admin/check-conversations-batch')
+        if (res.ok) {
+          const data = await res.json()
+          setClientsWithConv(new Set(data.clientIds ?? []))
+        }
+      } catch { /* silent */ }
     }
     load()
   }, [])
@@ -104,6 +114,7 @@ export default function ClientesPage() {
       })
       if (res.ok) {
         setConvStatus('created')
+        setClientsWithConv(prev => new Set(prev).add(clientId))
       }
     } catch { /* silent */ }
     setCreatingConv(false)
@@ -271,6 +282,16 @@ export default function ClientesPage() {
                   <p className="text-lg font-bold text-[#2C2C2C]">{formatDuration(client.total_practice_minutes)}</p>
                   <p className="text-[10px] text-[#6B6359]">pratique</p>
                 </div>
+                {clientsWithConv.has(client.id) ? (
+                  <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-[#5B9A6B]/10" title="Conversation active">
+                    <MessageCircle size={13} className="text-[#5B9A6B]" />
+                    <Check size={11} className="text-[#5B9A6B]" strokeWidth={3} />
+                  </div>
+                ) : (
+                  <div className="flex items-center px-2 py-1 rounded-full bg-[#F2E8DF]" title="Pas de conversation">
+                    <MessageCircle size={13} className="text-[#A09488]" />
+                  </div>
+                )}
                 <ChevronRight size={16} className="text-[#DCCFBF]" />
               </div>
             </button>
