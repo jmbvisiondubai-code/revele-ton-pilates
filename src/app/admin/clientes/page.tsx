@@ -76,15 +76,17 @@ export default function ClientesPage() {
   }, [])
 
   async function checkConversation(clientId: string) {
-    const { data: me } = await supabase.auth.getUser()
-    if (!me.user) return
-    const { data } = await supabase
-      .from('direct_messages')
-      .select('id')
-      .or(`and(sender_id.eq.${me.user.id},receiver_id.eq.${clientId}),and(sender_id.eq.${clientId},receiver_id.eq.${me.user.id})`)
-      .limit(1)
-      .maybeSingle()
-    setConvStatus(data ? 'exists' : 'none')
+    try {
+      const res = await fetch('/api/admin/check-conversation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ clientId }),
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setConvStatus(data.exists ? 'exists' : 'none')
+      }
+    } catch { setConvStatus('none') }
   }
 
   async function createConversation(clientId: string) {
@@ -97,8 +99,7 @@ export default function ClientesPage() {
         body: JSON.stringify({ userId: clientId }),
       })
       if (res.ok) {
-        const data = await res.json()
-        setConvStatus(data.skipped ? 'exists' : 'created')
+        setConvStatus('created')
       }
     } catch { /* silent */ }
     setCreatingConv(false)
