@@ -99,6 +99,7 @@ interface Completion {
   duration_watched_minutes: number | null
   session_type: SessionType
   libre_label: string | null
+  rating: number | null
   courses: { title: string; duration_minutes: number } | null
 }
 
@@ -124,8 +125,10 @@ export default function SuiviPage() {
   const [editingSession, setEditingSession] = useState<Completion | null>(null)
   const [editLabel, setEditLabel] = useState('')
   const [editDuration, setEditDuration] = useState('')
+  const [editType, setEditType] = useState<SessionType>('vod')
   const [editSaving, setEditSaving] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
+  const [showAllSessions, setShowAllSessions] = useState(false)
 
   const supabase = createClient()
   const { profile, setProfile } = useAuthStore()
@@ -149,8 +152,8 @@ export default function SuiviPage() {
       const [recsRes, completionsRes, weekCountRes, allBadgesRes, userBadgesRes] = await Promise.all([
         supabase.from('recommendations').select('*').eq('user_id', user.id).is('deleted_at', null).order('created_at', { ascending: false }),
         supabase.from('course_completions')
-          .select('id, completed_at, duration_watched_minutes, session_type, libre_label, courses(title, duration_minutes)')
-          .eq('user_id', user.id).order('completed_at', { ascending: false }).limit(10),
+          .select('id, completed_at, duration_watched_minutes, session_type, libre_label, rating, courses(title, duration_minutes)')
+          .eq('user_id', user.id).order('completed_at', { ascending: false }),
         supabase.from('course_completions').select('id', { count: 'exact', head: true })
           .eq('user_id', user.id).gte('completed_at', startOfWeek.toISOString()),
         supabase.from('badges').select('*'),
@@ -214,17 +217,32 @@ export default function SuiviPage() {
     setEditingSession(c)
     setEditLabel(c.libre_label || c.courses?.title || '')
     setEditDuration(String(c.duration_watched_minutes ?? c.courses?.duration_minutes ?? ''))
+    setEditType(c.session_type)
   }
 
   async function saveEdit() {
     if (!editingSession) return
     setEditSaving(true)
-    await supabase.from('course_completions').update({
-      libre_label: editLabel || 'Séance libre',
+    const updates: Record<string, unknown> = {
       duration_watched_minutes: parseInt(editDuration) || null,
-    }).eq('id', editingSession.id)
+      session_type: editType,
+    }
+    // For libre/live sessions, save the label
+    if (editType === 'libre' || editType === 'live') {
+      updates.libre_label = editLabel || (editType === 'libre' ? 'Séance libre' : 'Session live')
+    }
+    await supabase.from('course_completions').update(updates).eq('id', editingSession.id)
+
+    // Recalculate stats
+    const { data: { user } } = await supabase.auth.getUser()
+    if (user) {
+      await supabase.rpc('recalculate_user_stats', { p_user_id: user.id })
+      const { data: updatedProfile } = await supabase.from('profiles').select('*').eq('id', user.id).single()
+      if (updatedProfile) { setProfile(updatedProfile); setUserProfile(updatedProfile) }
+    }
+
     setRecentCompletions(prev => prev.map(c => c.id === editingSession.id
-      ? { ...c, libre_label: editLabel || 'Séance libre', duration_watched_minutes: parseInt(editDuration) || null }
+      ? { ...c, duration_watched_minutes: parseInt(editDuration) || null, session_type: editType, libre_label: updates.libre_label as string ?? c.libre_label }
       : c
     ))
     setEditingSession(null)
@@ -236,6 +254,13 @@ export default function SuiviPage() {
     setRecentCompletions(prev => prev.filter(c => c.id !== id))
     setSessionsThisWeek(prev => Math.max(0, prev - 1))
     setConfirmDelete(null)
+    // Recalculate stats
+    const { data: { user } } = await supabase.auth.getUser()
+    if (user) {
+      await supabase.rpc('recalculate_user_stats', { p_user_id: user.id })
+      const { data: updatedProfile } = await supabase.from('profiles').select('*').eq('id', user.id).single()
+      if (updatedProfile) { setProfile(updatedProfile); setUserProfile(updatedProfile) }
+    }
   }
 
   // ── Recommendation detail view ──────────────────────────────────────
@@ -527,18 +552,18 @@ export default function SuiviPage() {
                 </div>
               )}
 
-              {/* ─── Recent sessions ─── */}
+              {/* ─── Sessions history ─── */}
               {recentCompletions.length > 0 && (
                 <div>
                   <h3 className="text-sm font-semibold text-[#2C2C2C] mb-3 flex items-center gap-2">
-                    <Play size={15} className="text-[#C6684F]" /> Dernières séances
+                    <Play size={15} className="text-[#C6684F]" /> Historique des séances
+                    <span className="ml-auto text-xs text-[#A09488] font-normal">{recentCompletions.length} séance{recentCompletions.length > 1 ? 's' : ''}</span>
                   </h3>
                   <div className="space-y-2">
-                    {recentCompletions.slice(0, 6).map(c => {
+                    {(showAllSessions ? recentCompletions : recentCompletions.slice(0, 6)).map(c => {
                       const typeInfo = SESSION_TYPE_LABELS[c.session_type] ?? SESSION_TYPE_LABELS.vod
                       const title = c.courses?.title ?? c.libre_label ?? 'Séance libre'
                       const duration = c.duration_watched_minutes ?? c.courses?.duration_minutes ?? 0
-                      const isManual = c.session_type === 'libre'
                       return (
                         <Card key={c.id} className="!p-3">
                           <div className="flex items-center gap-3">
@@ -560,24 +585,29 @@ export default function SuiviPage() {
                             </div>
                             <div className="flex items-center gap-1.5 flex-shrink-0">
                               <span className="text-[10px] text-[#BFAE9F]">{relativeDate(c.completed_at)}</span>
-                              {isManual && (
-                                <>
-                                  <button onClick={() => startEdit(c)}
-                                    className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-[#F2E8DF] transition-colors text-[#A09488] hover:text-[#6B6359]">
-                                    <Pencil size={12} />
-                                  </button>
-                                  <button onClick={() => setConfirmDelete(c.id)}
-                                    className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-red-50 transition-colors text-[#A09488] hover:text-red-500">
-                                    <Trash2 size={12} />
-                                  </button>
-                                </>
-                              )}
+                              <button onClick={() => startEdit(c)}
+                                className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-[#F2E8DF] transition-colors text-[#A09488] hover:text-[#6B6359]">
+                                <Pencil size={12} />
+                              </button>
+                              <button onClick={() => setConfirmDelete(c.id)}
+                                className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-red-50 transition-colors text-[#A09488] hover:text-red-500">
+                                <Trash2 size={12} />
+                              </button>
                             </div>
                           </div>
                         </Card>
                       )
                     })}
                   </div>
+                  {recentCompletions.length > 6 && (
+                    <button
+                      onClick={() => setShowAllSessions(v => !v)}
+                      className="w-full mt-3 py-2.5 text-sm font-medium text-[#C6684F] bg-[#C6684F]/5 hover:bg-[#C6684F]/10 rounded-xl transition-colors flex items-center justify-center gap-1.5"
+                    >
+                      {showAllSessions ? 'Voir moins' : `Voir tout (${recentCompletions.length})`}
+                      <ChevronRight size={14} className={`transition-transform ${showAllSessions ? 'rotate-90' : ''}`} />
+                    </button>
+                  )}
                 </div>
               )}
 
@@ -615,17 +645,50 @@ export default function SuiviPage() {
                 </button>
               </div>
               <div className="px-5 pb-6 space-y-4">
+                {/* Session type selector */}
                 <div>
-                  <label className="text-xs font-medium text-[#6B6359] mb-1.5 block">Nom de la séance</label>
-                  <input
-                    type="text"
-                    autoCapitalize="words"
-                    value={editLabel}
-                    onChange={e => setEditLabel(e.target.value)}
-                    placeholder="Ex : Pilates matinal"
-                    className="w-full px-4 py-3 rounded-xl border border-[#EDE5DA] text-sm text-[#2C2C2C] placeholder:text-[#BFAE9F] focus:outline-none focus:border-[#C6684F] transition-colors"
-                  />
+                  <label className="text-xs font-medium text-[#6B6359] mb-1.5 block">Type de séance</label>
+                  <div className="flex gap-2">
+                    {(['vod', 'live', 'libre'] as const).map(t => {
+                      const info = SESSION_TYPE_LABELS[t]
+                      return (
+                        <button
+                          key={t}
+                          onClick={() => setEditType(t)}
+                          className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition-colors border ${
+                            editType === t
+                              ? 'border-[#C6684F] bg-[#C6684F]/10 text-[#C6684F]'
+                              : 'border-[#EDE5DA] text-[#6B6359] hover:bg-[#FAF6F1]'
+                          }`}
+                        >
+                          {info.label}
+                        </button>
+                      )
+                    })}
+                  </div>
                 </div>
+                {/* Label (for libre/live or override) */}
+                {(editType === 'libre' || editType === 'live') && (
+                  <div>
+                    <label className="text-xs font-medium text-[#6B6359] mb-1.5 block">Nom de la séance</label>
+                    <input
+                      type="text"
+                      autoCapitalize="words"
+                      value={editLabel}
+                      onChange={e => setEditLabel(e.target.value)}
+                      placeholder={editType === 'libre' ? 'Ex : Pilates matinal' : 'Ex : Live Pilates avec Marjorie'}
+                      className="w-full px-4 py-3 rounded-xl border border-[#EDE5DA] text-sm text-[#2C2C2C] placeholder:text-[#BFAE9F] focus:outline-none focus:border-[#C6684F] transition-colors"
+                    />
+                  </div>
+                )}
+                {editType === 'vod' && editingSession?.courses?.title && (
+                  <div>
+                    <label className="text-xs font-medium text-[#6B6359] mb-1.5 block">Cours</label>
+                    <div className="px-4 py-3 rounded-xl border border-[#EDE5DA] bg-[#FAF6F1] text-sm text-[#6B6359]">
+                      {editingSession.courses.title}
+                    </div>
+                  </div>
+                )}
                 <div>
                   <label className="text-xs font-medium text-[#6B6359] mb-1.5 block">Durée (minutes)</label>
                   <input
@@ -636,6 +699,22 @@ export default function SuiviPage() {
                     min="1"
                     className="w-full px-4 py-3 rounded-xl border border-[#EDE5DA] text-sm text-[#2C2C2C] placeholder:text-[#BFAE9F] focus:outline-none focus:border-[#C6684F] transition-colors"
                   />
+                  {/* Quick duration presets */}
+                  <div className="flex gap-2 mt-2">
+                    {[15, 20, 30, 45, 60].map(m => (
+                      <button
+                        key={m}
+                        onClick={() => setEditDuration(String(m))}
+                        className={`flex-1 py-1.5 text-xs font-medium rounded-lg transition-colors ${
+                          editDuration === String(m)
+                            ? 'bg-[#C6684F]/10 text-[#C6684F] border border-[#C6684F]/30'
+                            : 'bg-[#FAF6F1] text-[#6B6359] border border-[#EDE5DA] hover:bg-[#F2E8DF]'
+                        }`}
+                      >
+                        {m}min
+                      </button>
+                    ))}
+                  </div>
                 </div>
                 <button
                   onClick={saveEdit}

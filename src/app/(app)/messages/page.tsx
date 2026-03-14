@@ -134,6 +134,10 @@ function MessagesPage() {
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Load conversations ───────────────────────────────────────────────────
+  // Clients without conversation (admin only)
+  const [noConvClients, setNoConvClients] = useState<ConvProfile[]>([])
+  const [creatingConv, setCreatingConv] = useState<string | null>(null)
+
   const loadConversations = useCallback(async () => {
     if (!isSupabaseConfigured()) return
     const supabase = createClient()
@@ -163,8 +167,10 @@ function MessagesPage() {
 
     // Fetch partner profiles
     const ids = [...partnerIds]
-    if (ids.length === 0) { setConvs([]); setLoadingConvs(false); return }
-    const { data: profiles } = await supabase.from('profiles').select('id, username, avatar_url').in('id', ids)
+    if (ids.length === 0 && !(isAdmin || profile?.is_admin)) { setConvs([]); setLoadingConvs(false); return }
+    const { data: profiles } = ids.length > 0
+      ? await supabase.from('profiles').select('id, username, avatar_url').in('id', ids)
+      : { data: [] }
 
     // Compute per-partner stats
     type Stats = { lastMessage: string | null; lastAt: string | null; unreadCount: number }
@@ -200,8 +206,38 @@ function MessagesPage() {
       return a.partner.username.localeCompare(b.partner.username)
     })
     setConvs(result)
+
+    // Admin: also fetch all non-admin clients without conversation
+    if (isAdmin || profile?.is_admin) {
+      const { data: allClients } = await supabase
+        .from('profiles')
+        .select('id, username, avatar_url')
+        .eq('is_admin', false)
+        .order('username')
+      const withConvIds = new Set(result.map(c => c.partner.id))
+      const noConv = (allClients ?? []).filter(c => !withConvIds.has(c.id)) as ConvProfile[]
+      setNoConvClients(noConv)
+    }
+
     setLoadingConvs(false)
   }, [myId, isAdmin]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Create conversation with welcome message for a client without conversation
+  async function startConversation(client: ConvProfile) {
+    setCreatingConv(client.id)
+    await fetch('/api/welcome-message', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: client.id }),
+    })
+    // Open the conversation
+    sessionStorage.setItem('dm_active_conv', client.id)
+    setActiveId(client.id)
+    setActiveProfile(client)
+    setShowList(false)
+    setCreatingConv(null)
+    loadConversations()
+  }
 
   useEffect(() => { loadConversations() }, [loadConversations])
 
@@ -806,6 +842,41 @@ function MessagesPage() {
                     )}
                   </AnimatePresence>
                 </>
+              )}
+
+              {/* Clients without conversation (admin only) */}
+              {(isAdmin || profile?.is_admin) && noConvClients.length > 0 && (
+                <div>
+                  <div className="px-4 py-2.5 bg-[#FAF6F1] border-t border-b border-[#EDE5DA]">
+                    <p className="text-[10px] font-semibold text-[#A09488] uppercase tracking-wider">
+                      Sans conversation ({noConvClients.length})
+                    </p>
+                  </div>
+                  {noConvClients.map(client => (
+                    <button
+                      key={client.id}
+                      onClick={() => startConversation(client)}
+                      disabled={creatingConv === client.id}
+                      className="w-full flex items-center gap-3 px-4 py-3 hover:bg-[#FAF6F1] transition-colors border-b border-[#F2E8DF]"
+                    >
+                      <ProfileAvatar p={client} size={44} />
+                      <div className="flex-1 min-w-0 text-left">
+                        <p className="text-sm font-medium text-[#6B6359] truncate">{client.username}</p>
+                        <p className="text-[11px] text-[#A09488]">Aucune conversation</p>
+                      </div>
+                      <div className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-[#C6684F]/10 text-[#C6684F] flex-shrink-0">
+                        {creatingConv === client.id ? (
+                          <div className="w-3 h-3 border-2 border-[#C6684F] border-t-transparent rounded-full animate-spin" />
+                        ) : (
+                          <>
+                            <MessageSquare size={12} />
+                            <span className="text-[10px] font-medium">Ouvrir</span>
+                          </>
+                        )}
+                      </div>
+                    </button>
+                  ))}
+                </div>
               )}
             </>
           )}
