@@ -103,6 +103,8 @@ export default function DashboardPage() {
   const [completionsLoaded, setCompletionsLoaded] = useState(false)
   const [justValidated, setJustValidated] = useState<string | null>(null)
   const [showLogModal, setShowLogModal] = useState(false)
+  const [logEditId, setLogEditId] = useState<string | null>(null)
+  const [logEditDefaults, setLogEditDefaults] = useState<{ sessionType?: SessionType; duration?: number; rating?: number | null; libreLabel?: string | null } | undefined>(undefined)
   const [viewingCompletion, setViewingCompletion] = useState<CourseCompletion | null>(null)
   const [showDetailMenu, setShowDetailMenu] = useState(false)
   const [detailEditing, setDetailEditing] = useState(false)
@@ -630,7 +632,7 @@ export default function DashboardPage() {
               </p>
               {!activeDay?.isFuture && (
                 <button
-                  onClick={() => setShowLogModal(true)}
+                  onClick={() => { setLogEditId(null); setLogEditDefaults(undefined); setShowLogModal(true) }}
                   className="flex items-center gap-1.5 text-[12px] font-semibold text-[#C6684F] hover:text-[#b05a42] transition-colors"
                 >
                   <Plus size={14} />
@@ -964,6 +966,13 @@ export default function DashboardPage() {
                         onClick={() => {
                           setDetailEditing(false)
                           setViewingCompletion(null)
+                          setLogEditId(c.id)
+                          setLogEditDefaults({
+                            sessionType: c.session_type,
+                            duration: c.duration_watched_minutes ?? 0,
+                            rating: c.rating,
+                            libreLabel: c.libre_label,
+                          })
                           setShowLogModal(true)
                         }}
                         className="text-[12px] font-semibold text-[#C6684F] hover:underline"
@@ -1058,9 +1067,11 @@ export default function DashboardPage() {
       {/* Practice log modal */}
       <PracticeLogModal
         open={showLogModal}
-        onClose={() => setShowLogModal(false)}
+        onClose={() => { setShowLogModal(false); setLogEditId(null); setLogEditDefaults(undefined) }}
         onSuccess={handleLogSuccess}
         defaultDate={activeDay?.dateKey}
+        editId={logEditId}
+        editDefaults={logEditDefaults}
       />
 
     </div>

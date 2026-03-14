@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, Play, Radio, Dumbbell, Minus, Plus, ChevronRight, Search, Moon, Calendar } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
-import { logPractice, type PracticeLogInput, type PracticeLogResult } from '@/lib/practice-log'
+import { logPractice, updatePractice, type PracticeLogInput, type PracticeLogResult } from '@/lib/practice-log'
 import type { SessionType, Course } from '@/types/database'
 
 interface Props {
@@ -12,6 +12,8 @@ interface Props {
   onClose: () => void
   onSuccess: (result: PracticeLogResult) => void
   defaultDate?: string // YYYY-MM-DD
+  editId?: string | null // completion ID to update instead of create
+  editDefaults?: { sessionType?: SessionType; duration?: number; rating?: number | null; libreLabel?: string | null }
 }
 
 const SESSION_TYPES: { value: SessionType; label: string; icon: typeof Play; color: string; desc: string }[] = [
@@ -35,7 +37,7 @@ function toDateKey(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
-export function PracticeLogModal({ open, onClose, onSuccess, defaultDate }: Props) {
+export function PracticeLogModal({ open, onClose, onSuccess, defaultDate, editId, editDefaults }: Props) {
   const [step, setStep] = useState<'type' | 'details' | 'feedback'>('type')
   const [sessionType, setSessionType] = useState<SessionType | null>(null)
   const [duration, setDuration] = useState(30)
@@ -49,22 +51,32 @@ export function PracticeLogModal({ open, onClose, onSuccess, defaultDate }: Prop
   const [error, setError] = useState<string | null>(null)
   const [selectedDate, setSelectedDate] = useState(defaultDate || toDateKey(new Date()))
 
-  // Reset on open
+  // Reset on open — pre-fill if editing
   useEffect(() => {
     if (open) {
-      setStep('type')
-      setSessionType(null)
-      setDuration(30)
-      setRating(null)
-      setLibreLabel(null)
+      setSubmitting(false)
+      setError(null)
       setSelectedCourse(null)
       setCourseSearch('')
       setShowCourseList(false)
-      setSubmitting(false)
-      setError(null)
       setSelectedDate(defaultDate || toDateKey(new Date()))
+
+      if (editId && editDefaults) {
+        // Editing: start at type selection with pre-filled values
+        setSessionType(editDefaults.sessionType || null)
+        setDuration(editDefaults.duration ?? 30)
+        setRating(editDefaults.rating ?? null)
+        setLibreLabel(editDefaults.libreLabel ?? null)
+        setStep('type')
+      } else {
+        setStep('type')
+        setSessionType(null)
+        setDuration(30)
+        setRating(null)
+        setLibreLabel(null)
+      }
     }
-  }, [open, defaultDate])
+  }, [open, defaultDate, editId, editDefaults])
 
   // Load courses for VOD selection
   useEffect(() => {
@@ -101,25 +113,39 @@ export function PracticeLogModal({ open, onClose, onSuccess, defaultDate }: Prop
     setSubmitting(true)
     setError(null)
 
-    const isToday = selectedDate === toDateKey(new Date())
-    const input: PracticeLogInput = {
-      sessionType,
-      durationMinutes: duration,
-      rating: rating ?? undefined,
-      courseId: selectedCourse?.id,
-      libreLabel: libreLabel ?? undefined,
-      completedAt: isToday ? undefined : selectedDate,
-    }
-
     try {
-      const result = await logPractice(input)
-      onSuccess(result)
-      onClose()
+      if (editId) {
+        // Update existing completion
+        await updatePractice({
+          id: editId,
+          sessionType,
+          durationMinutes: sessionType === 'repos' ? 0 : duration,
+          rating: rating ?? null,
+          libreLabel: sessionType === 'libre' ? (libreLabel ?? null) : null,
+          courseId: sessionType === 'vod' ? (selectedCourse?.id ?? null) : null,
+        })
+        onSuccess({ success: true, stats: { total_sessions: 0, total_practice_minutes: 0, current_streak: 0, longest_streak: 0 }, newBadges: [] })
+        onClose()
+      } else {
+        // Create new completion
+        const isToday = selectedDate === toDateKey(new Date())
+        const input: PracticeLogInput = {
+          sessionType,
+          durationMinutes: duration,
+          rating: rating ?? undefined,
+          courseId: selectedCourse?.id,
+          libreLabel: libreLabel ?? undefined,
+          completedAt: isToday ? undefined : selectedDate,
+        }
+        const result = await logPractice(input)
+        onSuccess(result)
+        onClose()
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erreur lors de l\'enregistrement')
       setSubmitting(false)
     }
-  }, [sessionType, duration, rating, selectedCourse, libreLabel, selectedDate, submitting, onSuccess, onClose])
+  }, [sessionType, duration, rating, selectedCourse, libreLabel, selectedDate, editId, submitting, onSuccess, onClose])
 
   return (
     <AnimatePresence>
@@ -142,7 +168,7 @@ export function PracticeLogModal({ open, onClose, onSuccess, defaultDate }: Prop
             {/* Header */}
             <div className="sticky top-0 bg-white rounded-t-3xl px-6 pt-5 pb-4 border-b border-[#F0EAE2] flex items-center justify-between z-10">
               <h2 className="font-[family-name:var(--font-heading)] text-xl text-[#2C2C2C]">
-                {step === 'type' && 'Enregistrer une session'}
+                {step === 'type' && (editId ? 'Modifier l\'activité' : 'Enregistrer une session')}
                 {step === 'details' && (sessionType === 'vod' ? 'Cours VOD' : sessionType === 'live' ? 'Cours live' : 'Pratique libre')}
                 {step === 'feedback' && (sessionType === 'repos' ? 'Jour de repos' : 'Comment c\'était ?')}
               </h2>
@@ -155,20 +181,22 @@ export function PracticeLogModal({ open, onClose, onSuccess, defaultDate }: Prop
               {/* Step 1: Type selection */}
               {step === 'type' && (
                 <div className="space-y-3">
-                  {/* Date picker */}
-                  <div className="flex items-center gap-3 p-3 rounded-xl border border-[#DCCFBF] bg-[#FAF6F1]">
-                    <Calendar size={16} className="text-[#C6684F] flex-shrink-0" />
-                    <div className="flex-1">
-                      <p className="text-[11px] font-medium text-[#A09488] uppercase tracking-wider">Date</p>
-                      <input
-                        type="date"
-                        value={selectedDate}
-                        max={toDateKey(new Date())}
-                        onChange={e => setSelectedDate(e.target.value)}
-                        className="text-[14px] font-semibold text-[#2C2C2C] bg-transparent border-none outline-none w-full cursor-pointer"
-                      />
+                  {/* Date picker — hidden when editing existing */}
+                  {!editId && (
+                    <div className="flex items-center gap-3 p-3 rounded-xl border border-[#DCCFBF] bg-[#FAF6F1]">
+                      <Calendar size={16} className="text-[#C6684F] flex-shrink-0" />
+                      <div className="flex-1">
+                        <p className="text-[11px] font-medium text-[#A09488] uppercase tracking-wider">Date</p>
+                        <input
+                          type="date"
+                          value={selectedDate}
+                          max={toDateKey(new Date())}
+                          onChange={e => setSelectedDate(e.target.value)}
+                          className="text-[14px] font-semibold text-[#2C2C2C] bg-transparent border-none outline-none w-full cursor-pointer"
+                        />
+                      </div>
                     </div>
-                  </div>
+                  )}
 
                   {SESSION_TYPES.map(({ value, label, icon: Icon, color, desc }) => (
                     <motion.button
