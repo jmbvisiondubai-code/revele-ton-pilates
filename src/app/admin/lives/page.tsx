@@ -394,111 +394,82 @@ export default function AdminLivesPage() {
             {loadingAttendance ? (
               <div className="flex justify-center py-12"><div className="w-6 h-6 border-2 border-[#C6684F] border-t-transparent rounded-full animate-spin" /></div>
             ) : (
-              <div className="p-5 space-y-4">
-                {/* Registrations list */}
-                {registrations.length === 0 ? (
-                  <p className="text-sm text-[#A09488] text-center py-6">Aucune inscription pour ce live.</p>
-                ) : (
-                  <div className="space-y-2">
-                    {registrations.map(reg => (
-                      <div key={reg.id} className={`flex items-center gap-3 p-3 rounded-xl border transition-colors ${reg.attended ? 'bg-[#5B9A6B]/5 border-[#5B9A6B]/20' : 'bg-white border-[#DCCFBF]'}`}>
-                        {/* Avatar */}
-                        <div className="w-9 h-9 rounded-full bg-[#F2E8DF] flex items-center justify-center text-[#C6684F] font-semibold text-sm flex-shrink-0">
-                          {reg.avatar_url ? (
-                            <img src={reg.avatar_url} alt="" className="w-full h-full rounded-full object-cover" />
-                          ) : (
-                            (reg.first_name?.[0] ?? '?').toUpperCase()
-                          )}
-                        </div>
-                        {/* Name */}
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-[#2C2C2C] truncate">{reg.first_name} {reg.last_name}</p>
-                          <p className="text-xs text-[#A09488]">@{reg.username}</p>
-                        </div>
-                        {/* Actions */}
-                        <div className="flex items-center gap-1.5 flex-shrink-0">
-                          <button
-                            onClick={() => toggleAttendance(reg)}
-                            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                              reg.attended
-                                ? 'bg-[#5B9A6B] text-white hover:bg-[#4a8a5a]'
-                                : 'bg-[#F2E8DF] text-[#6B6359] hover:bg-[#DCCFBF]'
-                            }`}
-                          >
-                            {reg.attended ? 'Présente' : 'Absente'}
-                          </button>
+              <div className="p-5 space-y-5">
+                {/* Add participant — dropdown select */}
+                <div>
+                  <label className="block text-xs font-semibold text-[#6B6359] mb-1.5">Ajouter une participante</label>
+                  <select
+                    value=""
+                    onChange={e => { if (e.target.value) addParticipant(e.target.value) }}
+                    className="w-full text-sm border border-[#DCCFBF] rounded-lg px-3 py-2.5 bg-white focus:outline-none focus:border-[#C6684F] text-[#6B6359]"
+                  >
+                    <option value="">Sélectionner une cliente...</option>
+                    {availableClients.map(c => (
+                      <option key={c.id} value={c.id}>{c.first_name} {c.last_name} (@{c.username})</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Présentes */}
+                <div>
+                  <p className="text-xs font-semibold text-[#5B9A6B] uppercase tracking-wider mb-2">
+                    Présentes ({registrations.filter(r => r.attended).length})
+                  </p>
+                  {registrations.filter(r => r.attended).length === 0 ? (
+                    <p className="text-sm text-[#A09488] py-3">Aucune présence enregistrée.</p>
+                  ) : (
+                    <div className="flex flex-wrap gap-2">
+                      {registrations.filter(r => r.attended).map(reg => (
+                        <div key={reg.id} className="flex items-center gap-2 bg-[#5B9A6B]/8 border border-[#5B9A6B]/20 rounded-full pl-1.5 pr-1 py-1">
+                          <div className="w-6 h-6 rounded-full bg-[#F2E8DF] flex items-center justify-center text-[9px] font-semibold text-[#C6684F] flex-shrink-0 overflow-hidden">
+                            {reg.avatar_url ? (
+                              <img src={reg.avatar_url} alt="" className="w-full h-full rounded-full object-cover" />
+                            ) : (
+                              (reg.first_name?.[0] ?? '?').toUpperCase()
+                            )}
+                          </div>
+                          <span className="text-xs font-medium text-[#2C2C2C]">{reg.first_name} {reg.last_name}</span>
                           <button
                             onClick={() => removeParticipant(reg)}
-                            className="p-1.5 rounded-lg hover:bg-red-50 text-[#A09488] hover:text-red-500 transition-colors"
-                            title="Retirer"
+                            className="w-5 h-5 rounded-full hover:bg-red-100 flex items-center justify-center text-[#A09488] hover:text-red-500 transition-colors"
                           >
-                            <UserMinus size={14} />
+                            <X size={10} />
                           </button>
                         </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {/* Add participant */}
-                <div className="border-t border-[#DCCFBF] pt-4">
-                  {!showAddClient ? (
-                    <button
-                      onClick={() => setShowAddClient(true)}
-                      className="flex items-center gap-2 text-sm font-medium text-[#C6684F] hover:text-[#A8543D] transition-colors"
-                    >
-                      <UserPlus size={16} /> Ajouter une participante
-                    </button>
-                  ) : (
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <p className="text-sm font-medium text-[#2C2C2C]">Ajouter une participante</p>
-                        <button onClick={() => { setShowAddClient(false); setAddSearch('') }} className="text-[#A09488] hover:text-[#6B6359]">
-                          <X size={14} />
-                        </button>
-                      </div>
-                      <div className="relative">
-                        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#A09488]" />
-                        <input
-                          type="text"
-                          placeholder="Rechercher par nom ou pseudo..."
-                          value={addSearch}
-                          onChange={e => setAddSearch(e.target.value)}
-                          autoFocus
-                          className="w-full pl-9 pr-3 py-2 border border-[#DCCFBF] rounded-lg text-sm focus:outline-none focus:border-[#C6684F]"
-                        />
-                      </div>
-                      <div className="max-h-48 overflow-y-auto space-y-1">
-                        {availableClients.length === 0 ? (
-                          <p className="text-xs text-[#A09488] text-center py-3">
-                            {addSearch ? 'Aucun résultat' : 'Toutes les clientes sont déjà inscrites'}
-                          </p>
-                        ) : (
-                          availableClients.slice(0, 20).map(client => (
-                            <button
-                              key={client.id}
-                              onClick={() => addParticipant(client.id)}
-                              className="w-full flex items-center gap-3 p-2.5 rounded-lg hover:bg-[#FAF6F1] transition-colors text-left"
-                            >
-                              <div className="w-8 h-8 rounded-full bg-[#F2E8DF] flex items-center justify-center text-[#C6684F] font-semibold text-xs flex-shrink-0">
-                                {client.avatar_url ? (
-                                  <img src={client.avatar_url} alt="" className="w-full h-full rounded-full object-cover" />
-                                ) : (
-                                  (client.first_name?.[0] ?? '?').toUpperCase()
-                                )}
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <p className="text-sm font-medium text-[#2C2C2C] truncate">{client.first_name} {client.last_name}</p>
-                                <p className="text-xs text-[#A09488]">@{client.username}</p>
-                              </div>
-                              <UserPlus size={14} className="text-[#5B9A6B] flex-shrink-0" />
-                            </button>
-                          ))
-                        )}
-                      </div>
+                      ))}
                     </div>
                   )}
                 </div>
+
+                {/* Inscrites non présentes */}
+                {registrations.filter(r => !r.attended).length > 0 && (
+                  <div>
+                    <p className="text-xs font-semibold text-[#A09488] uppercase tracking-wider mb-2">
+                      Inscrites non présentes ({registrations.filter(r => !r.attended).length})
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {registrations.filter(r => !r.attended).map(reg => (
+                        <div key={reg.id} className="flex items-center gap-2 bg-[#FAF6F1] border border-[#DCCFBF] rounded-full pl-1.5 pr-1 py-1">
+                          <div className="w-6 h-6 rounded-full bg-[#F2E8DF] flex items-center justify-center text-[9px] font-semibold text-[#6B6359] flex-shrink-0 overflow-hidden">
+                            {reg.avatar_url ? (
+                              <img src={reg.avatar_url} alt="" className="w-full h-full rounded-full object-cover" />
+                            ) : (
+                              (reg.first_name?.[0] ?? '?').toUpperCase()
+                            )}
+                          </div>
+                          <span className="text-xs text-[#6B6359]">{reg.first_name} {reg.last_name}</span>
+                          <button
+                            onClick={() => toggleAttendance(reg)}
+                            className="w-5 h-5 rounded-full bg-[#5B9A6B]/10 hover:bg-[#5B9A6B]/20 flex items-center justify-center text-[#5B9A6B] transition-colors"
+                            title="Marquer présente"
+                          >
+                            <Check size={10} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
