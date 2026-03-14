@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/client'
 import { Card } from '@/components/ui'
-import { Users, Clock, Trophy, Star, X, Plus, ExternalLink, ChevronRight, Upload, Link as LinkIcon, Calendar, AlertTriangle } from 'lucide-react'
+import { Users, Clock, Trophy, Star, X, Plus, ExternalLink, ChevronRight, Upload, Link as LinkIcon, Calendar, AlertTriangle, MessageCircle } from 'lucide-react'
 import { formatDuration, LEVEL_LABELS, formatSubscriptionRemaining } from '@/lib/utils'
 import type { Recommendation, VodCategory } from '@/types/database'
 
@@ -47,6 +47,8 @@ export default function ClientesPage() {
   const [savingLevel, setSavingLevel] = useState(false)
   const [savingSub, setSavingSub] = useState(false)
   const [uploadingThumb, setUploadingThumb] = useState(false)
+  const [creatingConv, setCreatingConv] = useState(false)
+  const [convStatus, setConvStatus] = useState<'none' | 'exists' | 'created'>('none')
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const supabase = createClient()
@@ -73,8 +75,38 @@ export default function ClientesPage() {
     load()
   }, [])
 
+  async function checkConversation(clientId: string) {
+    const { data: me } = await supabase.auth.getUser()
+    if (!me.user) return
+    const { data } = await supabase
+      .from('direct_messages')
+      .select('id')
+      .or(`and(sender_id.eq.${me.user.id},receiver_id.eq.${clientId}),and(sender_id.eq.${clientId},receiver_id.eq.${me.user.id})`)
+      .limit(1)
+      .maybeSingle()
+    setConvStatus(data ? 'exists' : 'none')
+  }
+
+  async function createConversation(clientId: string) {
+    if (creatingConv) return
+    setCreatingConv(true)
+    try {
+      const res = await fetch('/api/welcome-message', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: clientId }),
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setConvStatus(data.skipped ? 'exists' : 'created')
+      }
+    } catch { /* silent */ }
+    setCreatingConv(false)
+  }
+
   async function openClient(client: ClientSummary) {
     setLoadingDetail(true)
+    setConvStatus('none')
     setSelected({ ...client, completions: [], lives_attended: 0, recommendations: [] })
 
     const [{ data: completions }, { data: registrations }, { data: recs }] = await Promise.all([
@@ -99,6 +131,7 @@ export default function ClientesPage() {
       recommendations: (recs as Recommendation[]) ?? [],
     })
     setLoadingDetail(false)
+    checkConversation(client.id)
   }
 
   async function uploadThumbnail(file: File): Promise<string | null> {
@@ -253,6 +286,17 @@ export default function ClientesPage() {
                 <p className="text-xs text-[#A09488]">@{selected.username}</p>
                 <p className="text-xs text-[#6B6359]">{LEVEL_LABELS[selected.practice_level || ''] || '—'}</p>
               </div>
+              {convStatus === 'none' ? (
+                <button onClick={() => createConversation(selected.id)} disabled={creatingConv}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#C6684F] text-white text-xs font-medium hover:bg-[#b05a42] disabled:opacity-50 transition">
+                  {creatingConv ? <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <MessageCircle size={13} />}
+                  Ouvrir conversation
+                </button>
+              ) : (
+                <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#5B9A6B]/10 text-[#5B9A6B] text-xs font-medium">
+                  <MessageCircle size={13} /> Conversation {convStatus === 'created' ? 'créée' : 'active'}
+                </span>
+              )}
               <button onClick={() => setSelected(null)} className="p-2 rounded-lg hover:bg-[#F2E8DF] text-[#6B6359]"><X size={18} /></button>
             </div>
 

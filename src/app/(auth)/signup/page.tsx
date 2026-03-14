@@ -127,6 +127,15 @@ function SignupPage() {
       } catch { /* email failed silently */ }
       setEmailSentOk(emailSent)
 
+      // Send welcome DM from Marjorie (creates the private conversation)
+      if (signupData?.user?.id) {
+        fetch('/api/welcome-message', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: signupData.user.id }),
+        }).catch(() => {})
+      }
+
       // Sign out so the user connects fresh in the app
       await supabase.auth.signOut()
       setCreatedFirstName(firstName.trim())
