@@ -20,86 +20,31 @@ type TourStep = {
 }
 
 const TOUR_STEPS: TourStep[] = [
-  // ── Dashboard ──
-  {
-    target: 'dashboard-greeting',
-    title: 'Ton tableau de bord',
-    description: 'Ta progression et ta série en cours.',
-    emoji: '👋',
-    page: '/dashboard',
-    position: 'bottom',
-  },
   {
     target: 'dashboard-programmes',
     title: 'Programme & Replay',
-    description: 'Le programme hebdo et le dernier replay.',
+    description: 'Ton programme hebdo et le dernier replay.',
     emoji: '🎯',
     page: '/dashboard',
     position: 'top',
     scrollTo: true,
   },
   {
-    target: 'dashboard-stats',
-    title: 'Tes stats',
-    description: 'Sessions, temps de pratique et meilleure série.',
-    emoji: '📊',
-    page: '/dashboard',
-    position: 'top',
-    scrollTo: true,
-  },
-  {
-    target: 'dashboard-inspiration',
-    title: 'Inspiration du jour',
-    description: 'Une citation de Marjorie chaque jour.',
-    emoji: '✨',
-    page: '/dashboard',
-    position: 'top',
-    scrollTo: true,
-  },
-
-  // ── Cours ──
-  {
     target: 'cours-tabs',
     title: 'Tes cours',
-    description: 'Lives, replays et bibliothèque vidéo.',
+    description: 'Lives, replays et +180 cours vidéo.',
     emoji: '🎬',
     page: '/cours',
     position: 'bottom',
   },
   {
-    target: 'cours-vod',
-    title: 'Bibliothèque VOD',
-    description: '+180 cours classés par thème.',
-    emoji: '📚',
-    page: '/cours',
-    position: 'top',
-    scrollTo: true,
-    prepare: () => {
-      const tabs = document.querySelectorAll('[data-tour="cours-tabs"] button')
-      const vodTab = tabs[2] as HTMLElement | undefined
-      vodTab?.click()
-    },
-  },
-
-  // ── Communauté ──
-  {
     target: 'communaute-feed',
     title: 'La communauté',
-    description: 'Échange et partage avec les autres clientes.',
+    description: 'Échange avec les autres clientes.',
     emoji: '💬',
     page: '/communaute',
     position: 'bottom',
   },
-  {
-    target: 'communaute-compose',
-    title: 'Publie un message',
-    description: 'Écris, partage une photo ou mentionne quelqu\'un.',
-    emoji: '✏️',
-    page: '/communaute',
-    position: 'top',
-  },
-
-  // ── Navigation ──
   {
     target: 'nav-messages',
     title: 'Messages privés',
@@ -109,17 +54,9 @@ const TOUR_STEPS: TourStep[] = [
     position: 'bottom',
   },
   {
-    target: 'nav-profil',
-    title: 'Ton profil',
-    description: 'Tes badges et tes préférences.',
-    emoji: '👤',
-    page: '/communaute',
-    position: 'bottom',
-  },
-  {
     target: 'nav-menu',
-    title: 'Menu rapide',
-    description: 'Enregistre une séance ou consulte ton suivi.',
+    title: 'Enregistre tes séances',
+    description: 'Appuie ici après chaque pratique.',
     emoji: '🌟',
     page: '/communaute',
     position: 'top',
