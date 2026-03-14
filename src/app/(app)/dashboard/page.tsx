@@ -1072,6 +1072,7 @@ export default function DashboardPage() {
         defaultDate={activeDay?.dateKey}
         editId={logEditId}
         editDefaults={logEditDefaults}
+        dayActivities={activeDayCompletions.map(c => ({ session_type: c.session_type }))}
       />
 
     </div>

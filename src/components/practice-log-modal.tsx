@@ -2,10 +2,14 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, Play, Radio, Dumbbell, Minus, Plus, ChevronRight, Search, Moon, Calendar } from 'lucide-react'
+import { X, Play, Radio, Dumbbell, Minus, Plus, ChevronRight, Search, Moon, Calendar, AlertTriangle } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { logPractice, updatePractice, type PracticeLogInput, type PracticeLogResult } from '@/lib/practice-log'
 import type { SessionType, Course } from '@/types/database'
+
+interface DayActivity {
+  session_type: SessionType
+}
 
 interface Props {
   open: boolean
@@ -14,6 +18,7 @@ interface Props {
   defaultDate?: string // YYYY-MM-DD
   editId?: string | null // completion ID to update instead of create
   editDefaults?: { sessionType?: SessionType; duration?: number; rating?: number | null; libreLabel?: string | null }
+  dayActivities?: DayActivity[] // existing activities for the selected day (for conflict detection)
 }
 
 const SESSION_TYPES: { value: SessionType; label: string; icon: typeof Play; color: string; desc: string }[] = [
@@ -37,7 +42,7 @@ function toDateKey(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
-export function PracticeLogModal({ open, onClose, onSuccess, defaultDate, editId, editDefaults }: Props) {
+export function PracticeLogModal({ open, onClose, onSuccess, defaultDate, editId, editDefaults, dayActivities = [] }: Props) {
   const [step, setStep] = useState<'type' | 'details' | 'feedback'>('type')
   const [sessionType, setSessionType] = useState<SessionType | null>(null)
   const [duration, setDuration] = useState(30)
@@ -56,6 +61,7 @@ export function PracticeLogModal({ open, onClose, onSuccess, defaultDate, editId
     if (open) {
       setSubmitting(false)
       setError(null)
+      setConflictMsg(null)
       setSelectedCourse(null)
       setCourseSearch('')
       setShowCourseList(false)
@@ -90,7 +96,30 @@ export function PracticeLogModal({ open, onClose, onSuccess, defaultDate, editId
     c.title.toLowerCase().includes(courseSearch.toLowerCase())
   )
 
+  // Conflict detection (only for new entries, not edits)
+  const dayHasRepos = !editId && dayActivities.some(a => a.session_type === 'repos')
+  const dayHasActivity = !editId && dayActivities.some(a => a.session_type !== 'repos')
+
+  function isTypeBlocked(type: SessionType): string | null {
+    if (editId) return null // editing = always allowed to change type
+    if (type === 'repos' && dayHasActivity) {
+      return 'Cette journée contient déjà une activité. Supprime-la d\'abord pour marquer un jour de repos.'
+    }
+    if (type !== 'repos' && dayHasRepos) {
+      return 'Cette journée est marquée comme repos. Supprime ou modifie le repos pour ajouter une activité.'
+    }
+    return null
+  }
+
+  const [conflictMsg, setConflictMsg] = useState<string | null>(null)
+
   function handleTypeSelect(type: SessionType) {
+    const blocked = isTypeBlocked(type)
+    if (blocked) {
+      setConflictMsg(blocked)
+      return
+    }
+    setConflictMsg(null)
     setSessionType(type)
     if (type === 'repos') {
       setDuration(0)
@@ -198,23 +227,49 @@ export function PracticeLogModal({ open, onClose, onSuccess, defaultDate, editId
                     </div>
                   )}
 
-                  {SESSION_TYPES.map(({ value, label, icon: Icon, color, desc }) => (
-                    <motion.button
-                      key={value}
-                      onClick={() => handleTypeSelect(value)}
-                      className="w-full flex items-center gap-4 p-5 rounded-2xl border border-[#DCCFBF] hover:border-[#C6684F]/40 hover:bg-[#FAF6F1] transition-colors text-left"
-                      whileTap={{ scale: 0.98 }}
-                    >
-                      <div className="w-14 h-14 rounded-2xl flex items-center justify-center" style={{ backgroundColor: `${color}12` }}>
-                        <Icon size={24} style={{ color }} />
-                      </div>
-                      <div className="flex-1">
-                        <p className="font-semibold text-[15px] text-[#2C2C2C]">{label}</p>
-                        <p className="text-[13px] text-[#A09488] mt-0.5">{desc}</p>
-                      </div>
-                      <ChevronRight size={16} className="text-[#DCCFBF]" />
-                    </motion.button>
-                  ))}
+                  {SESSION_TYPES.map(({ value, label, icon: Icon, color, desc }) => {
+                    const blocked = isTypeBlocked(value)
+                    return (
+                      <motion.button
+                        key={value}
+                        onClick={() => handleTypeSelect(value)}
+                        className={`w-full flex items-center gap-4 p-5 rounded-2xl border transition-colors text-left ${
+                          blocked
+                            ? 'border-[#E8DDD4] bg-[#F5F5F7] cursor-not-allowed'
+                            : 'border-[#DCCFBF] hover:border-[#C6684F]/40 hover:bg-[#FAF6F1]'
+                        }`}
+                        whileTap={blocked ? {} : { scale: 0.98 }}
+                      >
+                        <div className="w-14 h-14 rounded-2xl flex items-center justify-center" style={{ backgroundColor: blocked ? '#F0EBE5' : `${color}12` }}>
+                          <Icon size={24} style={{ color: blocked ? '#D1CCC5' : color }} />
+                        </div>
+                        <div className="flex-1">
+                          <p className={`font-semibold text-[15px] ${blocked ? 'text-[#AEAEB2]' : 'text-[#2C2C2C]'}`}>{label}</p>
+                          <p className={`text-[13px] mt-0.5 ${blocked ? 'text-[#D1CCC5]' : 'text-[#A09488]'}`}>{desc}</p>
+                        </div>
+                        {blocked ? (
+                          <AlertTriangle size={16} className="text-[#D1CCC5] flex-shrink-0" />
+                        ) : (
+                          <ChevronRight size={16} className="text-[#DCCFBF] flex-shrink-0" />
+                        )}
+                      </motion.button>
+                    )
+                  })}
+
+                  {/* Conflict message */}
+                  <AnimatePresence>
+                    {conflictMsg && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -4 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -4 }}
+                        className="flex items-start gap-2.5 p-3.5 rounded-xl bg-amber-50 border border-amber-200"
+                      >
+                        <AlertTriangle size={16} className="text-amber-500 flex-shrink-0 mt-0.5" />
+                        <p className="text-[13px] text-amber-700 leading-snug">{conflictMsg}</p>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
               )}
 
