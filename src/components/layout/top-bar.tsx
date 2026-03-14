@@ -68,6 +68,7 @@ export function TopBar() {
           {/* Messages */}
           <Link
             href="/messages"
+            data-tour="nav-messages"
             className={`relative w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200 ${
               isMessagesActive ? 'bg-[#C6684F]/10 text-[#C6684F]' : 'text-[#A09488] hover:text-[#C6684F] hover:bg-[#F2E8DF]'
             }`}
@@ -87,6 +88,7 @@ export function TopBar() {
           {/* Avatar → Profile */}
           <Link
             href="/profil"
+            data-tour="nav-profil"
             className="relative flex-shrink-0"
           >
             <motion.div

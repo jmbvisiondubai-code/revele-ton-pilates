@@ -5,6 +5,7 @@ import { BottomNav } from './bottom-nav'
 import { SideNav } from './side-nav'
 import { TopBar } from './top-bar'
 import { PushSetup } from '@/components/push-setup'
+import { AppTour } from '@/components/app-tour'
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const [isEmbedded, setIsEmbedded] = useState(false)
@@ -20,6 +21,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-dvh bg-bg">
       <PushSetup />
+      <AppTour />
       <SideNav />
       <TopBar />
       <div className="lg:ml-[272px] pt-[calc(3.5rem+env(safe-area-inset-top,0px))] lg:pt-2 pb-20 lg:pb-8 lg:min-h-screen">

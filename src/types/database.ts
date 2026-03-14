@@ -43,6 +43,7 @@ export interface Profile {
   total_practice_minutes: number
   is_admin: boolean
   is_teacher: boolean
+  has_seen_tour: boolean
   start_level: PracticeLevel | null
   created_at: string
   updated_at: string

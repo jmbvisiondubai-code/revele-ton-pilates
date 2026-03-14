@@ -128,7 +128,7 @@ export function BottomNav() {
 
     if (isCenter) {
       return (
-        <div key={item.href} className="relative flex flex-col items-center -mt-6 mx-1">
+        <div key={item.href} data-tour="nav-menu" className="relative flex flex-col items-center -mt-6 mx-1">
           {/* Deployed menu items */}
           <AnimatePresence>
             {menuOpen && (
@@ -221,6 +221,7 @@ export function BottomNav() {
       <Link
         key={item.href}
         href={item.href}
+        data-tour={`nav-${item.label.toLowerCase()}`}
         className="relative flex flex-col items-center gap-0.5 py-1 px-1"
         onClick={() => setMenuOpen(false)}
       >
