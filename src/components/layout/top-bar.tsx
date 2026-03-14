@@ -71,7 +71,7 @@ export function TopBar() {
         </Link>
 
         {/* Right actions */}
-        <div className="flex items-center gap-3">
+        <div data-tour="tour-profil-messages" className="flex items-center gap-3">
           {/* Messages */}
           <Link
             href="/messages"

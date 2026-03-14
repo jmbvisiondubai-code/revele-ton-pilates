@@ -603,6 +603,7 @@ export default function SuiviPage() {
                   <label className="text-xs font-medium text-[#6B6359] mb-1.5 block">Nom de la séance</label>
                   <input
                     type="text"
+                    autoCapitalize="words"
                     value={editLabel}
                     onChange={e => setEditLabel(e.target.value)}
                     placeholder="Ex : Pilates matinal"

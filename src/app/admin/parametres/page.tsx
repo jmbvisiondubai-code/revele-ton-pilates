@@ -196,6 +196,7 @@ export default function AdminParametresPage() {
           <label className="text-xs text-[#6B6359] font-medium mb-1 block">Titre</label>
           <input
             type="text"
+            autoCapitalize="sentences"
             value={form.title}
             onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
             className="w-full text-sm border border-[#DCCFBF] rounded-lg px-3 py-2 focus:outline-none focus:border-[#C6684F] bg-[#FAF6F1]"
@@ -206,6 +207,7 @@ export default function AdminParametresPage() {
         <div>
           <label className="text-xs text-[#6B6359] font-medium mb-1 block">Description courte</label>
           <textarea
+            autoCapitalize="sentences"
             value={form.description}
             onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
             rows={2}
@@ -320,6 +322,7 @@ export default function AdminParametresPage() {
           <label className="text-xs text-[#6B6359] font-medium mb-1 block">Mot de passe Vimeo</label>
           <input
             type="text"
+            autoCapitalize="off"
             placeholder="Ex: pilates2025"
             value={replay.code}
             onChange={e => setReplay(r => ({ ...r, code: e.target.value }))}

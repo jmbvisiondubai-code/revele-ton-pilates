@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, ChevronRight, ChevronLeft, Sparkles } from 'lucide-react'
+import { X, ChevronRight, ChevronLeft, Sparkles, PartyPopper } from 'lucide-react'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/client'
 import { useAuthStore } from '@/stores/auth-store'
 import { useDataCache } from '@/stores/data-cache'
@@ -21,45 +21,53 @@ type TourStep = {
 
 const TOUR_STEPS: TourStep[] = [
   {
-    target: 'dashboard-programmes',
-    title: 'Programme & Replay',
-    description: 'Ton programme hebdo et le dernier replay.',
-    emoji: '🎯',
+    target: 'dashboard-greeting',
+    title: 'Ton espace personnel',
+    description: 'Ici, tu retrouves tout en un coup d\'œil : tes messages, tes prochains cours en direct, tes conseils bien-être et les infos importantes de Marjorie.',
+    emoji: '🏠',
     page: '/dashboard',
-    position: 'top',
-    scrollTo: true,
+    position: 'bottom',
   },
   {
     target: 'cours-tabs',
-    title: 'Tes cours',
-    description: 'Lives, replays et +180 cours vidéo.',
-    emoji: '🎬',
+    title: 'Tes cours de Pilates',
+    description: 'Trois espaces t\'attendent ici : les cours en direct avec Marjorie, les replays des séances passées (avec un code à enregistrer), et la plateforme VOD avec tous les programmes disponibles.',
+    emoji: '🧘‍♀️',
     page: '/cours',
     position: 'bottom',
   },
   {
-    target: 'communaute-compose',
+    target: 'nav-social',
     title: 'La communauté',
-    description: 'C\'est ici que tu peux écrire tes messages dans la communauté.',
+    description: 'C\'est ton espace d\'échange ! Partage tes progrès, pose tes questions et échange avec les autres clientes de Révèle ton Pilates.',
     emoji: '💬',
-    page: '/communaute',
+    page: '/cours',
     position: 'top',
   },
   {
-    target: 'nav-messages',
-    title: 'Messages privés',
-    description: 'Marjorie t\'a envoyé un message !',
-    emoji: '💌',
-    page: '/communaute',
+    target: 'nav-articles',
+    title: 'Articles & bien-être',
+    description: 'Retrouve ici des articles sur le Pilates, le bien-être, la nutrition et plein de conseils pour t\'accompagner au quotidien.',
+    emoji: '📖',
+    page: '/cours',
+    position: 'top',
+  },
+  {
+    target: 'tour-profil-messages',
+    title: 'Profil & discussion',
+    description: 'En haut à droite, tu peux accéder à tes messages privés avec Marjorie et gérer ton profil. N\'hésite pas à lui écrire !',
+    emoji: '✨',
+    page: '/dashboard',
     position: 'bottom',
   },
   {
-    target: 'nav-menu',
-    title: 'Enregistre tes séances',
-    description: 'Appuie ici après chaque pratique.',
-    emoji: '🌟',
-    page: '/communaute',
+    target: 'dashboard-unread',
+    title: 'Tu as reçu un message !',
+    description: 'Marjorie vient de t\'envoyer un petit mot de bienvenue. Clique dessus après le tour pour aller le découvrir !',
+    emoji: '💌',
+    page: '/dashboard',
     position: 'top',
+    scrollTo: true,
   },
 ]
 
@@ -69,6 +77,7 @@ export function AppTour() {
   const { profile, setProfile } = useAuthStore()
   const invalidateCache = useDataCache(s => s.invalidate)
   const [showWelcome, setShowWelcome] = useState(false)
+  const [showFinish, setShowFinish] = useState(false)
   const [currentStep, setCurrentStep] = useState(-1)
   const [spotlightRect, setSpotlightRect] = useState<DOMRect | null>(null)
   const [tooltipStyle, setTooltipStyle] = useState<React.CSSProperties>({})
@@ -291,7 +300,12 @@ export function AppTour() {
     setSpotlightRect(null)
     setNavigating(false)
     markTourSeen()
-    router.push('/dashboard')
+    if (!pathname.startsWith('/dashboard')) router.push('/dashboard')
+    setShowFinish(true)
+  }
+
+  function dismissFinish() {
+    setShowFinish(false)
   }
 
   const step = isActive ? TOUR_STEPS[currentStep] : null
@@ -488,6 +502,53 @@ export function AppTour() {
           >
             <div className="w-8 h-8 border-3 border-white border-t-transparent rounded-full animate-spin" />
           </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Finish / Congratulations modal */}
+      <AnimatePresence>
+        {showFinish && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[9998] bg-black/40 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+              className="fixed inset-0 z-[9999] flex items-center justify-center px-6"
+            >
+              <div className="bg-white rounded-3xl shadow-2xl max-w-sm w-full overflow-hidden">
+                <div className="bg-gradient-to-br from-[#5B9A6B] to-[#7BC68B] px-6 pt-8 pb-6 text-center">
+                  <motion.div
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ delay: 0.2, type: 'spring', stiffness: 200 }}
+                    className="w-16 h-16 mx-auto mb-4 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm"
+                  >
+                    <PartyPopper size={32} className="text-white" />
+                  </motion.div>
+                  <h2 className="font-[family-name:var(--font-heading)] text-2xl text-white mb-1">
+                    Tu es prête !
+                  </h2>
+                  <p className="text-white/80 text-sm">Le tour est terminé</p>
+                </div>
+                <div className="px-6 py-5">
+                  <p className="text-sm text-[#6B6359] leading-relaxed text-center mb-6">
+                    Bravo {profile?.first_name}, tu as fait le tour de ton application ! Tout est en place pour commencer ton aventure Pilates. Bienvenue dans Révèle ton Pilates !
+                  </p>
+                  <button
+                    onClick={dismissFinish}
+                    className="w-full py-3 rounded-2xl bg-[#C6684F] text-white text-sm font-semibold hover:bg-[#b55a43] transition-colors shadow-md shadow-[#C6684F]/20"
+                  >
+                    C&apos;est parti !
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </>
         )}
       </AnimatePresence>
     </>

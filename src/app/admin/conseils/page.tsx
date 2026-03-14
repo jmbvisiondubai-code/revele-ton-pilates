@@ -126,7 +126,7 @@ export default function AdminConseilsPage() {
             {/* Title */}
             <div>
               <label className="text-xs text-[#6B6359] font-medium mb-1 block">Titre *</label>
-              <input type="text" placeholder="Ex : Astuce pour mieux dormir" value={form.title}
+              <input type="text" autoCapitalize="sentences" placeholder="Ex : Astuce pour mieux dormir" value={form.title}
                 onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
                 className="w-full text-sm border border-[#DCCFBF] rounded-lg px-3 py-2 focus:outline-none focus:border-[#C6684F] bg-[#FAF6F1]" />
             </div>
@@ -134,7 +134,7 @@ export default function AdminConseilsPage() {
             {/* Message */}
             <div>
               <label className="text-xs text-[#6B6359] font-medium mb-1 block">Message</label>
-              <textarea placeholder="Développe ton conseil ici..." value={form.message}
+              <textarea autoCapitalize="sentences" placeholder="Développe ton conseil ici..." value={form.message}
                 onChange={e => setForm(f => ({ ...f, message: e.target.value }))}
                 rows={3} className="w-full text-sm border border-[#DCCFBF] rounded-lg px-3 py-2 focus:outline-none focus:border-[#C6684F] bg-[#FAF6F1] resize-none" />
             </div>
@@ -149,7 +149,7 @@ export default function AdminConseilsPage() {
                   className="w-full text-sm border border-[#DCCFBF] rounded-lg pl-9 pr-3 py-2 focus:outline-none focus:border-[#C6684F] bg-[#FAF6F1]" />
               </div>
               {form.linkUrl && (
-                <input type="text" placeholder="Texte du bouton (ex : Voir la recette)" value={form.linkLabel}
+                <input type="text" autoCapitalize="sentences" placeholder="Texte du bouton (ex : Voir la recette)" value={form.linkLabel}
                   onChange={e => setForm(f => ({ ...f, linkLabel: e.target.value }))}
                   className="w-full text-sm border border-[#DCCFBF] rounded-lg px-3 py-2 focus:outline-none focus:border-[#C6684F] bg-[#FAF6F1]" />
               )}

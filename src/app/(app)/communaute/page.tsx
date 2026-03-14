@@ -1069,6 +1069,7 @@ export default function CommunautePage() {
                               <div className="flex-1 flex gap-2">
                                 <input
                                   type="text"
+                                  autoCapitalize="sentences"
                                   placeholder="Félicite-la ! 🎉"
                                   value={openComments === post.id ? newComment : ''}
                                   onFocus={() => { if (openComments !== post.id) loadComments(post.id) }}
@@ -1171,7 +1172,7 @@ export default function CommunautePage() {
                           {/* Bubble */}
                           {isEditingThisPost ? (
                             <div className="w-full">
-                              <textarea value={editPostContent} onChange={e => setEditPostContent(e.target.value)} rows={3} autoFocus
+                              <textarea value={editPostContent} onChange={e => setEditPostContent(e.target.value)} rows={3} autoFocus autoCapitalize="sentences"
                                 className="w-full resize-none bg-bg-elevated text-sm text-text rounded-xl px-3 py-2 focus:outline-none border border-border-light" />
                               <div className="flex gap-2 mt-1.5 justify-end">
                                 <button onClick={() => { setEditingPost(null); setEditPostContent('') }}
@@ -1411,6 +1412,7 @@ export default function CommunautePage() {
                                 <div className="flex-1 flex gap-2">
                                   <input value={newComment} onChange={e => setNewComment(e.target.value)}
                                     onKeyDown={e => e.key === 'Enter' && !e.shiftKey && submitComment(post.id)}
+                                    autoCapitalize="sentences"
                                     placeholder="Répondre..."
                                     className="flex-1 bg-white border border-[#DCCFBF] text-xs placeholder:text-text-muted rounded-full px-3 py-2 focus:outline-none focus:border-[#C6684F]" />
                                   <button onClick={() => submitComment(post.id)} disabled={isCommenting || !newComment.trim()} className="text-[#C6684F] disabled:opacity-40">
@@ -1593,7 +1595,7 @@ export default function CommunautePage() {
                       <button onClick={() => { setShowLinkInput(false); if (!pendingDocName) { setPostLinkUrl(''); setPostLinkLabel('') } }} className="text-[#DCCFBF]"><X size={12} /></button>
                     </div>
                     {postLinkUrl && !pendingDocName && (
-                      <input type="text" placeholder="Texte du bouton..." value={postLinkLabel} onChange={e => setPostLinkLabel(e.target.value)}
+                      <input type="text" autoCapitalize="sentences" placeholder="Texte du bouton..." value={postLinkLabel} onChange={e => setPostLinkLabel(e.target.value)}
                         className="w-full text-xs border border-[#DCCFBF] rounded-lg px-2 py-1.5 focus:outline-none focus:border-[#C6684F] bg-white" />
                     )}
                   </div>

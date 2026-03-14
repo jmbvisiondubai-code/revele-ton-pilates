@@ -225,7 +225,7 @@ export default function DashboardPage() {
 
           {/* Unread message card */}
           {unreadMsg.count > 0 && (
-            <motion.div initial="hidden" animate="visible" custom={0.5} variants={fadeInUp}>
+            <motion.div data-tour="dashboard-unread" initial="hidden" animate="visible" custom={0.5} variants={fadeInUp}>
               <Link href="/messages">
                 <div className="relative group rounded-2xl bg-white border border-[#C6684F]/20 hover:border-[#C6684F]/40 shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden">
                   <div className="absolute left-0 top-0 bottom-0 w-1 bg-[#C6684F]" />
