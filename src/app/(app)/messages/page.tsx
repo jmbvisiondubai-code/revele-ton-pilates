@@ -103,6 +103,7 @@ function MessagesPage() {
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const typingChannelRef = useRef<ReturnType<typeof createClient>['channel'] extends (name: string) => infer R ? R : never>(null as never)
   const lastTypingSentRef = useRef(0)
+  const stopTypingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Refs
   const messagesEndRef  = useRef<HTMLDivElement>(null)
@@ -358,10 +359,12 @@ function MessagesPage() {
         const p = partnerPresence[0] as { typing?: boolean }
         if (p.typing) {
           setPartnerTyping(true)
+          // Auto-hide after 3s of no updates (safety net)
           if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current)
-          typingTimeoutRef.current = setTimeout(() => setPartnerTyping(false), 4000)
+          typingTimeoutRef.current = setTimeout(() => setPartnerTyping(false), 3000)
         } else {
           setPartnerTyping(false)
+          if (typingTimeoutRef.current) { clearTimeout(typingTimeoutRef.current); typingTimeoutRef.current = null }
         }
       } else {
         setPartnerTyping(false)
@@ -382,13 +385,34 @@ function MessagesPage() {
     }
   }, [myId, activeId])
 
-  // Broadcast typing state (throttled to avoid spamming)
+  // Broadcast typing state — sends immediately for start/stop, throttled for ongoing typing
   const broadcastTyping = useCallback((isTyping: boolean) => {
     if (!typingChannelRef.current) return
-    const now = Date.now()
-    if (isTyping && now - lastTypingSentRef.current < 2000) return
-    lastTypingSentRef.current = now
-    typingChannelRef.current.track({ typing: isTyping })
+
+    // Clear any pending stop timer
+    if (stopTypingTimerRef.current) { clearTimeout(stopTypingTimerRef.current); stopTypingTimerRef.current = null }
+
+    if (isTyping) {
+      // Throttle: only send typing=true every 1.5s to keep presence alive
+      const now = Date.now()
+      if (now - lastTypingSentRef.current < 1500) {
+        // Schedule a stop after 2s of silence
+        stopTypingTimerRef.current = setTimeout(() => {
+          typingChannelRef.current?.track({ typing: false })
+        }, 2000)
+        return
+      }
+      lastTypingSentRef.current = now
+      typingChannelRef.current.track({ typing: true })
+      // Auto-stop if user stops typing for 2s
+      stopTypingTimerRef.current = setTimeout(() => {
+        typingChannelRef.current?.track({ typing: false })
+      }, 2000)
+    } else {
+      // Stop immediately
+      lastTypingSentRef.current = 0
+      typingChannelRef.current.track({ typing: false })
+    }
   }, [])
 
   // Auto-scroll
@@ -1302,8 +1326,7 @@ function MessagesPage() {
                 <textarea
                   ref={textareaRef}
                   value={inputText}
-                  onChange={e => { setInputText(e.target.value); e.target.style.height = 'auto'; e.target.style.height = `${Math.min(e.target.scrollHeight, 200)}px`; broadcastTyping(true) }}
-                  onBlur={() => broadcastTyping(false)}
+                  onChange={e => { const v = e.target.value; setInputText(v); e.target.style.height = 'auto'; e.target.style.height = `${Math.min(e.target.scrollHeight, 200)}px`; broadcastTyping(v.length > 0) }}
                   placeholder="Écrire un message..."
                   rows={2}
                   className="flex-1 bg-[#FAF6F1] border border-[#EDE5DA] rounded-2xl px-4 py-2.5 text-sm text-[#2C2C2C] placeholder-[#A09488] focus:outline-none focus:border-[#C6684F] resize-none max-h-[200px] overflow-y-auto"
