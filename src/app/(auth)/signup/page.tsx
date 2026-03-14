@@ -96,10 +96,12 @@ function SignupPage() {
       if (signupError) throw signupError
 
       if (signupData.user) {
-        await supabase
-          .from('invitations')
-          .update({ used_at: new Date().toISOString(), used_by: signupData.user.id })
-          .eq('token', token)
+        // Mark invitation as used via server API (bypasses RLS)
+        await fetch('/api/mark-invitation-used', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token, userId: signupData.user.id }),
+        }).catch(() => {})
       }
 
       // Fetch download URLs from settings
