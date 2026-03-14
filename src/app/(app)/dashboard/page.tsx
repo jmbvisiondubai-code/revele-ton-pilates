@@ -255,10 +255,10 @@ export default function DashboardPage() {
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-1.5 bg-[#C6684F]/10 rounded-full px-3 py-1.5">
+              <Link href="/serie" className="flex items-center gap-1.5 bg-[#C6684F]/10 rounded-full px-3 py-1.5 hover:bg-[#C6684F]/20 transition-colors">
                 <Flame size={16} className="text-[#C6684F]" />
                 <span className="text-[15px] font-bold text-[#C6684F]">{profile.current_streak}</span>
-              </div>
+              </Link>
             </div>
           </motion.div>
         )
