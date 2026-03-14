@@ -217,6 +217,35 @@ export default function DashboardPage() {
         )
       })()}
 
+      {/* Daily motivation quote */}
+      {(() => {
+        const quotes = [
+          { text: "Le Pilates ne consiste pas à être meilleur que quelqu'un d'autre, mais à être meilleur que la version de soi d'hier.", author: "Joseph Pilates" },
+          { text: "Après 10 séances vous sentez la différence, après 20 vous voyez la différence, après 30 vous avez un corps tout neuf.", author: "Joseph Pilates" },
+          { text: "La forme physique est la première condition du bonheur.", author: "Joseph Pilates" },
+          { text: "Chaque moment de notre vie peut être le commencement de grandes choses.", author: "Joseph Pilates" },
+          { text: "Respirez. C'est le premier acte de la vie et le dernier.", author: "Joseph Pilates" },
+          { text: "La patience et la persévérance finissent toujours par payer.", author: "Marjorie Jamin" },
+          { text: "Ton corps peut tout faire, c'est ton esprit qu'il faut convaincre.", author: "Marjorie Jamin" },
+        ]
+        const dayOfYear = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) / 86400000)
+        const quote = quotes[dayOfYear % quotes.length]
+        return (
+          <motion.div initial="hidden" animate="visible" custom={0.3} variants={fadeInUp} className="mb-5">
+            <div className="relative rounded-2xl bg-gradient-to-r from-[#FDF8F5] to-[#FFF5EE] border border-[#C6684F]/10 px-5 py-4 lg:px-6 overflow-hidden">
+              <div className="absolute -top-8 -right-8 w-24 h-24 bg-[#C6684F]/[0.04] rounded-full blur-xl" />
+              <div className="relative flex items-start gap-3">
+                <Sparkles size={16} className="text-[#C6684F]/60 mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="text-[13px] lg:text-sm text-[#3C3C3C] italic leading-relaxed">"{quote.text}"</p>
+                  <p className="text-[11px] lg:text-xs text-[#9B8E82] mt-1.5 font-medium">— {quote.author}</p>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )
+      })()}
+
       {/* Desktop: 2-col grid / Mobile: single col */}
       <div className="lg:grid lg:grid-cols-3 xl:grid-cols-7 lg:gap-6 xl:gap-8 space-y-4 lg:space-y-0">
 
