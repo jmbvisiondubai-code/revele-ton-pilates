@@ -230,7 +230,7 @@ export default function CoursPage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 bg-[#F2E8DF] rounded-xl p-1 mb-6 lg:max-w-md">
+      <div data-tour="cours-tabs" className="flex gap-1 bg-[#F2E8DF] rounded-xl p-1 mb-6 lg:max-w-md">
         {tabs.map((t) => (
           <button
             key={t.key}
@@ -449,7 +449,7 @@ export default function CoursPage() {
           </div>
 
           {/* Category grid */}
-          <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 lg:gap-4">
+          <div data-tour="cours-vod" className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 lg:gap-4">
             {vodCategories.map((cat, i) => (
               <motion.button
                 key={cat.id}

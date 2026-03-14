@@ -199,7 +199,7 @@ export default function DashboardPage() {
       {(() => {
         const greeting = getGreeting(profile.username)
         return (
-          <motion.div initial="hidden" animate="visible" custom={0} variants={fadeInUp} className="mb-6 lg:mb-8">
+          <motion.div data-tour="dashboard-greeting" initial="hidden" animate="visible" custom={0} variants={fadeInUp} className="mb-6 lg:mb-8">
             <p className="text-sm font-medium text-[#C6684F] tracking-wide">{greeting.salut}</p>
             <h1 className="font-[family-name:var(--font-heading)] text-2xl lg:text-4xl text-text leading-snug mt-1">
               {greeting.message}
@@ -358,7 +358,7 @@ export default function DashboardPage() {
           )}
 
           {/* Programme Hebdo + Replay — compact row */}
-          <motion.div initial="hidden" animate="visible" custom={2} variants={fadeInUp} className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <motion.div data-tour="dashboard-programmes" initial="hidden" animate="visible" custom={2} variants={fadeInUp} className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {/* Programme Hebdo */}
             {featured && (
               <button onClick={() => openExternal(featured.url)} className="w-full text-left">
@@ -525,7 +525,7 @@ export default function DashboardPage() {
         <div className="xl:col-span-3 space-y-4">
 
           {/* Stats */}
-          <motion.div initial="hidden" animate="visible" custom={1.5} variants={fadeInUp}>
+          <motion.div data-tour="dashboard-stats" initial="hidden" animate="visible" custom={1.5} variants={fadeInUp}>
             <h2 className="font-[family-name:var(--font-heading)] text-lg text-text mb-3">Ton parcours</h2>
             <div className="grid grid-cols-3 lg:grid-cols-1 xl:grid-cols-3 gap-3">
               <Card padding="sm" className="lg:flex lg:items-center lg:gap-4 text-center lg:text-left">
@@ -553,7 +553,7 @@ export default function DashboardPage() {
           </motion.div>
 
           {/* Inspiration */}
-          <motion.div initial="hidden" animate="visible" custom={2.5} variants={fadeInUp}>
+          <motion.div data-tour="dashboard-inspiration" initial="hidden" animate="visible" custom={2.5} variants={fadeInUp}>
             <Card className="bg-primary/5 border-primary/10 lg:p-5">
               <p className="font-[family-name:var(--font-heading)] text-base lg:text-lg italic text-text leading-relaxed">
                 {inspiration?.quote || '"Chaque mouvement conscient est une déclaration d\'amour envers toi-même."'}

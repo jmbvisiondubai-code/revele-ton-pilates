@@ -688,7 +688,7 @@ export default function CommunautePage() {
 
       <div className="px-4 pb-compose lg:px-6">
         {/* Feed column — full width */}
-        <div className="relative min-h-dvh">
+        <div data-tour="communaute-feed" className="relative min-h-dvh">
           {/* ── Pinned messages from Marjorie — sticky at top ── */}
           {pinnedPosts.length > 0 && (
             <div className="sticky sticky-below-topbar-plus lg:!top-[5rem] z-20 space-y-3 -mx-4 lg:mx-0 px-4 lg:px-0 pt-2 pb-5 mb-4 bg-gradient-to-b from-[#FAF6F1]/95 via-[#FAF6F1]/80 to-transparent backdrop-blur-sm">
@@ -1521,7 +1521,7 @@ export default function CommunautePage() {
 
       {/* ── Fixed compose bar (all screens) ── */}
       {profile && (
-        <div className={`fixed right-0 z-[45] bg-[#FAF6F1]/97 backdrop-blur-md border-t border-[#DCCFBF] safe-bottom ${isEmbedded ? 'bottom-0 left-0' : 'bottom-[5.5rem] lg:bottom-0 left-0 lg:left-[272px]'}`}>
+        <div data-tour="communaute-compose" className={`fixed right-0 z-[45] bg-[#FAF6F1]/97 backdrop-blur-md border-t border-[#DCCFBF] safe-bottom ${isEmbedded ? 'bottom-0 left-0' : 'bottom-[5.5rem] lg:bottom-0 left-0 lg:left-[272px]'}`}>
           <div className="px-3 lg:px-8 pt-2 pb-3">
             {/* Typing indicator */}
             {typingUsers.length > 0 && (

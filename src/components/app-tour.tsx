@@ -1,60 +1,104 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { useRouter, usePathname } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, ChevronRight, ChevronLeft, Sparkles } from 'lucide-react'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/client'
 import { useAuthStore } from '@/stores/auth-store'
 
 type TourStep = {
-  target: string // data-tour attribute value
+  target: string
   title: string
   description: string
   emoji: string
-  position: 'top' | 'bottom' | 'left' | 'right'
+  page: string // route where this step lives
+  position: 'top' | 'bottom'
+  scrollTo?: boolean
 }
 
 const TOUR_STEPS: TourStep[] = [
+  // ── Dashboard ──
   {
-    target: 'nav-accueil',
-    title: 'Ton tableau de bord',
-    description: 'Retrouve ici ta progression, tes prochaines séances et l\'inspiration du jour.',
-    emoji: '🏠',
-    position: 'top',
+    target: 'dashboard-greeting',
+    title: 'Ton espace personnel',
+    description: 'Ici tu retrouves ton message de bienvenue, ta série en cours et ta progression de la semaine.',
+    emoji: '👋',
+    page: '/dashboard',
+    position: 'bottom',
   },
   {
-    target: 'nav-cours',
-    title: 'Tes cours de Pilates',
-    description: 'Accède à tous les cours vidéo et aux sessions live avec Marjorie.',
-    emoji: '🎬',
+    target: 'dashboard-programmes',
+    title: 'Programme & Replay',
+    description: 'Accède au programme hebdomadaire de Marjorie et au replay de la dernière session live.',
+    emoji: '🎯',
+    page: '/dashboard',
     position: 'top',
+    scrollTo: true,
   },
   {
-    target: 'nav-menu',
-    title: 'Menu rapide',
-    description: 'Appuie ici pour enregistrer une séance ou consulter ton suivi de progression.',
+    target: 'dashboard-stats',
+    title: 'Ton parcours en chiffres',
+    description: 'Nombre de sessions, temps de pratique et meilleure série : suis ta progression ici.',
+    emoji: '📊',
+    page: '/dashboard',
+    position: 'top',
+    scrollTo: true,
+  },
+  {
+    target: 'dashboard-inspiration',
+    title: 'Inspiration du jour',
+    description: 'Chaque jour, une citation ou un conseil de Marjorie pour te motiver.',
     emoji: '✨',
+    page: '/dashboard',
     position: 'top',
+    scrollTo: true,
+  },
+
+  // ── Cours ──
+  {
+    target: 'cours-tabs',
+    title: 'Tes cours de Pilates',
+    description: 'Navigue entre les sessions live avec Marjorie, les replays et la bibliothèque de cours vidéo.',
+    emoji: '🎬',
+    page: '/cours',
+    position: 'bottom',
   },
   {
-    target: 'nav-social',
+    target: 'cours-vod',
+    title: 'Bibliothèque vidéo',
+    description: 'Plus de 180 cours classés par thème : programme, full body, souplesse, accessoires...',
+    emoji: '📚',
+    page: '/cours',
+    position: 'top',
+    scrollTo: true,
+  },
+
+  // ── Communauté ──
+  {
+    target: 'communaute-feed',
     title: 'La communauté',
-    description: 'Échange avec les autres clientes, partage tes réussites et encourage-toi mutuellement.',
+    description: 'Partage tes réussites, encourage les autres clientes et échange dans un espace bienveillant.',
     emoji: '💬',
-    position: 'top',
+    page: '/communaute',
+    position: 'bottom',
   },
   {
-    target: 'nav-articles',
-    title: 'Les articles',
-    description: 'Des conseils bien-être, nutrition et pratique sélectionnés par Marjorie.',
-    emoji: '📖',
+    target: 'communaute-compose',
+    title: 'Publie un message',
+    description: 'Écris un message, partage une photo ou un lien. Tu peux aussi mentionner quelqu\'un avec @.',
+    emoji: '✏️',
+    page: '/communaute',
     position: 'top',
   },
+
+  // ── Navigation ──
   {
     target: 'nav-messages',
     title: 'Tes messages privés',
     description: 'Discute directement avec Marjorie. Elle t\'a déjà envoyé un petit message de bienvenue !',
     emoji: '💌',
+    page: '/communaute',
     position: 'bottom',
   },
   {
@@ -62,17 +106,30 @@ const TOUR_STEPS: TourStep[] = [
     title: 'Ton profil',
     description: 'Personnalise ton espace, consulte tes badges et gère tes préférences.',
     emoji: '👤',
+    page: '/communaute',
     position: 'bottom',
+  },
+  {
+    target: 'nav-menu',
+    title: 'Menu rapide',
+    description: 'Appuie ici pour enregistrer une séance ou consulter ton suivi de progression.',
+    emoji: '🌟',
+    page: '/communaute',
+    position: 'top',
   },
 ]
 
 export function AppTour() {
+  const router = useRouter()
+  const pathname = usePathname()
   const { profile, setProfile } = useAuthStore()
   const [showWelcome, setShowWelcome] = useState(false)
-  const [currentStep, setCurrentStep] = useState(-1) // -1 = not started
+  const [currentStep, setCurrentStep] = useState(-1)
   const [spotlightRect, setSpotlightRect] = useState<DOMRect | null>(null)
   const [tooltipStyle, setTooltipStyle] = useState<React.CSSProperties>({})
+  const [navigating, setNavigating] = useState(false)
   const resizeObserverRef = useRef<ResizeObserver | null>(null)
+  const retryRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const isActive = currentStep >= 0 && currentStep < TOUR_STEPS.length
 
   // Show welcome on first visit + send welcome DM
@@ -82,14 +139,12 @@ export function AppTour() {
     if (profile.has_seen_tour) return
     if (!profile.onboarding_completed) return
 
-    // Send welcome DM from Marjorie (fire-and-forget, idempotent)
     fetch('/api/welcome-message', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ userId: profile.id }),
     }).catch(() => {})
 
-    // Small delay so the dashboard renders first
     const timer = setTimeout(() => setShowWelcome(true), 1200)
     return () => clearTimeout(timer)
   }, [profile])
@@ -99,37 +154,92 @@ export function AppTour() {
     if (!isActive) return
     const step = TOUR_STEPS[currentStep]
     const el = document.querySelector(`[data-tour="${step.target}"]`) as HTMLElement | null
-    if (!el) return
+    if (!el) {
+      // Element not in DOM yet (page still loading), retry
+      retryRef.current = setTimeout(() => positionElements(), 200)
+      return
+    }
 
-    const rect = el.getBoundingClientRect()
+    if (step.scrollTo) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      // Wait for scroll to finish before measuring
+      setTimeout(() => {
+        const rect = el.getBoundingClientRect()
+        updatePositions(rect, step.position)
+      }, 400)
+    } else {
+      const rect = el.getBoundingClientRect()
+      updatePositions(rect, step.position)
+    }
+
+    setNavigating(false)
+  }, [currentStep, isActive]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  function updatePositions(rect: DOMRect, position: 'top' | 'bottom') {
     setSpotlightRect(rect)
 
     const padding = 12
     const tooltipWidth = Math.min(300, window.innerWidth - 32)
     const style: React.CSSProperties = { width: tooltipWidth }
 
-    if (step.position === 'top') {
-      // Tooltip above element
+    if (position === 'top') {
       style.bottom = window.innerHeight - rect.top + padding
       style.left = Math.max(16, Math.min(rect.left + rect.width / 2 - tooltipWidth / 2, window.innerWidth - tooltipWidth - 16))
-    } else if (step.position === 'bottom') {
-      // Tooltip below element
+      // If tooltip would go off-screen top, switch to bottom
+      if ((window.innerHeight - rect.top + padding + 200) > window.innerHeight) {
+        delete style.bottom
+        style.top = rect.bottom + padding
+      }
+    } else {
       style.top = rect.bottom + padding
       style.left = Math.max(16, Math.min(rect.left + rect.width / 2 - tooltipWidth / 2, window.innerWidth - tooltipWidth - 16))
+      // If tooltip would go off-screen bottom, switch to top
+      if (rect.bottom + padding + 200 > window.innerHeight) {
+        delete style.top
+        style.bottom = window.innerHeight - rect.top + padding
+      }
     }
 
     setTooltipStyle(style)
-  }, [currentStep, isActive])
+  }
 
+  // When step changes, navigate if needed then position
   useEffect(() => {
-    positionElements()
+    if (!isActive) return
+    if (retryRef.current) clearTimeout(retryRef.current)
+
+    const step = TOUR_STEPS[currentStep]
+    if (!pathname.startsWith(step.page)) {
+      setNavigating(true)
+      setSpotlightRect(null)
+      router.push(step.page)
+    } else {
+      // Already on the right page, position after a small delay for render
+      const timer = setTimeout(positionElements, 300)
+      return () => clearTimeout(timer)
+    }
+  }, [currentStep, isActive]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // When pathname changes (navigation complete), reposition
+  useEffect(() => {
+    if (!isActive || !navigating) return
+    const step = TOUR_STEPS[currentStep]
+    if (pathname.startsWith(step.page)) {
+      const timer = setTimeout(positionElements, 600)
+      return () => clearTimeout(timer)
+    }
+  }, [pathname, navigating]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Reposition on resize/scroll
+  useEffect(() => {
+    if (!isActive) return
     window.addEventListener('resize', positionElements)
     window.addEventListener('scroll', positionElements, true)
     return () => {
       window.removeEventListener('resize', positionElements)
       window.removeEventListener('scroll', positionElements, true)
     }
-  }, [positionElements])
+  }, [positionElements, isActive])
 
   // Observe target element changes
   useEffect(() => {
@@ -137,11 +247,15 @@ export function AppTour() {
     const step = TOUR_STEPS[currentStep]
     const el = document.querySelector(`[data-tour="${step.target}"]`)
     if (!el) return
-
     resizeObserverRef.current = new ResizeObserver(positionElements)
     resizeObserverRef.current.observe(el)
     return () => resizeObserverRef.current?.disconnect()
   }, [currentStep, isActive, positionElements])
+
+  // Cleanup retry on unmount
+  useEffect(() => {
+    return () => { if (retryRef.current) clearTimeout(retryRef.current) }
+  }, [])
 
   async function markTourSeen() {
     if (!profile || !isSupabaseConfigured()) return
@@ -159,25 +273,34 @@ export function AppTour() {
     setShowWelcome(false)
     setCurrentStep(-1)
     setSpotlightRect(null)
+    setNavigating(false)
     markTourSeen()
+    // Return to dashboard
+    if (!pathname.startsWith('/dashboard')) router.push('/dashboard')
   }
 
   function nextStep() {
     if (currentStep >= TOUR_STEPS.length - 1) {
       finishTour()
     } else {
+      setSpotlightRect(null)
       setCurrentStep(prev => prev + 1)
     }
   }
 
   function prevStep() {
-    if (currentStep > 0) setCurrentStep(prev => prev - 1)
+    if (currentStep > 0) {
+      setSpotlightRect(null)
+      setCurrentStep(prev => prev - 1)
+    }
   }
 
   function finishTour() {
     setCurrentStep(-1)
     setSpotlightRect(null)
+    setNavigating(false)
     markTourSeen()
+    router.push('/dashboard')
   }
 
   const step = isActive ? TOUR_STEPS[currentStep] : null
@@ -200,7 +323,6 @@ export function AppTour() {
               className="fixed inset-0 z-[9999] flex items-center justify-center px-6"
             >
               <div className="bg-white rounded-3xl shadow-2xl max-w-sm w-full overflow-hidden">
-                {/* Header illustration */}
                 <div className="bg-gradient-to-br from-[#C6684F] to-[#E8926F] px-6 pt-8 pb-6 text-center">
                   <motion.div
                     initial={{ scale: 0 }}
@@ -213,12 +335,8 @@ export function AppTour() {
                   <h2 className="font-[family-name:var(--font-heading)] text-2xl text-white mb-1">
                     Bienvenue {profile?.first_name} !
                   </h2>
-                  <p className="text-white/80 text-sm">
-                    Ton espace Pilates est prêt
-                  </p>
+                  <p className="text-white/80 text-sm">Ton espace Pilates est prêt</p>
                 </div>
-
-                {/* Content */}
                 <div className="px-6 py-5">
                   <p className="text-sm text-[#6B6359] leading-relaxed text-center mb-6">
                     Souhaites-tu faire un petit tour rapide pour découvrir les différentes fonctionnalités de l&apos;application ?
@@ -261,40 +379,41 @@ export function AppTour() {
                   <mask id="spotlight-mask">
                     <rect width="100%" height="100%" fill="white" />
                     <rect
-                      x={spotlightRect.left - 6}
-                      y={spotlightRect.top - 6}
-                      width={spotlightRect.width + 12}
-                      height={spotlightRect.height + 12}
-                      rx={12}
+                      x={spotlightRect.left - 8}
+                      y={spotlightRect.top - 8}
+                      width={spotlightRect.width + 16}
+                      height={spotlightRect.height + 16}
+                      rx={16}
                       fill="black"
                     />
                   </mask>
                 </defs>
                 <rect
                   width="100%" height="100%"
-                  fill="rgba(0,0,0,0.55)"
+                  fill="rgba(0,0,0,0.5)"
                   mask="url(#spotlight-mask)"
                 />
               </svg>
 
               {/* Spotlight border glow */}
               <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="absolute rounded-xl border-2 border-[#C6684F] shadow-[0_0_20px_rgba(198,104,79,0.4)]"
+                key={`glow-${currentStep}`}
+                initial={{ opacity: 0, scale: 0.98 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="absolute rounded-2xl border-2 border-[#C6684F] shadow-[0_0_24px_rgba(198,104,79,0.35)]"
                 style={{
-                  left: spotlightRect.left - 6,
-                  top: spotlightRect.top - 6,
-                  width: spotlightRect.width + 12,
-                  height: spotlightRect.height + 12,
+                  left: spotlightRect.left - 8,
+                  top: spotlightRect.top - 8,
+                  width: spotlightRect.width + 16,
+                  height: spotlightRect.height + 16,
                 }}
               />
             </motion.div>
 
             {/* Tooltip */}
             <motion.div
-              key={currentStep}
-              initial={{ opacity: 0, y: step.position === 'top' ? 10 : -10 }}
+              key={`tooltip-${currentStep}`}
+              initial={{ opacity: 0, y: step.position === 'top' ? 8 : -8 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0 }}
               transition={{ type: 'spring', stiffness: 300, damping: 25 }}
@@ -358,7 +477,7 @@ export function AppTour() {
                       onClick={nextStep}
                       className="h-8 px-4 rounded-full bg-[#C6684F] text-white text-xs font-semibold hover:bg-[#b55a43] transition-colors flex items-center gap-1 shadow-md shadow-[#C6684F]/20"
                     >
-                      {currentStep >= TOUR_STEPS.length - 1 ? 'Terminer' : 'Suivant'}
+                      {currentStep >= TOUR_STEPS.length - 1 ? 'C\'est parti !' : 'Suivant'}
                       {currentStep < TOUR_STEPS.length - 1 && <ChevronRight size={12} />}
                     </button>
                   </div>
@@ -366,6 +485,18 @@ export function AppTour() {
               </div>
             </motion.div>
           </>
+        )}
+      </AnimatePresence>
+
+      {/* Loading state between pages */}
+      <AnimatePresence>
+        {isActive && navigating && !spotlightRect && (
+          <motion.div
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[9998] bg-black/40 flex items-center justify-center"
+          >
+            <div className="w-8 h-8 border-3 border-white border-t-transparent rounded-full animate-spin" />
+          </motion.div>
         )}
       </AnimatePresence>
     </>

@@ -350,7 +350,7 @@ export default function SuiviPage() {
             <motion.div initial="hidden" animate="visible" custom={0} variants={fadeInUp} className="space-y-6">
 
               {/* ─── Stats grid ─── */}
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
+              <div data-tour="suivi-stats" className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
                 <Card className="text-center py-5">
                   <Trophy size={24} className="mx-auto text-[#C6684F] mb-2" />
                   <p className="text-3xl font-bold text-[#2C2C2C]">{userProfile.total_sessions}</p>
@@ -488,7 +488,7 @@ export default function SuiviPage() {
 
               {/* ─── Earned badges ─── */}
               {earnedBadges.length > 0 && (
-                <div>
+                <div data-tour="suivi-badges">
                   <h3 className="text-sm font-semibold text-[#2C2C2C] mb-3 flex items-center gap-2">
                     <Award size={15} className="text-[#C6684F]" /> Badges obtenus
                     <span className="ml-auto text-xs text-[#A09488] font-normal">{earnedBadges.length} badge{earnedBadges.length > 1 ? 's' : ''}</span>
