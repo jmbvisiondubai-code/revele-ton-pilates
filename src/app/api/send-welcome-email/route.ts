@@ -115,7 +115,7 @@ export async function POST(req: NextRequest) {
 
   try {
     const { error } = await resend.emails.send({
-      from: 'Révèle Ton Pilates <noreply@marjoriejamin.com>',
+      from: 'Revele Ton Pilates <noreply@marjoriejamin.com>',
       to: email,
       subject: `Bienvenue ${firstName} ! Voici tes liens de téléchargement`,
       html,
