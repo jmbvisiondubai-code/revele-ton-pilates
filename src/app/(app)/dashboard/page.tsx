@@ -369,19 +369,12 @@ export default function DashboardPage() {
         const greeting = getGreeting(profile.username)
         return (
           <motion.div data-tour="dashboard-greeting" initial="hidden" animate="visible" custom={0} variants={fadeInUp} className="mb-8">
-            <div className="flex items-center gap-3">
-              <div className="w-11 h-11 rounded-full bg-gradient-to-br from-[#C6684F] to-[#D4956B] flex items-center justify-center text-white font-bold text-base">
-                {(profile.first_name || profile.username || '?')[0].toUpperCase()}
-              </div>
-              <div>
-                <h1 className="font-[family-name:var(--font-heading)] text-[20px] text-[#1D1D1F] leading-tight">
-                  {greeting.message}
-                </h1>
-                <p className="text-[12px] text-[#86868B] mt-0.5 capitalize">
-                  {format(new Date(), "EEEE d MMMM", { locale: fr })}
-                </p>
-              </div>
-            </div>
+            <h1 className="font-[family-name:var(--font-heading)] text-[22px] text-[#1D1D1F] leading-tight">
+              {greeting.message}
+            </h1>
+            <p className="text-[12px] text-[#86868B] mt-1 capitalize">
+              {format(new Date(), "EEEE d MMMM", { locale: fr })}
+            </p>
           </motion.div>
         )
       })()}
