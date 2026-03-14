@@ -374,67 +374,19 @@ export default function DashboardPage() {
                 <div className="w-11 h-11 rounded-full bg-gradient-to-br from-[#C6684F] to-[#D4956B] flex items-center justify-center text-white font-bold text-base">
                   {(profile.first_name || profile.username || '?')[0].toUpperCase()}
                 </div>
-                <div>
-                  <h1 className="font-[family-name:var(--font-heading)] text-[20px] text-[#1D1D1F] leading-tight">
-                    {greeting.message}
-                  </h1>
-                  <p className="text-[12px] text-[#86868B] mt-0.5 capitalize">
-                    {format(new Date(), "EEEE d MMMM", { locale: fr })}
-                  </p>
-                </div>
+                <Link href="/serie" className="flex items-center gap-1">
+                  <Flame size={16} className="text-[#C6684F]" />
+                  <span className="text-[15px] font-bold text-[#C6684F]">{profile.current_streak}</span>
+                </Link>
               </div>
-              <Link href="/serie" className="relative flex items-center gap-1.5 bg-[#C6684F]/10 rounded-full px-3 py-1.5 hover:bg-[#C6684F]/20 transition-colors overflow-visible">
-                {profile.current_streak >= 7 ? (
-                  <>
-                    <motion.div
-                      className="relative w-5 h-5 -mt-3 -mb-2"
-                      animate={{ y: [0, -2, 0] }}
-                      transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
-                    >
-                      {/* Base — deep red */}
-                      <Flame size={30} className="absolute left-1/2 bottom-0 -translate-x-1/2 text-[#D4421A]" strokeWidth={1.2} />
-                      {/* Outer — red-orange */}
-                      <motion.div
-                        className="absolute left-1/2 bottom-0 -translate-x-1/2"
-                        animate={{ y: [0, -1, 0] }}
-                        transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
-                      >
-                        <Flame size={22} className="text-[#E85D2A]" strokeWidth={1.3} />
-                      </motion.div>
-                      {/* Mid — warm orange */}
-                      <motion.div
-                        className="absolute left-1/2 bottom-0 -translate-x-1/2"
-                        animate={{ y: [0, -1.5, 0] }}
-                        transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
-                      >
-                        <Flame size={14} className="text-[#FF8A3A] mt-[3px]" strokeWidth={1.4} />
-                      </motion.div>
-                      {/* Core — golden */}
-                      <motion.div
-                        className="absolute left-1/2 bottom-0 -translate-x-1/2"
-                        animate={{ y: [0, -1.5, 0], scale: [1, 1.06, 1] }}
-                        transition={{ duration: 1.6, repeat: Infinity, ease: 'easeInOut' }}
-                      >
-                        <Flame size={8} className="text-[#FFD36E] mt-[5px]" strokeWidth={1.8} />
-                      </motion.div>
-                      {/* White-hot center */}
-                      <motion.div
-                        className="absolute left-1/2 bottom-0 -translate-x-1/2"
-                        animate={{ opacity: [0.6, 1, 0.6] }}
-                        transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut' }}
-                      >
-                        <Flame size={4} className="text-[#FFF5E0] mt-[7px]" strokeWidth={2.5} />
-                      </motion.div>
-                    </motion.div>
-                    <span className="text-[15px] font-bold text-[#C6684F]">{profile.current_streak}</span>
-                  </>
-                ) : (
-                  <>
-                    <Flame size={16} className="text-[#C6684F]" />
-                    <span className="text-[15px] font-bold text-[#C6684F]">{profile.current_streak}</span>
-                  </>
-                )}
-              </Link>
+              <div className="text-right">
+                <h1 className="font-[family-name:var(--font-heading)] text-[20px] text-[#1D1D1F] leading-tight">
+                  {greeting.message}
+                </h1>
+                <p className="text-[12px] text-[#86868B] mt-0.5 capitalize">
+                  {format(new Date(), "EEEE d MMMM", { locale: fr })}
+                </p>
+              </div>
             </div>
           </motion.div>
         )
