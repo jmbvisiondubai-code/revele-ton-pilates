@@ -96,13 +96,6 @@ function SignupPage() {
           .from('invitations')
           .update({ used_at: new Date().toISOString(), used_by: signupData.user.id })
           .eq('token', token)
-
-        // Send welcome DM from Marjorie
-        fetch('/api/welcome-message', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ userId: signupData.user.id }),
-        }).catch(() => {}) // fire-and-forget
       }
 
       router.push('/onboarding')

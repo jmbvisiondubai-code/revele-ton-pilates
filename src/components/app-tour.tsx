@@ -75,12 +75,20 @@ export function AppTour() {
   const resizeObserverRef = useRef<ResizeObserver | null>(null)
   const isActive = currentStep >= 0 && currentStep < TOUR_STEPS.length
 
-  // Show welcome on first visit
+  // Show welcome on first visit + send welcome DM
   useEffect(() => {
     if (!profile) return
     if (profile.is_admin) return
     if (profile.has_seen_tour) return
     if (!profile.onboarding_completed) return
+
+    // Send welcome DM from Marjorie (fire-and-forget, idempotent)
+    fetch('/api/welcome-message', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: profile.id }),
+    }).catch(() => {})
+
     // Small delay so the dashboard renders first
     const timer = setTimeout(() => setShowWelcome(true), 1200)
     return () => clearTimeout(timer)
