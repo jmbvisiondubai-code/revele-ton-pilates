@@ -33,6 +33,7 @@ import { useDataCache, isCacheValid } from '@/stores/data-cache'
 import { AddToCalendar } from '@/components/add-to-calendar'
 import { getGreeting, formatDuration, formatSubscriptionRemaining } from '@/lib/utils'
 import { PracticeLogModal } from '@/components/practice-log-modal'
+import { updatePractice, deletePractice } from '@/lib/practice-log'
 import type { Profile, DailyInspiration, LiveSession, LiveSessionType, PrivateAppointment, SessionType, CourseCompletion } from '@/types/database'
 
 const SESSION_TYPE_LABELS: Record<LiveSessionType, string> = {
@@ -104,7 +105,10 @@ export default function DashboardPage() {
   const [showLogModal, setShowLogModal] = useState(false)
   const [viewingCompletion, setViewingCompletion] = useState<CourseCompletion | null>(null)
   const [showDetailMenu, setShowDetailMenu] = useState(false)
-  const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [detailEditing, setDetailEditing] = useState(false)
+  const [editDuration, setEditDuration] = useState(0)
+  const [editRating, setEditRating] = useState<number | null>(null)
+  const [actionLoading, setActionLoading] = useState(false)
 
   // Use cached data or local state
   const inspiration = cache.inspiration
@@ -268,26 +272,43 @@ export default function DashboardPage() {
 
   // Delete a completion
   async function handleDeleteCompletion(completionId: string) {
-    setDeletingId(completionId)
-    const supabase = createClient()
-    const { error } = await supabase.from('course_completions').delete().eq('id', completionId)
-    if (!error) {
-      // Recalculate stats
-      const { data: { user } } = await supabase.auth.getUser()
-      if (user) {
-        const { data: result } = await supabase.rpc('recalculate_user_stats', { p_user_id: user.id })
-        if (result) {
-          useAuthStore.getState().updateProfile({
-            total_sessions: (result as { total_sessions: number }).total_sessions,
-            total_practice_minutes: (result as { total_practice_minutes: number }).total_practice_minutes,
-            current_streak: (result as { current_streak: number }).current_streak,
-            longest_streak: (result as { longest_streak: number }).longest_streak,
-          })
-        }
-      }
+    setActionLoading(true)
+    try {
+      await deletePractice(completionId)
+      setViewingCompletion(null)
       await fetchWeekCompletions()
+    } catch {
+      // silently fail — RLS might block
     }
-    setDeletingId(null)
+    setActionLoading(false)
+  }
+
+  // Save inline edit
+  async function handleSaveEdit() {
+    if (!viewingCompletion) return
+    setActionLoading(true)
+    try {
+      await updatePractice({
+        id: viewingCompletion.id,
+        durationMinutes: editDuration,
+        rating: editRating,
+      })
+      setDetailEditing(false)
+      setViewingCompletion(null)
+      await fetchWeekCompletions()
+    } catch {
+      // silently fail
+    }
+    setActionLoading(false)
+  }
+
+  // Open edit mode with current values
+  function enterEditMode() {
+    if (!viewingCompletion) return
+    setEditDuration(viewingCompletion.duration_watched_minutes ?? 0)
+    setEditRating(viewingCompletion.rating ?? null)
+    setShowDetailMenu(false)
+    setDetailEditing(true)
   }
 
   // On log success — trigger animation + refresh
@@ -783,7 +804,14 @@ export default function DashboardPage() {
           const c = viewingCompletion
           const info = SESSION_ICONS[c.session_type] || SESSION_ICONS.libre
           const Icon = info.icon
-          const ratingEmoji = c.rating === 1 ? '😓 Difficile' : c.rating === 2 ? '😐 Moyen' : c.rating === 3 ? '🙂 Bien' : c.rating === 4 ? '😊 Super' : c.rating === 5 ? '🤩 Incroyable' : null
+          const RATING_EMOJIS = [
+            { value: 1, emoji: '😓', label: 'Difficile' },
+            { value: 2, emoji: '😐', label: 'Moyen' },
+            { value: 3, emoji: '🙂', label: 'Bien' },
+            { value: 4, emoji: '😊', label: 'Super' },
+            { value: 5, emoji: '🤩', label: 'Incroyable' },
+          ]
+          const ratingObj = RATING_EMOJIS.find(r => r.value === c.rating)
           const completedTime = c.completed_at.includes('T') ? format(new Date(c.completed_at), "HH'h'mm", { locale: fr }) : null
 
           return (
@@ -793,7 +821,7 @@ export default function DashboardPage() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               className="fixed inset-0 z-[100] flex items-end lg:items-center justify-center bg-black/40 backdrop-blur-sm"
-              onClick={() => { setViewingCompletion(null); setShowDetailMenu(false) }}
+              onClick={() => { if (!detailEditing) { setViewingCompletion(null); setShowDetailMenu(false); setDetailEditing(false) } }}
             >
               <motion.div
                 initial={{ opacity: 0, y: 60 }}
@@ -803,122 +831,224 @@ export default function DashboardPage() {
                 className="bg-white rounded-t-3xl lg:rounded-3xl w-full max-w-lg shadow-2xl mx-0 lg:mx-4 overflow-hidden"
                 onClick={e => e.stopPropagation()}
               >
-                {/* Detail header */}
+                {/* Header */}
                 <div className="flex items-center justify-between px-5 pt-5 pb-4">
                   <button
-                    onClick={() => { setViewingCompletion(null); setShowDetailMenu(false) }}
+                    onClick={() => {
+                      if (detailEditing) { setDetailEditing(false) }
+                      else { setViewingCompletion(null); setShowDetailMenu(false); setDetailEditing(false) }
+                    }}
                     className="w-9 h-9 rounded-full flex items-center justify-center text-[#9B8E82] hover:bg-[#F0EBE5] transition-colors"
                   >
                     <ArrowLeft size={20} />
                   </button>
                   <h3 className="text-[14px] font-bold text-[#1D1D1F] uppercase tracking-[0.08em]">
-                    Détail activité
+                    {detailEditing ? 'Modifier' : 'Détail activité'}
                   </h3>
-                  {/* 3-dot menu */}
-                  <div className="relative">
-                    <button
-                      onClick={() => setShowDetailMenu(!showDetailMenu)}
-                      className="w-9 h-9 rounded-full flex items-center justify-center text-[#9B8E82] hover:bg-[#F0EBE5] transition-colors"
-                    >
-                      <MoreVertical size={18} />
-                    </button>
-                    <AnimatePresence>
-                      {showDetailMenu && (
-                        <motion.div
-                          initial={{ opacity: 0, scale: 0.9, y: -4 }}
-                          animate={{ opacity: 1, scale: 1, y: 0 }}
-                          exit={{ opacity: 0, scale: 0.9, y: -4 }}
-                          transition={{ duration: 0.15 }}
-                          className="absolute right-0 top-11 z-20 bg-white border border-[#E8DDD4] rounded-xl shadow-lg overflow-hidden min-w-[160px]"
-                        >
-                          <button
-                            onClick={() => {
-                              setShowDetailMenu(false)
-                              setViewingCompletion(null)
-                              // Delete then re-open log modal to "edit"
-                              handleDeleteCompletion(c.id).then(() => {
-                                setShowLogModal(true)
-                              })
-                            }}
-                            className="w-full flex items-center gap-2.5 px-4 py-3 text-[13px] font-medium text-[#1D1D1F] hover:bg-[#FAF6F1] transition-colors text-left"
+                  {!detailEditing ? (
+                    <div className="relative">
+                      <button
+                        onClick={() => setShowDetailMenu(!showDetailMenu)}
+                        className="w-9 h-9 rounded-full flex items-center justify-center text-[#9B8E82] hover:bg-[#F0EBE5] transition-colors"
+                      >
+                        <MoreVertical size={18} />
+                      </button>
+                      <AnimatePresence>
+                        {showDetailMenu && (
+                          <motion.div
+                            initial={{ opacity: 0, scale: 0.9, y: -4 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.9, y: -4 }}
+                            transition={{ duration: 0.15 }}
+                            className="absolute right-0 top-11 z-20 bg-white border border-[#E8DDD4] rounded-xl shadow-lg overflow-hidden min-w-[160px]"
                           >
-                            <Pencil size={14} className="text-[#9B8E82]" />
-                            Modifier
-                          </button>
-                          <div className="border-t border-[#F0EBE5]" />
-                          <button
-                            onClick={() => {
-                              setShowDetailMenu(false)
-                              setViewingCompletion(null)
-                              handleDeleteCompletion(c.id)
-                            }}
-                            className="w-full flex items-center gap-2.5 px-4 py-3 text-[13px] font-medium text-red-500 hover:bg-red-50 transition-colors text-left"
-                          >
-                            <Trash2 size={14} />
-                            Supprimer
-                          </button>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </div>
+                            <button
+                              onClick={enterEditMode}
+                              className="w-full flex items-center gap-2.5 px-4 py-3 text-[13px] font-medium text-[#1D1D1F] hover:bg-[#FAF6F1] transition-colors text-left"
+                            >
+                              <Pencil size={14} className="text-[#9B8E82]" />
+                              Modifier
+                            </button>
+                            <div className="border-t border-[#F0EBE5]" />
+                            <button
+                              onClick={() => {
+                                setShowDetailMenu(false)
+                                handleDeleteCompletion(c.id)
+                              }}
+                              disabled={actionLoading}
+                              className="w-full flex items-center gap-2.5 px-4 py-3 text-[13px] font-medium text-red-500 hover:bg-red-50 transition-colors text-left disabled:opacity-50"
+                            >
+                              <Trash2 size={14} />
+                              Supprimer
+                            </button>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                  ) : (
+                    <div className="w-9" />
+                  )}
                 </div>
 
-                {/* Activity detail content */}
-                <div className="px-5 pb-6">
-                  {/* Big icon + type */}
-                  <div className="flex items-center gap-4 mb-6">
-                    <div className="w-14 h-14 rounded-2xl flex items-center justify-center" style={{ backgroundColor: `${info.color}12` }}>
-                      <Icon size={28} style={{ color: info.color }} />
-                    </div>
-                    <div>
-                      <h4 className="text-[18px] font-bold text-[#1D1D1F]">
-                        {c.session_type === 'repos' ? 'Jour de repos' : info.label}
-                      </h4>
-                      {c.libre_label && (
-                        <p className="text-[13px] text-[#86868B] mt-0.5">{c.libre_label}</p>
-                      )}
-                      {completedTime && (
-                        <p className="text-[12px] text-[#9B8E82] mt-0.5">{completedTime}</p>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Stats row */}
-                  <div className="grid grid-cols-2 gap-3 mb-5">
-                    {c.session_type !== 'repos' && c.duration_watched_minutes != null && c.duration_watched_minutes > 0 && (
-                      <div className="bg-[#FAF6F1] rounded-xl px-4 py-3">
-                        <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-[#9B8E82] mb-1">Durée</p>
-                        <p className="text-[20px] font-bold text-[#1D1D1F]">{c.duration_watched_minutes} <span className="text-[13px] font-medium text-[#9B8E82]">min</span></p>
+                {/* ── VIEW MODE ── */}
+                {!detailEditing && (
+                  <div className="px-5 pb-6">
+                    <div className="flex items-center gap-4 mb-6">
+                      <div className="w-14 h-14 rounded-2xl flex items-center justify-center" style={{ backgroundColor: `${info.color}12` }}>
+                        <Icon size={28} style={{ color: info.color }} />
                       </div>
-                    )}
-                    {c.session_type === 'repos' && (
-                      <div className="bg-[#F0F7F2] rounded-xl px-4 py-3 col-span-2">
-                        <div className="flex items-center gap-2">
-                          <Moon size={16} className="text-[#6B8E7B]" />
-                          <p className="text-[14px] font-medium text-[#1D1D1F]">Journée de récupération</p>
+                      <div>
+                        <h4 className="text-[18px] font-bold text-[#1D1D1F]">
+                          {c.session_type === 'repos' ? 'Jour de repos' : info.label}
+                        </h4>
+                        {c.libre_label && (
+                          <p className="text-[13px] text-[#86868B] mt-0.5">{c.libre_label}</p>
+                        )}
+                        {completedTime && (
+                          <p className="text-[12px] text-[#9B8E82] mt-0.5">{completedTime}</p>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3 mb-5">
+                      {c.session_type !== 'repos' && c.duration_watched_minutes != null && c.duration_watched_minutes > 0 && (
+                        <div className="bg-[#FAF6F1] rounded-xl px-4 py-3">
+                          <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-[#9B8E82] mb-1">Durée</p>
+                          <p className="text-[20px] font-bold text-[#1D1D1F]">{c.duration_watched_minutes} <span className="text-[13px] font-medium text-[#9B8E82]">min</span></p>
                         </div>
-                        <p className="text-[12px] text-[#6B8E7B] mt-1">Ta série continue, ton corps récupère</p>
-                      </div>
-                    )}
-                    {ratingEmoji && (
-                      <div className="bg-[#FAF6F1] rounded-xl px-4 py-3">
-                        <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-[#9B8E82] mb-1">Ressenti</p>
-                        <p className="text-[16px]">{ratingEmoji}</p>
-                      </div>
-                    )}
-                  </div>
+                      )}
+                      {c.session_type === 'repos' && (
+                        <div className="bg-[#F0F7F2] rounded-xl px-4 py-3 col-span-2">
+                          <div className="flex items-center gap-2">
+                            <Moon size={16} className="text-[#6B8E7B]" />
+                            <p className="text-[14px] font-medium text-[#1D1D1F]">Journée de récupération</p>
+                          </div>
+                          <p className="text-[12px] text-[#6B8E7B] mt-1">Ta série continue, ton corps récupère</p>
+                        </div>
+                      )}
+                      {ratingObj && (
+                        <div className="bg-[#FAF6F1] rounded-xl px-4 py-3">
+                          <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-[#9B8E82] mb-1">Ressenti</p>
+                          <p className="text-[16px]">{ratingObj.emoji} {ratingObj.label}</p>
+                        </div>
+                      )}
+                    </div>
 
-                  {/* Type badge */}
-                  <div className="flex items-center gap-2">
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-semibold" style={{ backgroundColor: `${info.color}12`, color: info.color }}>
-                      <Icon size={12} />
-                      {c.session_type === 'vod' ? 'VOD' : c.session_type === 'live' ? 'Live' : c.session_type === 'libre' ? 'Libre' : 'Repos'}
-                    </span>
-                    {c.feedback && (
-                      <span className="text-[12px] text-[#9B8E82] truncate">{c.feedback}</span>
-                    )}
+                    <div className="flex items-center gap-2">
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-semibold" style={{ backgroundColor: `${info.color}12`, color: info.color }}>
+                        <Icon size={12} />
+                        {c.session_type === 'vod' ? 'VOD' : c.session_type === 'live' ? 'Live' : c.session_type === 'libre' ? 'Libre' : 'Repos'}
+                      </span>
+                      {c.feedback && (
+                        <span className="text-[12px] text-[#9B8E82] truncate">{c.feedback}</span>
+                      )}
+                    </div>
                   </div>
-                </div>
+                )}
+
+                {/* ── EDIT MODE ── */}
+                {detailEditing && (
+                  <div className="px-5 pb-6">
+                    {/* Type display (non-editable quick view) */}
+                    <div className="flex items-center gap-3 mb-6 bg-[#FAF6F1] rounded-xl px-4 py-3">
+                      <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: `${info.color}12` }}>
+                        <Icon size={20} style={{ color: info.color }} />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-[14px] font-semibold text-[#1D1D1F]">
+                          {c.session_type === 'repos' ? 'Jour de repos' : info.label}
+                        </p>
+                        {c.libre_label && <p className="text-[12px] text-[#86868B]">{c.libre_label}</p>}
+                      </div>
+                      <button
+                        onClick={() => {
+                          setDetailEditing(false)
+                          setViewingCompletion(null)
+                          setShowLogModal(true)
+                        }}
+                        className="text-[12px] font-semibold text-[#C6684F] hover:underline"
+                      >
+                        Changer
+                      </button>
+                    </div>
+
+                    {/* Duration edit (not for repos) */}
+                    {c.session_type !== 'repos' && (
+                      <div className="mb-6">
+                        <label className="text-[12px] font-bold uppercase tracking-[0.1em] text-[#9B8E82] mb-3 block">Durée</label>
+                        <div className="flex items-center justify-center gap-5">
+                          <button
+                            onClick={() => setEditDuration(d => Math.max(5, d - 5))}
+                            className="w-10 h-10 rounded-full border-2 border-[#E8DDD4] flex items-center justify-center text-[#6B6359] hover:bg-[#F0EBE5] transition-colors"
+                          >
+                            <span className="text-lg font-bold">−</span>
+                          </button>
+                          <div className="text-center min-w-[80px]">
+                            <span className="text-[32px] font-bold text-[#1D1D1F]">{editDuration}</span>
+                            <p className="text-[12px] text-[#9B8E82]">min</p>
+                          </div>
+                          <button
+                            onClick={() => setEditDuration(d => Math.min(180, d + 5))}
+                            className="w-10 h-10 rounded-full border-2 border-[#E8DDD4] flex items-center justify-center text-[#6B6359] hover:bg-[#F0EBE5] transition-colors"
+                          >
+                            <Plus size={18} />
+                          </button>
+                        </div>
+                        <div className="flex justify-center gap-2 mt-3">
+                          {[15, 20, 30, 45, 60].map(min => (
+                            <button
+                              key={min}
+                              onClick={() => setEditDuration(min)}
+                              className={`px-3 py-1.5 rounded-lg text-[12px] font-medium transition-colors ${
+                                editDuration === min ? 'bg-[#C6684F] text-white' : 'bg-[#F0EBE5] text-[#6B6359] hover:bg-[#E8DDD4]'
+                              }`}
+                            >
+                              {min}min
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Rating edit */}
+                    <div className="mb-6">
+                      <label className="text-[12px] font-bold uppercase tracking-[0.1em] text-[#9B8E82] mb-3 block">Ressenti</label>
+                      <div className="flex justify-center gap-4">
+                        {RATING_EMOJIS.map(r => (
+                          <button
+                            key={r.value}
+                            onClick={() => setEditRating(editRating === r.value ? null : r.value)}
+                            className={`flex flex-col items-center gap-1 transition-all ${editRating === r.value ? 'scale-125' : 'opacity-40 hover:opacity-80 hover:scale-105'}`}
+                          >
+                            <span className={`text-2xl ${editRating === r.value ? '' : 'grayscale'} transition-all`}>{r.emoji}</span>
+                            <span className="text-[9px] text-[#9B8E82] font-medium">{r.label}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Save / Cancel */}
+                    <div className="flex gap-3">
+                      <button
+                        onClick={() => setDetailEditing(false)}
+                        className="px-4 py-2.5 text-[13px] font-medium text-[#6B6359] hover:text-[#1D1D1F] transition-colors"
+                      >
+                        Annuler
+                      </button>
+                      <button
+                        onClick={handleSaveEdit}
+                        disabled={actionLoading}
+                        className="flex-1 py-3 rounded-xl text-[13px] font-semibold text-white bg-[#C6684F] hover:bg-[#b05a42] disabled:opacity-50 transition-colors"
+                      >
+                        {actionLoading ? (
+                          <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mx-auto" />
+                        ) : (
+                          'Enregistrer'
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                )}
               </motion.div>
             </motion.div>
           )

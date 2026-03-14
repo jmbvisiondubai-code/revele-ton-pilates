@@ -24,6 +24,66 @@ export interface PracticeLogResult {
   newBadges: Pick<Badge, 'id' | 'name' | 'description' | 'icon' | 'category'>[]
 }
 
+export interface PracticeUpdateInput {
+  id: string
+  durationMinutes?: number
+  rating?: number | null
+  libreLabel?: string | null
+  sessionType?: SessionType
+  courseId?: string | null
+}
+
+async function recalcAndSync(supabase: ReturnType<typeof createClient>, userId: string) {
+  const { data: result, error: rpcError } = await supabase
+    .rpc('recalculate_user_stats', { p_user_id: userId })
+  if (rpcError) throw new Error(rpcError.message)
+  const stats = result as PracticeLogResult['stats'] & { new_badges: PracticeLogResult['newBadges'] }
+  useAuthStore.getState().updateProfile({
+    total_sessions: stats.total_sessions,
+    total_practice_minutes: stats.total_practice_minutes,
+    current_streak: stats.current_streak,
+    longest_streak: stats.longest_streak,
+  })
+  return stats
+}
+
+export async function updatePractice(input: PracticeUpdateInput): Promise<void> {
+  const supabase = createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Non connectée')
+
+  const updateData: Record<string, unknown> = {}
+  if (input.durationMinutes !== undefined) updateData.duration_watched_minutes = input.durationMinutes
+  if (input.rating !== undefined) updateData.rating = input.rating
+  if (input.libreLabel !== undefined) updateData.libre_label = input.libreLabel
+  if (input.sessionType !== undefined) updateData.session_type = input.sessionType
+  if (input.courseId !== undefined) updateData.course_id = input.courseId
+
+  const { error } = await supabase
+    .from('course_completions')
+    .update(updateData)
+    .eq('id', input.id)
+    .eq('user_id', user.id)
+
+  if (error) throw new Error(error.message)
+  await recalcAndSync(supabase, user.id)
+}
+
+export async function deletePractice(completionId: string): Promise<void> {
+  const supabase = createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Non connectée')
+
+  const { error } = await supabase
+    .from('course_completions')
+    .delete()
+    .eq('id', completionId)
+    .eq('user_id', user.id)
+
+  if (error) throw new Error(error.message)
+  await recalcAndSync(supabase, user.id)
+}
+
 export async function logPractice(input: PracticeLogInput): Promise<PracticeLogResult> {
   const supabase = createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -49,21 +109,7 @@ export async function logPractice(input: PracticeLogInput): Promise<PracticeLogR
 
   if (insertError) throw new Error(insertError.message)
 
-  // Recalculate stats + auto-award badges
-  const { data: result, error: rpcError } = await supabase
-    .rpc('recalculate_user_stats', { p_user_id: user.id })
-
-  if (rpcError) throw new Error(rpcError.message)
-
-  const stats = result as PracticeLogResult['stats'] & { new_badges: PracticeLogResult['newBadges'] }
-
-  // Update local auth store
-  useAuthStore.getState().updateProfile({
-    total_sessions: stats.total_sessions,
-    total_practice_minutes: stats.total_practice_minutes,
-    current_streak: stats.current_streak,
-    longest_streak: stats.longest_streak,
-  })
+  const stats = await recalcAndSync(supabase, user.id)
 
   return {
     success: true,
