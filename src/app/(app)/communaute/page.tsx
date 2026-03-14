@@ -894,10 +894,29 @@ export default function CommunautePage() {
                                   <span className="text-[9px] bg-[#C6684F]/15 text-[#C6684F] px-1.5 py-0.5 rounded-full font-medium">Coach</span>
                                 </div>
                               </div>
-                              <div className="w-7 h-7 bg-[#C6684F] rounded-full flex items-center justify-center shadow-md">
-                                <span className="text-sm">🏆</span>
+                              <div className="flex items-center gap-2">
+                                {isAdmin && (
+                                  <button
+                                    onClick={() => setDeletingPost(post.id)}
+                                    className="w-7 h-7 rounded-full flex items-center justify-center text-[#A09488] hover:text-red-500 hover:bg-red-50 transition-colors"
+                                    title="Supprimer"
+                                  >
+                                    <Trash2 size={13} />
+                                  </button>
+                                )}
+                                <div className="w-7 h-7 bg-[#C6684F] rounded-full flex items-center justify-center shadow-md">
+                                  <span className="text-sm">🏆</span>
+                                </div>
                               </div>
                             </div>
+                            {/* Delete confirmation for celebration */}
+                            {isDeletingThisPost && (
+                              <div className="flex items-center gap-2 mb-2 px-2 py-1.5 bg-red-50 rounded-xl">
+                                <p className="text-xs text-red-600 flex-1">Supprimer ce message de félicitations ?</p>
+                                <button onClick={() => setDeletingPost(null)} className="text-xs text-[#6B6359]">Annuler</button>
+                                <button onClick={() => handleDeletePost(post.id)} className="text-xs font-semibold text-red-500">Supprimer</button>
+                              </div>
+                            )}
                             <p className="text-sm text-[#2C2C2C] leading-relaxed">{post.content}</p>
                             {/* Reaction count badges */}
                             {totalReactions > 0 && (
