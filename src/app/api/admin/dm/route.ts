@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { createServerClient } from '@supabase/ssr'
 
 export const runtime = 'nodejs'
 
@@ -9,7 +10,24 @@ const supabaseAdmin = createClient(
 )
 
 export async function POST(req: NextRequest) {
-  const { action, adminId, clientId, content, messageIds } = await req.json()
+  const body = await req.json()
+  let { action, adminId, clientId, content, messageIds } = body
+
+  // Auto-detect adminId from session if not provided
+  if (!adminId) {
+    const supabaseSSR = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() { return req.cookies.getAll() },
+          setAll() {},
+        },
+      }
+    )
+    const { data: { user } } = await supabaseSSR.auth.getUser()
+    adminId = user?.id || null
+  }
 
   if (action === 'list') {
     // List messages between admin and client

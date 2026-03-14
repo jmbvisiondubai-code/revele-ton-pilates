@@ -42,74 +42,82 @@ export default function AdminMessagesPage() {
 
   const supabase = createClient()
 
-  // ── Load everything: resolve admin ID then fetch data ──────────────────
-  async function loadClients(adminId?: string) {
-    const id = adminId || myIdRef.current
-    if (!id || !isSupabaseConfigured()) return
+  // ── Load everything: API auto-detects admin from session ──────────────
+  async function loadClients() {
+    if (!isSupabaseConfigured()) return
     setLoading(true)
 
-    const res = await fetch('/api/admin/list-conversations', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ adminId: id }),
-    })
-    const apiData = res.ok ? await res.json() : { profiles: [], dms: [] }
-    const profiles: ClientProfile[] = apiData.profiles ?? []
-    const allDms: { sender_id: string; receiver_id: string; content: string | null; image_url: string | null; file_name: string | null; created_at: string; read_at: string | null }[] = apiData.dms ?? []
-
-    if (profiles.length === 0) {
-      setClients([])
-      setLoading(false)
-      return
-    }
-
-    // Build per-client stats
-    const statsMap = new Map<string, { lastMessage: string | null; lastAt: string | null; unreadCount: number; hasConversation: boolean }>()
-
-    profiles.forEach(p => statsMap.set(p.id, { lastMessage: null, lastAt: null, unreadCount: 0, hasConversation: false }))
-
-    allDms.forEach(m => {
-      const otherId = m.sender_id === id ? m.receiver_id : m.sender_id
-      const s = statsMap.get(otherId)
-      if (!s) return
-      s.hasConversation = true
-      if (!s.lastAt || m.created_at > s.lastAt) {
-        s.lastAt = m.created_at
-        s.lastMessage = m.content || (m.image_url ? '📷 Photo' : m.file_name ? `📎 ${m.file_name}` : '')
+    try {
+      const res = await fetch('/api/admin/list-conversations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      })
+      if (!res.ok) {
+        setClients([])
+        setLoading(false)
+        return
       }
-      if (m.receiver_id === id && !m.read_at) s.unreadCount++
-    })
+      const apiData = await res.json()
+      const profiles: ClientProfile[] = apiData.profiles ?? []
+      const allDms: { sender_id: string; receiver_id: string; content: string | null; image_url: string | null; file_name: string | null; created_at: string; read_at: string | null }[] = apiData.dms ?? []
 
-    const result: ConvPreview[] = profiles.map(p => ({
-      client: p as ClientProfile,
-      ...(statsMap.get(p.id) ?? { lastMessage: null, lastAt: null, unreadCount: 0, hasConversation: false }),
-    }))
+      // Store admin ID from API response
+      if (apiData.adminId) {
+        myIdRef.current = apiData.adminId
+        setMyId(apiData.adminId)
+      }
 
-    result.sort((a, b) => {
-      if (a.unreadCount > 0 && b.unreadCount === 0) return -1
-      if (b.unreadCount > 0 && a.unreadCount === 0) return 1
-      if (a.hasConversation && !b.hasConversation) return -1
-      if (!a.hasConversation && b.hasConversation) return 1
-      if (a.lastAt && b.lastAt) return b.lastAt.localeCompare(a.lastAt)
-      return a.client.first_name.localeCompare(b.client.first_name)
-    })
+      const id = apiData.adminId || myIdRef.current
 
-    setClients(result)
+      if (profiles.length === 0) {
+        setClients([])
+        setLoading(false)
+        return
+      }
+
+      // Build per-client stats
+      const statsMap = new Map<string, { lastMessage: string | null; lastAt: string | null; unreadCount: number; hasConversation: boolean }>()
+
+      profiles.forEach(p => statsMap.set(p.id, { lastMessage: null, lastAt: null, unreadCount: 0, hasConversation: false }))
+
+      allDms.forEach(m => {
+        const otherId = m.sender_id === id ? m.receiver_id : m.sender_id
+        const s = statsMap.get(otherId)
+        if (!s) return
+        s.hasConversation = true
+        if (!s.lastAt || m.created_at > s.lastAt) {
+          s.lastAt = m.created_at
+          s.lastMessage = m.content || (m.image_url ? '📷 Photo' : m.file_name ? `📎 ${m.file_name}` : '')
+        }
+        if (m.receiver_id === id && !m.read_at) s.unreadCount++
+      })
+
+      const result: ConvPreview[] = profiles.map(p => ({
+        client: p as ClientProfile,
+        ...(statsMap.get(p.id) ?? { lastMessage: null, lastAt: null, unreadCount: 0, hasConversation: false }),
+      }))
+
+      result.sort((a, b) => {
+        if (a.unreadCount > 0 && b.unreadCount === 0) return -1
+        if (b.unreadCount > 0 && a.unreadCount === 0) return 1
+        if (a.hasConversation && !b.hasConversation) return -1
+        if (!a.hasConversation && b.hasConversation) return 1
+        if (a.lastAt && b.lastAt) return b.lastAt.localeCompare(a.lastAt)
+        return a.client.first_name.localeCompare(b.client.first_name)
+      })
+
+      setClients(result)
+    } catch {
+      setClients([])
+    }
     setLoading(false)
   }
 
-  // Init: resolve user then load
+  // Init: load directly, API handles auth
   useEffect(() => {
     if (!isSupabaseConfigured()) { setLoading(false); return }
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (user) {
-        myIdRef.current = user.id
-        setMyId(user.id)
-        loadClients(user.id)
-      } else {
-        setLoading(false)
-      }
-    })
+    loadClients()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Load messages for active conversation ───────────────────────────────
