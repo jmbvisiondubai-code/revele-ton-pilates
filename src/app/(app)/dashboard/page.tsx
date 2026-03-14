@@ -22,6 +22,9 @@ import {
   Moon,
   Trash2,
   Pencil,
+  MoreVertical,
+  ArrowLeft,
+  X,
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/client'
@@ -97,10 +100,11 @@ export default function DashboardPage() {
   const [selectedDayIndex, setSelectedDayIndex] = useState<number | null>(null)
   const [weekCompletions, setWeekCompletions] = useState<Record<string, CourseCompletion[]>>({})
   const [completionsLoaded, setCompletionsLoaded] = useState(false)
-  const [justValidated, setJustValidated] = useState<string | null>(null) // dateKey that just flipped
+  const [justValidated, setJustValidated] = useState<string | null>(null)
   const [showLogModal, setShowLogModal] = useState(false)
+  const [viewingCompletion, setViewingCompletion] = useState<CourseCompletion | null>(null)
+  const [showDetailMenu, setShowDetailMenu] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
-  const [editingCompletion, setEditingCompletion] = useState<CourseCompletion | null>(null)
 
   // Use cached data or local state
   const inspiration = cache.inspiration
@@ -614,18 +618,19 @@ export default function DashboardPage() {
               )}
             </div>
 
-            {/* Activities list */}
+            {/* Activities list — click to open detail */}
             {activeDayCompletions.length > 0 ? (
               <div className="space-y-2">
                 {activeDayCompletions.map((c) => {
                   const info = SESSION_ICONS[c.session_type] || SESSION_ICONS.libre
                   const Icon = info.icon
                   return (
-                    <motion.div
+                    <motion.button
                       key={c.id}
                       initial={{ opacity: 0, y: 8 }}
                       animate={{ opacity: 1, y: 0 }}
-                      className="flex items-center gap-3 bg-[#FAF6F1] rounded-xl px-3.5 py-3"
+                      onClick={() => { setViewingCompletion(c); setShowDetailMenu(false) }}
+                      className="w-full flex items-center gap-3 bg-[#FAF6F1] rounded-xl px-3.5 py-3 hover:bg-[#F0EBE5] transition-colors text-left"
                     >
                       <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: `${info.color}12` }}>
                         <Icon size={15} style={{ color: info.color }} />
@@ -644,18 +649,8 @@ export default function DashboardPage() {
                           {c.rating === 1 ? '😓' : c.rating === 2 ? '😐' : c.rating === 3 ? '🙂' : c.rating === 4 ? '😊' : '🤩'}
                         </span>
                       )}
-                      <button
-                        onClick={() => handleDeleteCompletion(c.id)}
-                        disabled={deletingId === c.id}
-                        className="p-1.5 rounded-lg text-[#D1CCC5] hover:text-red-400 hover:bg-red-50 transition-colors flex-shrink-0"
-                      >
-                        {deletingId === c.id ? (
-                          <div className="w-3.5 h-3.5 border-2 border-[#D1CCC5] border-t-transparent rounded-full animate-spin" />
-                        ) : (
-                          <Trash2 size={14} />
-                        )}
-                      </button>
-                    </motion.div>
+                      <ChevronRight size={14} className="text-[#D1CCC5] flex-shrink-0" />
+                    </motion.button>
                   )
                 })}
               </div>
@@ -781,6 +776,154 @@ export default function DashboardPage() {
           </motion.div>
         )
       })()}
+
+      {/* ─── Activity detail sheet ─── */}
+      <AnimatePresence>
+        {viewingCompletion && (() => {
+          const c = viewingCompletion
+          const info = SESSION_ICONS[c.session_type] || SESSION_ICONS.libre
+          const Icon = info.icon
+          const ratingEmoji = c.rating === 1 ? '😓 Difficile' : c.rating === 2 ? '😐 Moyen' : c.rating === 3 ? '🙂 Bien' : c.rating === 4 ? '😊 Super' : c.rating === 5 ? '🤩 Incroyable' : null
+          const completedTime = c.completed_at.includes('T') ? format(new Date(c.completed_at), "HH'h'mm", { locale: fr }) : null
+
+          return (
+            <motion.div
+              key="detail-overlay"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[100] flex items-end lg:items-center justify-center bg-black/40 backdrop-blur-sm"
+              onClick={() => { setViewingCompletion(null); setShowDetailMenu(false) }}
+            >
+              <motion.div
+                initial={{ opacity: 0, y: 60 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 60 }}
+                transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+                className="bg-white rounded-t-3xl lg:rounded-3xl w-full max-w-lg shadow-2xl mx-0 lg:mx-4 overflow-hidden"
+                onClick={e => e.stopPropagation()}
+              >
+                {/* Detail header */}
+                <div className="flex items-center justify-between px-5 pt-5 pb-4">
+                  <button
+                    onClick={() => { setViewingCompletion(null); setShowDetailMenu(false) }}
+                    className="w-9 h-9 rounded-full flex items-center justify-center text-[#9B8E82] hover:bg-[#F0EBE5] transition-colors"
+                  >
+                    <ArrowLeft size={20} />
+                  </button>
+                  <h3 className="text-[14px] font-bold text-[#1D1D1F] uppercase tracking-[0.08em]">
+                    Détail activité
+                  </h3>
+                  {/* 3-dot menu */}
+                  <div className="relative">
+                    <button
+                      onClick={() => setShowDetailMenu(!showDetailMenu)}
+                      className="w-9 h-9 rounded-full flex items-center justify-center text-[#9B8E82] hover:bg-[#F0EBE5] transition-colors"
+                    >
+                      <MoreVertical size={18} />
+                    </button>
+                    <AnimatePresence>
+                      {showDetailMenu && (
+                        <motion.div
+                          initial={{ opacity: 0, scale: 0.9, y: -4 }}
+                          animate={{ opacity: 1, scale: 1, y: 0 }}
+                          exit={{ opacity: 0, scale: 0.9, y: -4 }}
+                          transition={{ duration: 0.15 }}
+                          className="absolute right-0 top-11 z-20 bg-white border border-[#E8DDD4] rounded-xl shadow-lg overflow-hidden min-w-[160px]"
+                        >
+                          <button
+                            onClick={() => {
+                              setShowDetailMenu(false)
+                              setViewingCompletion(null)
+                              // Delete then re-open log modal to "edit"
+                              handleDeleteCompletion(c.id).then(() => {
+                                setShowLogModal(true)
+                              })
+                            }}
+                            className="w-full flex items-center gap-2.5 px-4 py-3 text-[13px] font-medium text-[#1D1D1F] hover:bg-[#FAF6F1] transition-colors text-left"
+                          >
+                            <Pencil size={14} className="text-[#9B8E82]" />
+                            Modifier
+                          </button>
+                          <div className="border-t border-[#F0EBE5]" />
+                          <button
+                            onClick={() => {
+                              setShowDetailMenu(false)
+                              setViewingCompletion(null)
+                              handleDeleteCompletion(c.id)
+                            }}
+                            className="w-full flex items-center gap-2.5 px-4 py-3 text-[13px] font-medium text-red-500 hover:bg-red-50 transition-colors text-left"
+                          >
+                            <Trash2 size={14} />
+                            Supprimer
+                          </button>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                </div>
+
+                {/* Activity detail content */}
+                <div className="px-5 pb-6">
+                  {/* Big icon + type */}
+                  <div className="flex items-center gap-4 mb-6">
+                    <div className="w-14 h-14 rounded-2xl flex items-center justify-center" style={{ backgroundColor: `${info.color}12` }}>
+                      <Icon size={28} style={{ color: info.color }} />
+                    </div>
+                    <div>
+                      <h4 className="text-[18px] font-bold text-[#1D1D1F]">
+                        {c.session_type === 'repos' ? 'Jour de repos' : info.label}
+                      </h4>
+                      {c.libre_label && (
+                        <p className="text-[13px] text-[#86868B] mt-0.5">{c.libre_label}</p>
+                      )}
+                      {completedTime && (
+                        <p className="text-[12px] text-[#9B8E82] mt-0.5">{completedTime}</p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Stats row */}
+                  <div className="grid grid-cols-2 gap-3 mb-5">
+                    {c.session_type !== 'repos' && c.duration_watched_minutes != null && c.duration_watched_minutes > 0 && (
+                      <div className="bg-[#FAF6F1] rounded-xl px-4 py-3">
+                        <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-[#9B8E82] mb-1">Durée</p>
+                        <p className="text-[20px] font-bold text-[#1D1D1F]">{c.duration_watched_minutes} <span className="text-[13px] font-medium text-[#9B8E82]">min</span></p>
+                      </div>
+                    )}
+                    {c.session_type === 'repos' && (
+                      <div className="bg-[#F0F7F2] rounded-xl px-4 py-3 col-span-2">
+                        <div className="flex items-center gap-2">
+                          <Moon size={16} className="text-[#6B8E7B]" />
+                          <p className="text-[14px] font-medium text-[#1D1D1F]">Journée de récupération</p>
+                        </div>
+                        <p className="text-[12px] text-[#6B8E7B] mt-1">Ta série continue, ton corps récupère</p>
+                      </div>
+                    )}
+                    {ratingEmoji && (
+                      <div className="bg-[#FAF6F1] rounded-xl px-4 py-3">
+                        <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-[#9B8E82] mb-1">Ressenti</p>
+                        <p className="text-[16px]">{ratingEmoji}</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Type badge */}
+                  <div className="flex items-center gap-2">
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-semibold" style={{ backgroundColor: `${info.color}12`, color: info.color }}>
+                      <Icon size={12} />
+                      {c.session_type === 'vod' ? 'VOD' : c.session_type === 'live' ? 'Live' : c.session_type === 'libre' ? 'Libre' : 'Repos'}
+                    </span>
+                    {c.feedback && (
+                      <span className="text-[12px] text-[#9B8E82] truncate">{c.feedback}</span>
+                    )}
+                  </div>
+                </div>
+              </motion.div>
+            </motion.div>
+          )
+        })()}
+      </AnimatePresence>
 
       {/* Practice log modal */}
       <PracticeLogModal
