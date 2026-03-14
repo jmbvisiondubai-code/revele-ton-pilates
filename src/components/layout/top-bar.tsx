@@ -31,6 +31,13 @@ export function TopBar() {
 
     fetchUnread()
 
+    // Polling fallback every 30s (in case Realtime is not enabled on the table)
+    const pollInterval = setInterval(() => {
+      if (!window.location.pathname.startsWith('/messages')) {
+        fetchUnread()
+      }
+    }, 30_000)
+
     const channel = supabase.channel(`topbar-dm-${profile.id}`)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'direct_messages', filter: `receiver_id=eq.${profile.id}` },
         () => {
@@ -42,7 +49,7 @@ export function TopBar() {
         () => { fetchUnread() })
       .subscribe()
 
-    return () => { supabase.removeChannel(channel) }
+    return () => { clearInterval(pollInterval); supabase.removeChannel(channel) }
   }, [profile?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {

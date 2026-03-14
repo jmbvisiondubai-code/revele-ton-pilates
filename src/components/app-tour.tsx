@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { X, ChevronRight, ChevronLeft, Sparkles } from 'lucide-react'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/client'
 import { useAuthStore } from '@/stores/auth-store'
+import { useDataCache } from '@/stores/data-cache'
 
 type TourStep = {
   target: string
@@ -15,6 +16,7 @@ type TourStep = {
   page: string // route where this step lives
   position: 'top' | 'bottom'
   scrollTo?: boolean
+  prepare?: () => void // Called before looking for the target element
 }
 
 const TOUR_STEPS: TourStep[] = [
@@ -72,6 +74,12 @@ const TOUR_STEPS: TourStep[] = [
     page: '/cours',
     position: 'top',
     scrollTo: true,
+    prepare: () => {
+      // Switch to VOD tab (3rd button in the tabs container)
+      const tabs = document.querySelectorAll('[data-tour="cours-tabs"] button')
+      const vodTab = tabs[2] as HTMLElement | undefined
+      vodTab?.click()
+    },
   },
 
   // ── Communauté ──
@@ -123,6 +131,7 @@ export function AppTour() {
   const router = useRouter()
   const pathname = usePathname()
   const { profile, setProfile } = useAuthStore()
+  const invalidateCache = useDataCache(s => s.invalidate)
   const [showWelcome, setShowWelcome] = useState(false)
   const [currentStep, setCurrentStep] = useState(-1)
   const [spotlightRect, setSpotlightRect] = useState<DOMRect | null>(null)
@@ -130,6 +139,7 @@ export function AppTour() {
   const [navigating, setNavigating] = useState(false)
   const resizeObserverRef = useRef<ResizeObserver | null>(null)
   const retryRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const retryCountRef = useRef(0)
   const isActive = currentStep >= 0 && currentStep < TOUR_STEPS.length
 
   // Show welcome on first visit + send welcome DM
@@ -143,6 +153,9 @@ export function AppTour() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ userId: profile.id }),
+    }).then(() => {
+      // Invalidate dashboard cache so unread message card appears
+      setTimeout(() => invalidateCache('dashboard'), 2000)
     }).catch(() => {})
 
     const timer = setTimeout(() => setShowWelcome(true), 1200)
@@ -155,10 +168,21 @@ export function AppTour() {
     const step = TOUR_STEPS[currentStep]
     const el = document.querySelector(`[data-tour="${step.target}"]`) as HTMLElement | null
     if (!el) {
-      // Element not in DOM yet (page still loading), retry
+      retryCountRef.current++
+      // After 3 retries, try prepare() to reveal the element (e.g. switch tab)
+      if (retryCountRef.current === 3 && step.prepare) {
+        step.prepare()
+      }
+      // Give up after 25 retries (~5s) and skip to next step
+      if (retryCountRef.current > 25) {
+        setSpotlightRect(null)
+        setCurrentStep(prev => prev < TOUR_STEPS.length - 1 ? prev + 1 : -1)
+        return
+      }
       retryRef.current = setTimeout(() => positionElements(), 200)
       return
     }
+    retryCountRef.current = 0
 
     if (step.scrollTo) {
       el.scrollIntoView({ behavior: 'smooth', block: 'center' })
@@ -207,6 +231,7 @@ export function AppTour() {
   useEffect(() => {
     if (!isActive) return
     if (retryRef.current) clearTimeout(retryRef.current)
+    retryCountRef.current = 0
 
     const step = TOUR_STEPS[currentStep]
     if (!pathname.startsWith(step.page)) {
@@ -214,7 +239,8 @@ export function AppTour() {
       setSpotlightRect(null)
       router.push(step.page)
     } else {
-      // Already on the right page, position after a small delay for render
+      // Already on the right page — run prepare if needed, then position
+      if (step.prepare) step.prepare()
       const timer = setTimeout(positionElements, 300)
       return () => clearTimeout(timer)
     }
@@ -225,6 +251,7 @@ export function AppTour() {
     if (!isActive || !navigating) return
     const step = TOUR_STEPS[currentStep]
     if (pathname.startsWith(step.page)) {
+      if (step.prepare) step.prepare()
       const timer = setTimeout(positionElements, 600)
       return () => clearTimeout(timer)
     }

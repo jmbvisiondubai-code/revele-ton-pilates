@@ -57,6 +57,14 @@ export function BottomNav() {
 
     fetchUnreadDms()
 
+    // Polling fallback every 30s (in case Realtime is not enabled on the table)
+    const pollInterval = setInterval(() => {
+      const p = window.location.pathname
+      if (!p.startsWith('/messages') && !p.startsWith('/suivi')) {
+        fetchUnreadDms()
+      }
+    }, 30_000)
+
     const channel = supabase.channel(`nav-dm-${profile.id}`)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'direct_messages', filter: `receiver_id=eq.${profile.id}` },
         () => {
@@ -74,7 +82,7 @@ export function BottomNav() {
         })
       .subscribe()
 
-    return () => { supabase.removeChannel(channel) }
+    return () => { clearInterval(pollInterval); supabase.removeChannel(channel) }
   }, [profile?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Community unread count ─────────────────────────────────────────────────
