@@ -92,11 +92,42 @@ export function TopBar() {
             )}
           </Link>
 
-          {/* Streak flame */}
+          {/* Streak: chiffre | flamme | avatar — Whoop style inversé */}
           {profile && (
-            <Link href="/serie" className="flex items-center gap-0.5">
-              <Flame size={16} className="text-[#C6684F]" />
-              <span className="text-[14px] font-bold text-[#C6684F]">{profile.current_streak}</span>
+            <Link href="/serie" className="flex items-center gap-1.5">
+              <span className="text-[15px] font-bold text-[#1D1D1F]">{profile.current_streak}</span>
+              {profile.current_streak >= 7 ? (
+                <motion.div
+                  className="relative w-5 h-5"
+                  animate={{ y: [0, -1.5, 0] }}
+                  transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+                >
+                  <Flame size={20} className="absolute inset-0 text-[#D4421A]" strokeWidth={1.3} />
+                  <motion.div
+                    className="absolute inset-0 flex items-center justify-center"
+                    animate={{ y: [0, -0.5, 0] }}
+                    transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
+                  >
+                    <Flame size={15} className="text-[#E85D2A]" strokeWidth={1.4} />
+                  </motion.div>
+                  <motion.div
+                    className="absolute inset-0 flex items-center justify-center"
+                    animate={{ y: [0, -1, 0] }}
+                    transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+                  >
+                    <Flame size={10} className="text-[#FF8A3A] mt-[1px]" strokeWidth={1.5} />
+                  </motion.div>
+                  <motion.div
+                    className="absolute inset-0 flex items-center justify-center"
+                    animate={{ y: [0, -1, 0], scale: [1, 1.06, 1] }}
+                    transition={{ duration: 1.6, repeat: Infinity, ease: 'easeInOut' }}
+                  >
+                    <Flame size={6} className="text-[#FFD36E] mt-[2px]" strokeWidth={2} />
+                  </motion.div>
+                </motion.div>
+              ) : (
+                <Flame size={16} className="text-[#C6684F]" />
+              )}
             </Link>
           )}
 
@@ -128,7 +159,6 @@ export function TopBar() {
                 </div>
               )}
             </motion.div>
-            {/* Subtle ring animation when active */}
             {isProfileActive && (
               <motion.div
                 className="absolute inset-0 rounded-full border-2 border-[#C6684F]/30"
