@@ -52,6 +52,7 @@ const SESSION_TYPE_LABELS: Record<SessionType, { label: string; color: string }>
   vod: { label: 'VOD', color: '#C6684F' },
   live: { label: 'Live', color: '#7C6BAF' },
   libre: { label: 'Libre', color: '#5B9A6B' },
+  repos: { label: 'Repos', color: '#6B8E7B' },
 }
 
 function getRecCat(key: string | null) {

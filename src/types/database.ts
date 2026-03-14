@@ -179,7 +179,7 @@ export interface Notification {
   created_at: string
 }
 
-export type SessionType = 'vod' | 'live' | 'libre'
+export type SessionType = 'vod' | 'live' | 'libre' | 'repos'
 
 export interface CourseCompletion {
   id: string

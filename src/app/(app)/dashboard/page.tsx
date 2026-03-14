@@ -264,14 +264,51 @@ export default function DashboardPage() {
         )
       })()}
 
-      {/* ─── NOTIFICATIONS ─── */}
-      {(unreadMsg.count > 0 || nextLive || privateAppt) && (
+      {/* ─── À VENIR — prochains events en priorité ─── */}
+      {(nextLive || privateAppt || unreadMsg.count > 0) && (
         <motion.div initial="hidden" animate="visible" custom={0.5} variants={fadeInUp} className="mb-10">
+          <h2 className="text-[18px] font-bold text-[#1D1D1F] mb-4">À venir</h2>
           <div className="rounded-2xl bg-white border border-[#E8DDD4] overflow-hidden divide-y divide-[#F0EBE5]">
+
+            {nextLive && (
+              <Link href="/cours" className="flex items-center gap-3 px-5 py-4 hover:bg-[#FAF6F1] transition-colors">
+                <div className="w-10 h-10 bg-gradient-to-br from-[#C6684F] to-[#D4956B] rounded-full flex items-center justify-center flex-shrink-0">
+                  <Radio size={15} className="text-white" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[14px] font-semibold text-[#1D1D1F]">{nextLive.title}</p>
+                  <p className="text-[12px] text-[#86868B] capitalize">
+                    {format(new Date(nextLive.scheduled_at), "EEEE d MMMM · HH'h'mm", { locale: fr })}
+                    <span className="ml-1">· {nextLive.duration_minutes} min</span>
+                  </p>
+                </div>
+                <ChevronRight size={16} className="text-[#D1CCC5] flex-shrink-0" />
+              </Link>
+            )}
+
+            {privateAppt && (
+              <div className="flex items-center gap-3 px-5 py-4">
+                <div className="w-10 h-10 bg-[#7C3AED]/10 rounded-full flex items-center justify-center flex-shrink-0">
+                  <CalendarClock size={15} className="text-[#7C3AED]" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[14px] font-semibold text-[#1D1D1F]">{privateAppt.title}</p>
+                  <p className="text-[12px] text-[#86868B] capitalize">
+                    {format(new Date(privateAppt.scheduled_at), "EEEE d MMMM · HH'h'mm", { locale: fr })}
+                  </p>
+                </div>
+                {privateAppt.meeting_url && (
+                  <a href={privateAppt.meeting_url} target="_blank" rel="noopener noreferrer"
+                    className="text-[12px] font-semibold text-[#7C3AED] flex items-center gap-1 hover:underline">
+                    <Video size={13} /> Visio
+                  </a>
+                )}
+              </div>
+            )}
 
             {unreadMsg.count > 0 && (
               <Link href="/messages" className="flex items-center gap-3 px-5 py-4 hover:bg-[#FAF6F1] transition-colors">
-                <div className="relative w-9 h-9 bg-[#C6684F]/10 rounded-full flex items-center justify-center flex-shrink-0">
+                <div className="relative w-10 h-10 bg-[#C6684F]/10 rounded-full flex items-center justify-center flex-shrink-0">
                   <MessageCircle size={15} className="text-[#C6684F]" />
                   <span className="absolute -top-0.5 -right-0.5 min-w-[15px] h-[15px] px-0.5 bg-[#C6684F] text-white text-[9px] font-bold rounded-full flex items-center justify-center">
                     {unreadMsg.count}
@@ -288,165 +325,13 @@ export default function DashboardPage() {
                 <ChevronRight size={16} className="text-[#D1CCC5] flex-shrink-0" />
               </Link>
             )}
-
-            {nextLive && (
-              <Link href="/cours" className="flex items-center gap-3 px-5 py-4 hover:bg-[#FAF6F1] transition-colors">
-                <div className="w-9 h-9 bg-gradient-to-br from-[#C6684F] to-[#D4956B] rounded-full flex items-center justify-center flex-shrink-0">
-                  <Radio size={14} className="text-white" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-[14px] font-semibold text-[#1D1D1F]">{nextLive.title}</p>
-                  <p className="text-[12px] text-[#86868B] capitalize">
-                    {format(new Date(nextLive.scheduled_at), "EEEE d MMMM · HH'h'mm", { locale: fr })}
-                    <span className="ml-1">· {nextLive.duration_minutes} min</span>
-                  </p>
-                </div>
-                <ChevronRight size={16} className="text-[#D1CCC5] flex-shrink-0" />
-              </Link>
-            )}
-
-            {privateAppt && (
-              <div className="flex items-center gap-3 px-5 py-4">
-                <div className="w-9 h-9 bg-[#7C3AED]/10 rounded-full flex items-center justify-center flex-shrink-0">
-                  <CalendarClock size={14} className="text-[#7C3AED]" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-[14px] font-semibold text-[#1D1D1F]">{privateAppt.title}</p>
-                  <p className="text-[12px] text-[#86868B] capitalize">
-                    {format(new Date(privateAppt.scheduled_at), "EEEE d MMMM · HH'h'mm", { locale: fr })}
-                  </p>
-                </div>
-                {privateAppt.meeting_url && (
-                  <a href={privateAppt.meeting_url} target="_blank" rel="noopener noreferrer"
-                    className="text-[12px] font-semibold text-[#7C3AED] flex items-center gap-1 hover:underline">
-                    <Video size={13} /> Visio
-                  </a>
-                )}
-              </div>
-            )}
           </div>
         </motion.div>
       )}
 
-      {/* ─── MON OBJECTIF — Whoop "Mon plan" style ─── */}
-      <motion.div initial="hidden" animate="visible" custom={1} variants={fadeInUp} className="mb-10">
-        <h2 className="text-[18px] font-bold text-[#1D1D1F] mb-4">Mon objectif</h2>
-        <div className="rounded-2xl bg-white border border-[#E8DDD4] overflow-hidden">
-          {/* Header with progress */}
-          <div className="px-5 pt-5 pb-4">
-            <div className="flex items-center justify-between mb-1">
-              <p className="text-[15px] font-bold text-[#1D1D1F]">Objectif hebdomadaire</p>
-              <ChevronRight size={16} className="text-[#D1CCC5]" />
-            </div>
-            <p className="text-[12px] text-[#86868B] mb-4">{profile.weekly_rhythm} sessions par semaine</p>
-
-            {/* Big percentage + progress bar (like Whoop's 74% ACCOMPLI) */}
-            <div className="flex items-baseline gap-1.5 mb-2">
-              <span className="text-[32px] font-bold text-[#1D1D1F] leading-none">{weeklyPercent}%</span>
-              <span className="text-[11px] font-bold tracking-[0.12em] uppercase text-[#86868B]">accompli</span>
-            </div>
-            <div className="h-2 bg-[#F0EBE5] rounded-full overflow-hidden">
-              <motion.div
-                className="h-full rounded-full bg-[#34C759]"
-                initial={{ width: 0 }}
-                animate={{ width: `${weeklyPercent}%` }}
-                transition={{ duration: 0.8, ease: 'easeOut' }}
-              />
-            </div>
-          </div>
-
-          {/* Sub-goals with circular indicators */}
-          <div className="border-t border-[#F0EBE5] divide-y divide-[#F0EBE5]">
-            <div className="flex items-center justify-between px-5 py-3.5">
-              <span className="text-[14px] text-[#1D1D1F]">Sessions cette semaine</span>
-              <CircleProgress value={sessionsThisWeek} max={profile.weekly_rhythm} color="#34C759" />
-            </div>
-            <div className="flex items-center justify-between px-5 py-3.5">
-              <span className="text-[14px] text-[#1D1D1F]">Série en cours</span>
-              <CircleProgress value={profile.current_streak} max={Math.max(profile.current_streak, profile.longest_streak)} color="#C6684F" />
-            </div>
-          </div>
-
-          {/* CTA button */}
-          <div className="px-5 pb-5 pt-3">
-            <Link href="/suivi"
-              className="block w-full py-3 rounded-xl bg-[#F0EBE5] text-center text-[13px] font-bold tracking-[0.08em] uppercase text-[#1D1D1F] hover:bg-[#E8DDD4] transition-colors">
-              Voir mon suivi
-            </Link>
-          </div>
-        </div>
-      </motion.div>
-
-      {/* ─── MON JOURNAL — Whoop weekly dots ─── */}
-      <motion.div initial="hidden" animate="visible" custom={1.5} variants={fadeInUp} className="mb-10">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-[18px] font-bold text-[#1D1D1F]">Mon journal</h2>
-          <Link href="/suivi" className="text-[12px] font-semibold text-[#C6684F] flex items-center gap-0.5">
-            <ChevronRight size={14} />
-          </Link>
-        </div>
-        <div className="rounded-2xl bg-white border border-[#E8DDD4] px-4 py-5">
-          <div className="flex items-center justify-between">
-            {weekDays.map((day) => (
-              <div key={day.label} className="flex flex-col items-center gap-2.5">
-                <span className={`text-[10px] font-bold tracking-wider ${day.isToday ? 'text-[#1D1D1F]' : 'text-[#AEAEB2]'}`}>
-                  {day.label}.
-                </span>
-                <div className={`w-9 h-9 rounded-full flex items-center justify-center transition-all ${
-                  day.isToday
-                    ? 'bg-[#C6684F] text-white shadow-[0_2px_8px_rgba(198,104,79,0.3)]'
-                    : day.isPast
-                    ? 'bg-[#34C759] text-white'
-                    : 'bg-[#F5F5F7]'
-                }`}>
-                  {day.isPast ? (
-                    <Check size={16} strokeWidth={2.5} />
-                  ) : day.isToday ? (
-                    <span className="text-[12px] font-bold">{day.date.getDate()}</span>
-                  ) : (
-                    <span className="w-2 h-2 rounded-full bg-[#D1CCC5]" />
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </motion.div>
-
-      {/* ─── MON TABLEAU DE BORD — Whoop metrics style ─── */}
-      <motion.div data-tour="dashboard-stats" initial="hidden" animate="visible" custom={2} variants={fadeInUp} className="mb-10">
-        <h2 className="text-[18px] font-bold text-[#1D1D1F] mb-4">Mon tableau de bord</h2>
-        <div className="rounded-2xl bg-white border border-[#E8DDD4] divide-y divide-[#F0EBE5]">
-          <div className="flex items-center justify-between px-5 py-4">
-            <div className="flex items-center gap-3">
-              <Trophy size={18} className="text-[#C6684F]" />
-              <span className="text-[14px] text-[#1D1D1F]">Sessions totales</span>
-            </div>
-            <span className="text-[22px] font-bold text-[#1D1D1F]">{profile.total_sessions}</span>
-          </div>
-          <div className="flex items-center justify-between px-5 py-4">
-            <div className="flex items-center gap-3">
-              <Clock size={18} className="text-[#C6684F]" />
-              <span className="text-[14px] text-[#1D1D1F]">Temps de pratique</span>
-            </div>
-            <span className="text-[22px] font-bold text-[#1D1D1F]">{formatDuration(profile.total_practice_minutes)}</span>
-          </div>
-          <div className="flex items-center justify-between px-5 py-4">
-            <div className="flex items-center gap-3">
-              <Sparkles size={18} className="text-[#C6684F]" />
-              <span className="text-[14px] text-[#1D1D1F]">Meilleure série</span>
-            </div>
-            <div className="text-right">
-              <span className="text-[22px] font-bold text-[#1D1D1F]">{profile.longest_streak}</span>
-              <span className="text-[12px] text-[#AEAEB2] ml-1">jours</span>
-            </div>
-          </div>
-        </div>
-      </motion.div>
-
-      {/* ─── MES COURS ─── */}
+      {/* ─── MES COURS — programme + replay en accès rapide ─── */}
       {(featured || replayUrl) && (
-        <motion.div data-tour="dashboard-programmes" initial="hidden" animate="visible" custom={2.5} variants={fadeInUp} className="mb-10">
+        <motion.div data-tour="dashboard-programmes" initial="hidden" animate="visible" custom={1} variants={fadeInUp} className="mb-10">
           <h2 className="text-[18px] font-bold text-[#1D1D1F] mb-4">Mes cours</h2>
           <div className="rounded-2xl bg-white border border-[#E8DDD4] divide-y divide-[#F0EBE5] overflow-hidden">
 
@@ -487,7 +372,7 @@ export default function DashboardPage() {
                   {replayCode ? (
                     <div className="flex items-center gap-1.5">
                       <p className="text-[12px] text-[#86868B]">
-                        MDP : <span className="font-mono font-bold text-[#7C3AED]">{replayCode}</span>
+                        Mot de passe : <span className="font-mono font-bold text-[#7C3AED]">{replayCode}</span>
                       </p>
                       <button
                         onClick={(e) => {
@@ -496,9 +381,9 @@ export default function DashboardPage() {
                           setCodeCopied(true)
                           setTimeout(() => setCodeCopied(false), 2000)
                         }}
-                        className="p-0.5 text-[#7C3AED]"
+                        className="p-1 rounded-md hover:bg-[#7C3AED]/10 text-[#7C3AED]"
                       >
-                        {codeCopied ? <Check size={11} /> : <Copy size={11} />}
+                        {codeCopied ? <Check size={12} /> : <Copy size={12} />}
                       </button>
                     </div>
                   ) : (
@@ -512,7 +397,112 @@ export default function DashboardPage() {
         </motion.div>
       )}
 
-      {/* ─── MON ACCOMPAGNEMENT ─── */}
+      {/* ─── MON JOURNAL — weekly dots ─── */}
+      <motion.div initial="hidden" animate="visible" custom={1.5} variants={fadeInUp} className="mb-10">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-[18px] font-bold text-[#1D1D1F]">Mon journal</h2>
+          <Link href="/suivi" className="text-[12px] font-semibold text-[#C6684F] flex items-center gap-0.5">
+            Voir tout <ChevronRight size={14} />
+          </Link>
+        </div>
+        <div className="rounded-2xl bg-white border border-[#E8DDD4] px-4 py-5">
+          <div className="flex items-center justify-between">
+            {weekDays.map((day) => (
+              <div key={day.label} className="flex flex-col items-center gap-2.5">
+                <span className={`text-[10px] font-bold tracking-wider ${day.isToday ? 'text-[#1D1D1F]' : 'text-[#AEAEB2]'}`}>
+                  {day.label}.
+                </span>
+                <div className={`w-9 h-9 rounded-full flex items-center justify-center transition-all ${
+                  day.isToday
+                    ? 'bg-[#C6684F] text-white shadow-[0_2px_8px_rgba(198,104,79,0.3)]'
+                    : day.isPast
+                    ? 'bg-[#34C759] text-white'
+                    : 'bg-[#F5F5F7]'
+                }`}>
+                  {day.isPast ? (
+                    <Check size={16} strokeWidth={2.5} />
+                  ) : day.isToday ? (
+                    <span className="text-[12px] font-bold">{day.date.getDate()}</span>
+                  ) : (
+                    <span className="w-2 h-2 rounded-full bg-[#D1CCC5]" />
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </motion.div>
+
+      {/* ─── MON OBJECTIF ─── */}
+      <motion.div initial="hidden" animate="visible" custom={2} variants={fadeInUp} className="mb-10">
+        <h2 className="text-[18px] font-bold text-[#1D1D1F] mb-4">Mon objectif</h2>
+        <div className="rounded-2xl bg-white border border-[#E8DDD4] overflow-hidden">
+          <div className="px-5 pt-5 pb-4">
+            <p className="text-[12px] text-[#86868B] mb-3">{profile.weekly_rhythm} sessions par semaine</p>
+            <div className="flex items-baseline gap-1.5 mb-2">
+              <span className="text-[32px] font-bold text-[#1D1D1F] leading-none">{weeklyPercent}%</span>
+              <span className="text-[11px] font-bold tracking-[0.12em] uppercase text-[#86868B]">accompli</span>
+            </div>
+            <div className="h-2 bg-[#F0EBE5] rounded-full overflow-hidden">
+              <motion.div
+                className="h-full rounded-full bg-[#34C759]"
+                initial={{ width: 0 }}
+                animate={{ width: `${weeklyPercent}%` }}
+                transition={{ duration: 0.8, ease: 'easeOut' }}
+              />
+            </div>
+          </div>
+          <div className="border-t border-[#F0EBE5] divide-y divide-[#F0EBE5]">
+            <div className="flex items-center justify-between px-5 py-3.5">
+              <span className="text-[14px] text-[#1D1D1F]">Sessions cette semaine</span>
+              <CircleProgress value={sessionsThisWeek} max={profile.weekly_rhythm} color="#34C759" />
+            </div>
+            <div className="flex items-center justify-between px-5 py-3.5">
+              <span className="text-[14px] text-[#1D1D1F]">Série en cours</span>
+              <CircleProgress value={profile.current_streak} max={Math.max(profile.current_streak, profile.longest_streak)} color="#C6684F" />
+            </div>
+          </div>
+          <div className="px-5 pb-5 pt-3">
+            <Link href="/suivi"
+              className="block w-full py-3 rounded-xl bg-[#F0EBE5] text-center text-[13px] font-bold tracking-[0.08em] uppercase text-[#1D1D1F] hover:bg-[#E8DDD4] transition-colors">
+              Voir mon suivi
+            </Link>
+          </div>
+        </div>
+      </motion.div>
+
+      {/* ─── MON TABLEAU DE BORD ─── */}
+      <motion.div data-tour="dashboard-stats" initial="hidden" animate="visible" custom={2.5} variants={fadeInUp} className="mb-10">
+        <h2 className="text-[18px] font-bold text-[#1D1D1F] mb-4">Mon tableau de bord</h2>
+        <div className="rounded-2xl bg-white border border-[#E8DDD4] divide-y divide-[#F0EBE5]">
+          <div className="flex items-center justify-between px-5 py-4">
+            <div className="flex items-center gap-3">
+              <Trophy size={18} className="text-[#C6684F]" />
+              <span className="text-[14px] text-[#1D1D1F]">Sessions totales</span>
+            </div>
+            <span className="text-[22px] font-bold text-[#1D1D1F]">{profile.total_sessions}</span>
+          </div>
+          <div className="flex items-center justify-between px-5 py-4">
+            <div className="flex items-center gap-3">
+              <Clock size={18} className="text-[#C6684F]" />
+              <span className="text-[14px] text-[#1D1D1F]">Temps de pratique</span>
+            </div>
+            <span className="text-[22px] font-bold text-[#1D1D1F]">{formatDuration(profile.total_practice_minutes)}</span>
+          </div>
+          <div className="flex items-center justify-between px-5 py-4">
+            <div className="flex items-center gap-3">
+              <Sparkles size={18} className="text-[#C6684F]" />
+              <span className="text-[14px] text-[#1D1D1F]">Meilleure série</span>
+            </div>
+            <div className="text-right">
+              <span className="text-[22px] font-bold text-[#1D1D1F]">{profile.longest_streak}</span>
+              <span className="text-[12px] text-[#AEAEB2] ml-1">jours</span>
+            </div>
+          </div>
+        </div>
+      </motion.div>
+
+      {/* ─── MON ACCOMPAGNEMENT — fixed percentage ─── */}
       {profile.subscription_start && (() => {
         const end = new Date(profile.subscription_start)
         end.setFullYear(end.getFullYear() + 1)
@@ -522,17 +512,15 @@ export default function DashboardPage() {
             <h2 className="text-[18px] font-bold text-[#1D1D1F] mb-4">Mon accompagnement</h2>
             <div className={`rounded-2xl border overflow-hidden ${info.urgent ? 'bg-amber-50/50 border-amber-200' : 'bg-white border-[#E8DDD4]'}`}>
               <div className="px-5 pt-5 pb-4">
-                <div className="flex items-baseline gap-1.5 mb-1">
+                <div className="flex items-center justify-between mb-3">
                   <span className={`text-[15px] font-bold ${info.urgent ? 'text-amber-700' : 'text-[#1D1D1F]'}`}>
                     {info.label}
                   </span>
+                  <Calendar size={16} className={info.urgent ? 'text-amber-600' : 'text-[#C6684F]'} />
                 </div>
                 <p className="text-[12px] text-[#86868B] mb-3">
                   jusqu&apos;au {end.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
                 </p>
-                <div className="flex items-baseline gap-1.5 mb-2">
-                  <span className="text-[28px] font-bold text-[#1D1D1F] leading-none">{info.percent}%</span>
-                </div>
                 <div className="h-2 bg-[#F0EBE5] rounded-full overflow-hidden">
                   <motion.div
                     className={`h-full rounded-full ${info.urgent ? 'bg-amber-500' : 'bg-[#C6684F]'}`}
@@ -541,6 +529,7 @@ export default function DashboardPage() {
                     transition={{ duration: 0.8, ease: 'easeOut' }}
                   />
                 </div>
+                <p className="text-[11px] text-[#9B8E82] mt-2">{info.daysLeft > 0 ? `${info.daysLeft} jours restants` : ''}</p>
               </div>
               {info.urgent && (
                 <div className="border-t border-amber-200 px-5 py-3">

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, Play, Radio, Dumbbell, Minus, Plus, ChevronRight, Search } from 'lucide-react'
+import { X, Play, Radio, Dumbbell, Minus, Plus, ChevronRight, Search, Moon } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { logPractice, type PracticeLogInput, type PracticeLogResult } from '@/lib/practice-log'
 import type { SessionType, Course } from '@/types/database'
@@ -13,10 +13,11 @@ interface Props {
   onSuccess: (result: PracticeLogResult) => void
 }
 
-const SESSION_TYPES: { value: SessionType; label: string; icon: typeof Play; color: string }[] = [
-  { value: 'vod', label: 'Cours VOD', icon: Play, color: '#C6684F' },
-  { value: 'live', label: 'Cours live', icon: Radio, color: '#C6684F' },
-  { value: 'libre', label: 'Pratique libre', icon: Dumbbell, color: '#7C3AED' },
+const SESSION_TYPES: { value: SessionType; label: string; icon: typeof Play; color: string; desc: string }[] = [
+  { value: 'vod', label: 'Cours VOD', icon: Play, color: '#C6684F', desc: 'Replay ou cours à la demande' },
+  { value: 'live', label: 'Cours live', icon: Radio, color: '#C6684F', desc: 'Session en direct avec Marjorie' },
+  { value: 'libre', label: 'Pratique libre', icon: Dumbbell, color: '#7C3AED', desc: 'Yoga, stretching, marche...' },
+  { value: 'repos', label: 'Jour de repos', icon: Moon, color: '#6B8E7B', desc: 'Récupération active — ta série continue' },
 ]
 
 const LIBRE_LABELS = ['Pilates au sol', 'Stretching', 'Yoga', 'Marche', 'Renforcement', 'Autre']
@@ -72,6 +73,11 @@ export function PracticeLogModal({ open, onClose, onSuccess }: Props) {
 
   function handleTypeSelect(type: SessionType) {
     setSessionType(type)
+    if (type === 'repos') {
+      setDuration(0)
+      setStep('feedback')
+      return
+    }
     if (type === 'libre') setDuration(30)
     setStep('details')
   }
@@ -129,7 +135,7 @@ export function PracticeLogModal({ open, onClose, onSuccess }: Props) {
               <h2 className="font-[family-name:var(--font-heading)] text-xl text-[#2C2C2C]">
                 {step === 'type' && 'Enregistrer une session'}
                 {step === 'details' && (sessionType === 'vod' ? 'Cours VOD' : sessionType === 'live' ? 'Cours live' : 'Pratique libre')}
-                {step === 'feedback' && 'Comment c\'était ?'}
+                {step === 'feedback' && (sessionType === 'repos' ? 'Jour de repos' : 'Comment c\'était ?')}
               </h2>
               <button onClick={onClose} className="w-9 h-9 rounded-full flex items-center justify-center text-[#A09488] hover:bg-[#F2E8DF] transition-colors">
                 <X size={20} />
@@ -140,7 +146,7 @@ export function PracticeLogModal({ open, onClose, onSuccess }: Props) {
               {/* Step 1: Type selection */}
               {step === 'type' && (
                 <div className="space-y-3">
-                  {SESSION_TYPES.map(({ value, label, icon: Icon, color }) => (
+                  {SESSION_TYPES.map(({ value, label, icon: Icon, color, desc }) => (
                     <motion.button
                       key={value}
                       onClick={() => handleTypeSelect(value)}
@@ -152,11 +158,7 @@ export function PracticeLogModal({ open, onClose, onSuccess }: Props) {
                       </div>
                       <div className="flex-1">
                         <p className="font-semibold text-[15px] text-[#2C2C2C]">{label}</p>
-                        <p className="text-[13px] text-[#A09488] mt-0.5">
-                          {value === 'vod' && 'Replay ou cours à la demande'}
-                          {value === 'live' && 'Session en direct avec Marjorie'}
-                          {value === 'libre' && 'Yoga, stretching, marche...'}
-                        </p>
+                        <p className="text-[13px] text-[#A09488] mt-0.5">{desc}</p>
                       </div>
                       <ChevronRight size={16} className="text-[#DCCFBF]" />
                     </motion.button>
@@ -318,14 +320,24 @@ export function PracticeLogModal({ open, onClose, onSuccess }: Props) {
 
                   {/* Summary */}
                   <div className="bg-[#FAF6F1] rounded-2xl p-4 text-sm text-[#6B6359]">
-                    <p className="text-[15px]">
-                      <span className="font-semibold text-[#2C2C2C]">
-                        {sessionType === 'vod' ? 'Cours VOD' : sessionType === 'live' ? 'Cours live' : 'Pratique libre'}
-                      </span>
-                      {selectedCourse && <span> — {selectedCourse.title}</span>}
-                      {libreLabel && <span> — {libreLabel}</span>}
-                    </p>
-                    <p className="text-[13px] mt-1">{duration} min</p>
+                    {sessionType === 'repos' ? (
+                      <div className="text-center py-2">
+                        <Moon size={28} className="mx-auto text-[#6B8E7B] mb-2" />
+                        <p className="text-[15px] font-semibold text-[#2C2C2C]">Journée de récupération</p>
+                        <p className="text-[13px] text-[#9B8E82] mt-1">Ta série continue, ton corps récupère</p>
+                      </div>
+                    ) : (
+                      <>
+                        <p className="text-[15px]">
+                          <span className="font-semibold text-[#2C2C2C]">
+                            {sessionType === 'vod' ? 'Cours VOD' : sessionType === 'live' ? 'Cours live' : 'Pratique libre'}
+                          </span>
+                          {selectedCourse && <span> — {selectedCourse.title}</span>}
+                          {libreLabel && <span> — {libreLabel}</span>}
+                        </p>
+                        <p className="text-[13px] mt-1">{duration} min</p>
+                      </>
+                    )}
                   </div>
 
                   {error && (

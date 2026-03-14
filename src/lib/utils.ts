@@ -84,20 +84,20 @@ export function formatFutureDate(dateString: string): string {
   return `Expire dans ${diffMonths} mois`
 }
 
-export function formatSubscriptionRemaining(endDateString: string): { label: string; percent: number; urgent: boolean } {
+export function formatSubscriptionRemaining(endDateString: string): { label: string; percent: number; urgent: boolean; daysLeft: number } {
   const end = new Date(endDateString)
   const now = new Date()
   const diffMs = end.getTime() - now.getTime()
   const diffDays = Math.ceil(diffMs / 86400000)
   const totalDays = 365
-  const elapsed = totalDays - diffDays
-  const percent = Math.max(0, Math.min(100, (elapsed / totalDays) * 100))
+  // percent = remaining time (100% = full year left, 0% = expired)
+  const percent = Math.max(0, Math.min(100, Math.round((diffDays / totalDays) * 100)))
 
-  if (diffDays <= 0) return { label: 'Abonnement expiré', percent: 100, urgent: true }
-  if (diffDays <= 30) return { label: `${diffDays} jour${diffDays > 1 ? 's' : ''} restant${diffDays > 1 ? 's' : ''}`, percent, urgent: true }
-  if (diffDays <= 90) return { label: `${Math.ceil(diffDays / 30)} mois restant${diffDays > 45 ? 's' : ''}`, percent, urgent: false }
+  if (diffDays <= 0) return { label: 'Accompagnement terminé', percent: 0, urgent: true, daysLeft: 0 }
+  if (diffDays <= 30) return { label: `${diffDays} jour${diffDays > 1 ? 's' : ''} restant${diffDays > 1 ? 's' : ''}`, percent, urgent: true, daysLeft: diffDays }
+  if (diffDays <= 90) return { label: `${Math.ceil(diffDays / 30)} mois restant${diffDays > 45 ? 's' : ''}`, percent, urgent: false, daysLeft: diffDays }
   const months = Math.round(diffDays / 30)
-  return { label: `${months} mois restants`, percent, urgent: false }
+  return { label: `${months} mois restants`, percent, urgent: false, daysLeft: diffDays }
 }
 
 export const GOAL_LABELS: Record<string, string> = {
