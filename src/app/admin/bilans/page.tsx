@@ -129,12 +129,14 @@ export default function BilansPage() {
   async function saveSubscriptionDate() {
     if (!dateModal || !dateModal.date) return
     setSavingDate(true)
-    const res = await fetch('/api/admin/update-profile', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId: dateModal.client.id, updates: { subscription_start: dateModal.date } }),
-    })
-    if (res.ok) {
+    const { error } = await supabase
+      .from('profiles')
+      .update({ subscription_start: dateModal.date })
+      .eq('id', dateModal.client.id)
+    if (error) {
+      console.error('Erreur update subscription_start:', error.message)
+      alert('Erreur : ' + error.message)
+    } else {
       setClients(prev => prev.map(c => c.id === dateModal.client.id ? { ...c, subscription_start: dateModal.date } : c))
     }
     setSavingDate(false)
