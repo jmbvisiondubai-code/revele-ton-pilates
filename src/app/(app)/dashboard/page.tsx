@@ -456,12 +456,12 @@ export default function DashboardPage() {
             {featured && (
               <button onClick={() => openExternal(featured.url)} className="w-full flex items-center gap-4 px-5 py-4 hover:bg-[#FAF6F1] transition-colors text-left">
                 {featured.image ? (
-                  <div className="w-20 h-14 rounded-xl overflow-hidden flex-shrink-0">
+                  <div className="w-20 h-14 rounded-[3px] overflow-hidden flex-shrink-0">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={featured.image} alt={featured.title} className="w-full h-full object-cover" />
                   </div>
                 ) : (
-                  <div className="w-20 h-14 rounded-xl bg-[#C6684F]/5 flex items-center justify-center flex-shrink-0">
+                  <div className="w-20 h-14 rounded-[3px] bg-[#C6684F]/5 flex items-center justify-center flex-shrink-0">
                     <Dumbbell size={20} className="text-[#C6684F]" />
                   </div>
                 )}
@@ -476,12 +476,12 @@ export default function DashboardPage() {
             {replayUrl && (
               <button onClick={() => openExternal(replayUrl)} className="w-full flex items-center gap-4 px-5 py-4 hover:bg-[#FAF6F1] transition-colors text-left">
                 {replayImage ? (
-                  <div className="w-20 h-14 rounded-xl overflow-hidden flex-shrink-0">
+                  <div className="w-20 h-14 rounded-[3px] overflow-hidden flex-shrink-0">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={replayImage} alt="Replay" className="w-full h-full object-cover" />
                   </div>
                 ) : (
-                  <div className="w-20 h-14 rounded-xl bg-[#7C3AED]/5 flex items-center justify-center flex-shrink-0">
+                  <div className="w-20 h-14 rounded-[3px] bg-[#7C3AED]/5 flex items-center justify-center flex-shrink-0">
                     <Play size={20} className="text-[#7C3AED] ml-0.5" />
                   </div>
                 )}
