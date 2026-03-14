@@ -383,15 +383,32 @@ export default function DashboardPage() {
                   </p>
                 </div>
               </div>
-              <Link href="/serie" className="relative flex items-center gap-1.5 bg-[#C6684F]/10 rounded-full px-3 py-1.5 hover:bg-[#C6684F]/20 transition-colors">
+              <Link href="/serie" className="relative flex items-center gap-1.5 bg-[#C6684F]/10 rounded-full px-3 py-1.5 hover:bg-[#C6684F]/20 transition-colors overflow-visible">
                 {profile.current_streak >= 7 ? (
                   <>
                     <motion.div
-                      className="relative"
+                      className="relative w-5 h-5"
                       animate={{ y: [0, -1.5, 0] }}
-                      transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
+                      transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
                     >
-                      <Flame size={16} className="text-[#E85D2A]" />
+                      {/* Outer — red-orange */}
+                      <Flame size={20} className="absolute inset-0 text-[#E85D2A]" strokeWidth={1.5} />
+                      {/* Mid — warm orange */}
+                      <motion.div
+                        className="absolute inset-0 flex items-center justify-center"
+                        animate={{ y: [0, -0.5, 0] }}
+                        transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut' }}
+                      >
+                        <Flame size={14} className="text-[#FF8A3A] mt-[2px]" strokeWidth={1.5} />
+                      </motion.div>
+                      {/* Core — golden */}
+                      <motion.div
+                        className="absolute inset-0 flex items-center justify-center"
+                        animate={{ y: [0, -1, 0], scale: [1, 1.05, 1] }}
+                        transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}
+                      >
+                        <Flame size={8} className="text-[#FFD36E] mt-[4px]" strokeWidth={2} />
+                      </motion.div>
                     </motion.div>
                     <span className="text-[15px] font-bold text-[#C6684F]">{profile.current_streak}</span>
                   </>
