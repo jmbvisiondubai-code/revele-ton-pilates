@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/client'
 import { Card } from '@/components/ui'
-import { ClipboardCheck, CheckCircle2, Circle, ChevronDown, ChevronUp, Search, LayoutGrid, List, Users, StickyNote, X, AlertTriangle } from 'lucide-react'
+import { ClipboardCheck, CheckCircle2, Circle, ChevronDown, ChevronUp, Search, LayoutGrid, List, Users, StickyNote, X, AlertTriangle, Calendar } from 'lucide-react'
 import { LEVEL_LABELS } from '@/lib/utils'
 
 type Client = {
@@ -64,6 +64,8 @@ export default function BilansPage() {
   const [expandedPhases, setExpandedPhases] = useState<Record<string, boolean>>({ aclasser: true, debut: true, milieu: true, fin: true })
   const [notesModal, setNotesModal] = useState<{ userId: string; phase: 'debut' | 'milieu' | 'fin'; notes: string } | null>(null)
   const [savingNotes, setSavingNotes] = useState(false)
+  const [dateModal, setDateModal] = useState<{ client: Client; date: string } | null>(null)
+  const [savingDate, setSavingDate] = useState(false)
 
   const supabase = createClient()
 
@@ -122,6 +124,21 @@ export default function BilansPage() {
     }
     setSavingNotes(false)
     setNotesModal(null)
+  }
+
+  async function saveSubscriptionDate() {
+    if (!dateModal || !dateModal.date) return
+    setSavingDate(true)
+    const res = await fetch('/api/admin/update-profile', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: dateModal.client.id, updates: { subscription_start: dateModal.date } }),
+    })
+    if (res.ok) {
+      setClients(prev => prev.map(c => c.id === dateModal.client.id ? { ...c, subscription_start: dateModal.date } : c))
+    }
+    setSavingDate(false)
+    setDateModal(null)
   }
 
   function getBilan(userId: string, phase: string): Bilan | undefined {
@@ -295,7 +312,11 @@ export default function BilansPage() {
           {expandedPhases.aclasser && (
             <div className="border-t border-[#DCCFBF] p-3 space-y-1">
               {filteredUnclassified.map(client => (
-                <div key={client.id} className="flex items-center justify-between py-2.5 px-3 rounded-lg bg-white hover:bg-[#F9F5F0] transition-colors">
+                <button
+                  key={client.id}
+                  onClick={() => setDateModal({ client, date: new Date().toISOString().split('T')[0] })}
+                  className="w-full flex items-center justify-between py-2.5 px-3 rounded-lg bg-white hover:bg-[#FDF6EC] transition-colors cursor-pointer text-left"
+                >
                   <div className="flex items-center gap-3 min-w-0">
                     <div className="w-8 h-8 rounded-full bg-[#F2E8DF] flex items-center justify-center text-xs font-medium text-[#6B6359] flex-shrink-0">
                       {client.avatar_url ? (
@@ -309,8 +330,11 @@ export default function BilansPage() {
                       <p className="text-xs text-[#A09488]">{LEVEL_LABELS[client.practice_level || ''] || 'N/A'} · Inscrite le {new Date(client.created_at).toLocaleDateString('fr-FR')}</p>
                     </div>
                   </div>
-                  <span className="text-[10px] text-[#D4A056] bg-[#FDF6EC] px-2 py-0.5 rounded-full font-medium flex-shrink-0">Date manquante</span>
-                </div>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <span className="text-[10px] text-[#D4A056] bg-[#FDF6EC] px-2 py-0.5 rounded-full font-medium">Renseigner la date</span>
+                    <Calendar size={14} className="text-[#D4A056]" />
+                  </div>
+                </button>
               ))}
             </div>
           )}
@@ -437,7 +461,7 @@ export default function BilansPage() {
                     <>
                       <tr><td colSpan={5} className="px-4 py-2 text-xs font-semibold text-[#D4A056] uppercase tracking-wide bg-[#FDF6EC]">À classer — date manquante ({filteredUnclassified.length})</td></tr>
                       {filteredUnclassified.map(client => (
-                        <tr key={client.id} className="border-b border-[#F2E8DF] hover:bg-[#FDF6EC]/50 transition-colors">
+                        <tr key={client.id} onClick={() => setDateModal({ client, date: new Date().toISOString().split('T')[0] })} className="border-b border-[#F2E8DF] hover:bg-[#FDF6EC]/50 transition-colors cursor-pointer">
                           <td className="px-4 py-3">
                             <div className="flex items-center gap-2.5">
                               <div className="w-7 h-7 rounded-full bg-[#F2E8DF] flex items-center justify-center text-xs font-medium text-[#6B6359] flex-shrink-0">
@@ -534,7 +558,11 @@ export default function BilansPage() {
               )
             })}
             {filteredUnclassified.map(client => (
-              <Card key={client.id} className="p-4 border-dashed border-[#D4A056]">
+              <Card
+                key={client.id}
+                className="p-4 border-dashed border-[#D4A056] cursor-pointer hover:bg-[#FDF6EC]/50 transition-colors"
+                onClick={() => setDateModal({ client, date: new Date().toISOString().split('T')[0] })}
+              >
                 <div className="flex items-center gap-3 mb-3">
                   <div className="w-10 h-10 rounded-full bg-[#F2E8DF] flex items-center justify-center text-sm font-medium text-[#6B6359]">
                     {client.avatar_url ? (
@@ -549,12 +577,51 @@ export default function BilansPage() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2 p-2.5 rounded-lg bg-[#FDF6EC]">
-                  <AlertTriangle size={14} className="text-[#D4A056] flex-shrink-0" />
-                  <p className="text-xs text-[#D4A056]">Date de début d'abonnement à renseigner dans la fiche cliente</p>
+                  <Calendar size={14} className="text-[#D4A056] flex-shrink-0" />
+                  <p className="text-xs text-[#D4A056]">Cliquer pour renseigner la date de début d'abonnement</p>
                 </div>
               </Card>
             ))}
           </>)}
+        </div>
+      )}
+
+      {/* Date Modal */}
+      {dateModal && (
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50 flex items-center justify-center p-6" onClick={() => setDateModal(null)}>
+          <div className="bg-white rounded-2xl w-full max-w-sm shadow-xl" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-4 border-b border-[#DCCFBF]">
+              <div>
+                <h3 className="font-medium text-[#2C2C2C]">Date de début d'abonnement</h3>
+                <p className="text-xs text-[#A09488]">{dateModal.client.first_name} {dateModal.client.last_name}</p>
+              </div>
+              <button onClick={() => setDateModal(null)} className="p-1.5 hover:bg-[#F2E8DF] rounded-lg text-[#A09488]">
+                <X size={18} />
+              </button>
+            </div>
+            <div className="p-4 space-y-3">
+              <p className="text-xs text-[#6B6359]">Cette date détermine la phase de bilan (début, milieu, fin) de la cliente.</p>
+              <input
+                type="date"
+                value={dateModal.date}
+                onChange={e => setDateModal(prev => prev ? { ...prev, date: e.target.value } : null)}
+                className="w-full border border-[#DCCFBF] rounded-xl p-3 text-sm text-[#2C2C2C] focus:outline-none focus:ring-2 focus:ring-[#C6684F]/20"
+              />
+              {dateModal.date && (
+                <p className="text-xs text-[#A09488]">
+                  Fin d'abonnement : {(() => { const d = new Date(dateModal.date); d.setFullYear(d.getFullYear() + 1); return d.toLocaleDateString('fr-FR') })()}
+                </p>
+              )}
+            </div>
+            <div className="flex justify-end gap-2 px-4 pb-4">
+              <button onClick={() => setDateModal(null)} className="px-4 py-2 text-sm text-[#6B6359] hover:bg-[#F2E8DF] rounded-xl">
+                Annuler
+              </button>
+              <button onClick={saveSubscriptionDate} disabled={savingDate || !dateModal.date} className="px-4 py-2 text-sm bg-[#C6684F] text-white rounded-xl hover:bg-[#b55a43] disabled:opacity-50">
+                {savingDate ? 'Enregistrement...' : 'Enregistrer'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
