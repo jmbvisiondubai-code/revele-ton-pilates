@@ -1,7 +1,7 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { motion } from 'framer-motion'
+import { useEffect, useState, useCallback, useRef } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import {
   Calendar,
   CalendarClock,
@@ -19,15 +19,18 @@ import {
   MessageCircle,
   Flame,
   Plus,
+  Moon,
+  Trash2,
+  Pencil,
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/client'
 import { useAuthStore } from '@/stores/auth-store'
 import { useDataCache, isCacheValid } from '@/stores/data-cache'
-// UI components used: none from shared lib (using inline styles)
 import { AddToCalendar } from '@/components/add-to-calendar'
 import { getGreeting, formatDuration, formatSubscriptionRemaining } from '@/lib/utils'
-import type { Profile, DailyInspiration, LiveSession, LiveSessionType, PrivateAppointment } from '@/types/database'
+import { PracticeLogModal } from '@/components/practice-log-modal'
+import type { Profile, DailyInspiration, LiveSession, LiveSessionType, PrivateAppointment, SessionType, CourseCompletion } from '@/types/database'
 
 const SESSION_TYPE_LABELS: Record<LiveSessionType, string> = {
   collectif: 'Prochain cours collectif',
@@ -46,6 +49,13 @@ interface FeaturedCard {
   description: string
   url: string
   image: string | null
+}
+
+const SESSION_ICONS: Record<SessionType, { icon: typeof Play; color: string; label: string }> = {
+  vod: { icon: Play, color: '#C6684F', label: 'Cours VOD' },
+  live: { icon: Radio, color: '#C6684F', label: 'Cours live' },
+  libre: { icon: Dumbbell, color: '#7C3AED', label: 'Pratique libre' },
+  repos: { icon: Moon, color: '#6B8E7B', label: 'Jour de repos' },
 }
 
 function getApptCalendarUrl(appt: PrivateAppointment) {
@@ -72,11 +82,25 @@ const fadeInUp = {
   }),
 }
 
+// Helper: get YYYY-MM-DD string from a Date in local timezone
+function toDateKey(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
 export default function DashboardPage() {
   const router = useRouter()
   const { profile, setProfile } = useAuthStore()
   const cache = useDataCache()
   const [codeCopied, setCodeCopied] = useState(false)
+
+  // Journal state
+  const [selectedDayIndex, setSelectedDayIndex] = useState<number | null>(null)
+  const [weekCompletions, setWeekCompletions] = useState<Record<string, CourseCompletion[]>>({})
+  const [completionsLoaded, setCompletionsLoaded] = useState(false)
+  const [justValidated, setJustValidated] = useState<string | null>(null) // dateKey that just flipped
+  const [showLogModal, setShowLogModal] = useState(false)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [editingCompletion, setEditingCompletion] = useState<CourseCompletion | null>(null)
 
   // Use cached data or local state
   const inspiration = cache.inspiration
@@ -93,6 +117,64 @@ export default function DashboardPage() {
     a.href = url; a.target = '_blank'; a.rel = 'noopener noreferrer'
     document.body.appendChild(a); a.click(); document.body.removeChild(a)
   }
+
+  // Build week days
+  const weekDays = (() => {
+    const now = new Date()
+    const dayOfWeek = now.getDay()
+    const monday = new Date(now)
+    monday.setDate(now.getDate() - ((dayOfWeek + 6) % 7))
+    const weekLabels = ['LUN', 'MAR', 'MER', 'JEU', 'VEN', 'SAM', 'DIM']
+    return weekLabels.map((label, i) => {
+      const d = new Date(monday)
+      d.setDate(monday.getDate() + i)
+      const isToday = d.toDateString() === now.toDateString()
+      const isFuture = d > now && !isToday
+      const dateKey = toDateKey(d)
+      return { label, date: d, isToday, isFuture, dateKey, index: i }
+    })
+  })()
+
+  // Default selected day = today
+  const todayIndex = weekDays.findIndex(d => d.isToday)
+  const activeIndex = selectedDayIndex ?? todayIndex
+  const activeDay = weekDays[activeIndex]
+
+  // Fetch week completions
+  const fetchWeekCompletions = useCallback(async () => {
+    if (!isSupabaseConfigured()) return
+    const supabase = createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+
+    const mondayKey = weekDays[0].dateKey
+    const sundayDate = new Date(weekDays[6].date)
+    sundayDate.setDate(sundayDate.getDate() + 1)
+    const sundayKey = toDateKey(sundayDate)
+
+    const { data } = await supabase
+      .from('course_completions')
+      .select('*')
+      .eq('user_id', user.id)
+      .gte('completed_at', mondayKey)
+      .lt('completed_at', sundayKey)
+      .order('completed_at', { ascending: true })
+
+    if (data) {
+      const grouped: Record<string, CourseCompletion[]> = {}
+      for (const c of data as CourseCompletion[]) {
+        const key = c.completed_at.split('T')[0]
+        if (!grouped[key]) grouped[key] = []
+        grouped[key].push(c)
+      }
+      setWeekCompletions(grouped)
+    }
+    setCompletionsLoaded(true)
+  }, [weekDays])
+
+  useEffect(() => {
+    fetchWeekCompletions()
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     // Skip if cache is still valid
@@ -117,7 +199,6 @@ export default function DashboardPage() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { router.replace('/login'); return }
 
-      // Fetch profile + all data in parallel
       const today = new Date().toISOString().split('T')[0]
       const now = new Date().toISOString()
 
@@ -145,7 +226,6 @@ export default function DashboardPage() {
       if (liveRes.data) cacheUpdate.nextLive = liveRes.data
       if (apptRes.data) cacheUpdate.privateAppt = apptRes.data
 
-      // Fetch unread message details only if there are unread messages
       const dmCount = dmCountRes.count ?? 0
       if (dmCount > 0) {
         const [lastMsgRes] = await Promise.all([
@@ -159,7 +239,6 @@ export default function DashboardPage() {
         cacheUpdate.unreadMsg = { count: dmCount, lastContent: lastMsgRes.data?.content ?? null, senderName }
       }
 
-      // Process settings
       const settings = settingsRes.data
       if (settings && settings.length > 0) {
         const get = (k: string) => settings.find((s: { key: string; value: string | null }) => s.key === k)?.value ?? null
@@ -183,6 +262,40 @@ export default function DashboardPage() {
     loadData()
   }, [setProfile, router, profile, cache])
 
+  // Delete a completion
+  async function handleDeleteCompletion(completionId: string) {
+    setDeletingId(completionId)
+    const supabase = createClient()
+    const { error } = await supabase.from('course_completions').delete().eq('id', completionId)
+    if (!error) {
+      // Recalculate stats
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        const { data: result } = await supabase.rpc('recalculate_user_stats', { p_user_id: user.id })
+        if (result) {
+          useAuthStore.getState().updateProfile({
+            total_sessions: (result as { total_sessions: number }).total_sessions,
+            total_practice_minutes: (result as { total_practice_minutes: number }).total_practice_minutes,
+            current_streak: (result as { current_streak: number }).current_streak,
+            longest_streak: (result as { longest_streak: number }).longest_streak,
+          })
+        }
+      }
+      await fetchWeekCompletions()
+    }
+    setDeletingId(null)
+  }
+
+  // On log success — trigger animation + refresh
+  function handleLogSuccess() {
+    const dateKey = activeDay?.dateKey
+    if (dateKey) {
+      setJustValidated(dateKey)
+      setTimeout(() => setJustValidated(null), 1200)
+    }
+    fetchWeekCompletions()
+  }
+
   if (!profile) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -194,23 +307,9 @@ export default function DashboardPage() {
   const sessionsThisWeek = Math.min(profile.total_sessions, profile.weekly_rhythm)
   const weeklyPercent = Math.round(Math.min(100, (sessionsThisWeek / Math.max(1, profile.weekly_rhythm)) * 100))
 
-  // Build week days for the weekly tracker
-  const weekDays = (() => {
-    const now = new Date()
-    const dayOfWeek = now.getDay() // 0=Sun
-    const monday = new Date(now)
-    monday.setDate(now.getDate() - ((dayOfWeek + 6) % 7))
-    const labels = ['DIM', 'LUN', 'MAR', 'MER', 'JEU', 'VEN', 'SAM']
-    // Start from monday
-    const weekLabels = ['LUN', 'MAR', 'MER', 'JEU', 'VEN', 'SAM', 'DIM']
-    return weekLabels.map((label, i) => {
-      const d = new Date(monday)
-      d.setDate(monday.getDate() + i)
-      const isToday = d.toDateString() === now.toDateString()
-      const isPast = d < now && !isToday
-      return { label, date: d, isToday, isPast }
-    })
-  })()
+  // Activities for selected day
+  const activeDayCompletions = activeDay ? (weekCompletions[activeDay.dateKey] || []) : []
+  const activeDayHasActivity = activeDayCompletions.length > 0
 
   // SVG circular progress helper
   const CircleProgress = ({ value, max, size = 44, color = '#34C759' }: { value: number; max: number; size?: number; color?: string }) => {
@@ -236,7 +335,7 @@ export default function DashboardPage() {
   return (
     <div className="px-5 pt-6 pb-8 lg:px-8 xl:px-12 lg:pt-8 max-w-2xl lg:max-w-3xl mx-auto">
 
-      {/* ─── TOP BAR: greeting + streak (like Whoop avatar + streak) ─── */}
+      {/* ─── TOP BAR: greeting + streak ─── */}
       {(() => {
         const greeting = getGreeting(profile.username)
         return (
@@ -264,7 +363,7 @@ export default function DashboardPage() {
         )
       })()}
 
-      {/* ─── À VENIR — prochains events en priorité ─── */}
+      {/* ─── À VENIR ─── */}
       {(nextLive || privateAppt || unreadMsg.count > 0) && (
         <motion.div initial="hidden" animate="visible" custom={0.5} variants={fadeInUp} className="mb-10">
           <h2 className="text-[18px] font-bold text-[#1D1D1F] mb-4">À venir</h2>
@@ -329,7 +428,7 @@ export default function DashboardPage() {
         </motion.div>
       )}
 
-      {/* ─── MES COURS — programme + replay en accès rapide ─── */}
+      {/* ─── MES COURS ─── */}
       {(featured || replayUrl) && (
         <motion.div data-tour="dashboard-programmes" initial="hidden" animate="visible" custom={1} variants={fadeInUp} className="mb-10">
           <h2 className="text-[18px] font-bold text-[#1D1D1F] mb-4">Mes cours</h2>
@@ -397,38 +496,178 @@ export default function DashboardPage() {
         </motion.div>
       )}
 
-      {/* ─── MON JOURNAL — weekly dots ─── */}
+      {/* ─── MON JOURNAL — interactive weekly tracker ─── */}
       <motion.div initial="hidden" animate="visible" custom={1.5} variants={fadeInUp} className="mb-10">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-[18px] font-bold text-[#1D1D1F]">Mon journal</h2>
-          <Link href="/suivi" className="text-[12px] font-semibold text-[#C6684F] flex items-center gap-0.5">
-            Voir tout <ChevronRight size={14} />
-          </Link>
-        </div>
-        <div className="rounded-2xl bg-white border border-[#E8DDD4] px-4 py-5">
-          <div className="flex items-center justify-between">
-            {weekDays.map((day) => (
-              <div key={day.label} className="flex flex-col items-center gap-2.5">
-                <span className={`text-[10px] font-bold tracking-wider ${day.isToday ? 'text-[#1D1D1F]' : 'text-[#AEAEB2]'}`}>
-                  {day.label}.
-                </span>
-                <div className={`w-9 h-9 rounded-full flex items-center justify-center transition-all ${
-                  day.isToday
-                    ? 'bg-[#C6684F] text-white shadow-[0_2px_8px_rgba(198,104,79,0.3)]'
-                    : day.isPast
-                    ? 'bg-[#34C759] text-white'
-                    : 'bg-[#F5F5F7]'
-                }`}>
-                  {day.isPast ? (
-                    <Check size={16} strokeWidth={2.5} />
-                  ) : day.isToday ? (
-                    <span className="text-[12px] font-bold">{day.date.getDate()}</span>
-                  ) : (
-                    <span className="w-2 h-2 rounded-full bg-[#D1CCC5]" />
-                  )}
-                </div>
+        <h2 className="text-[18px] font-bold text-[#1D1D1F] mb-4">Mon journal</h2>
+        <div className="rounded-2xl bg-white border border-[#E8DDD4] overflow-hidden">
+          {/* Week dots */}
+          <div className="px-4 pt-5 pb-4">
+            <div className="flex items-center justify-between">
+              {weekDays.map((day) => {
+                const hasCompletions = (weekCompletions[day.dateKey] || []).length > 0
+                const isSelected = day.index === activeIndex
+                const isAnimating = justValidated === day.dateKey
+
+                return (
+                  <button
+                    key={day.label}
+                    onClick={() => setSelectedDayIndex(day.index)}
+                    className="flex flex-col items-center gap-2.5 group"
+                  >
+                    <span className={`text-[10px] font-bold tracking-wider transition-colors ${
+                      isSelected ? 'text-[#1D1D1F]' : 'text-[#AEAEB2]'
+                    }`}>
+                      {day.label}.
+                    </span>
+
+                    <div className="relative w-9 h-9" style={{ perspective: '200px' }}>
+                      <AnimatePresence mode="wait">
+                        {isAnimating ? (
+                          // Coin-flip animation: terracotta → green
+                          <motion.div
+                            key="flip"
+                            className="absolute inset-0 rounded-full bg-[#34C759] text-white flex items-center justify-center shadow-[0_4px_16px_rgba(52,199,89,0.35)]"
+                            initial={{ rotateY: -90, scale: 0.8 }}
+                            animate={{
+                              rotateY: [-90, 10, -5, 0],
+                              scale: [0.8, 1.15, 1.05, 1],
+                              y: [0, -6, -2, 0],
+                            }}
+                            transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+                          >
+                            <motion.div
+                              initial={{ scale: 0 }}
+                              animate={{ scale: 1 }}
+                              transition={{ delay: 0.35, duration: 0.3, type: 'spring', stiffness: 400 }}
+                            >
+                              <Check size={16} strokeWidth={3} />
+                            </motion.div>
+                          </motion.div>
+                        ) : hasCompletions ? (
+                          // Completed day — green with check
+                          <motion.div
+                            key="done"
+                            className={`absolute inset-0 rounded-full bg-[#34C759] text-white flex items-center justify-center transition-shadow ${
+                              isSelected ? 'shadow-[0_2px_10px_rgba(52,199,89,0.35)] ring-2 ring-[#34C759]/30' : ''
+                            }`}
+                            initial={false}
+                          >
+                            <Check size={16} strokeWidth={2.5} />
+                          </motion.div>
+                        ) : day.isToday ? (
+                          // Today — terracotta with date number
+                          <motion.div
+                            key="today"
+                            className={`absolute inset-0 rounded-full bg-[#C6684F] text-white flex items-center justify-center shadow-[0_2px_8px_rgba(198,104,79,0.3)] ${
+                              isSelected ? 'ring-2 ring-[#C6684F]/30' : ''
+                            }`}
+                            initial={false}
+                          >
+                            <span className="text-[12px] font-bold">{day.date.getDate()}</span>
+                          </motion.div>
+                        ) : day.isFuture ? (
+                          // Future — gray dot
+                          <motion.div
+                            key="future"
+                            className={`absolute inset-0 rounded-full bg-[#F5F5F7] flex items-center justify-center ${
+                              isSelected ? 'ring-2 ring-[#E8DDD4]' : ''
+                            }`}
+                            initial={false}
+                          >
+                            <span className="w-2 h-2 rounded-full bg-[#D1CCC5]" />
+                          </motion.div>
+                        ) : (
+                          // Past without completion — terracotta outline (missed)
+                          <motion.div
+                            key="missed"
+                            className={`absolute inset-0 rounded-full border-2 border-dashed border-[#E8DDD4] flex items-center justify-center ${
+                              isSelected ? 'ring-2 ring-[#E8DDD4] bg-[#FAF6F1]' : ''
+                            }`}
+                            initial={false}
+                          >
+                            <span className="text-[11px] font-medium text-[#D1CCC5]">{day.date.getDate()}</span>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* Selected day detail + activities */}
+          <div className="border-t border-[#F0EBE5] px-4 py-4">
+            {/* Day header */}
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-[13px] font-semibold text-[#1D1D1F] capitalize">
+                {activeDay && format(activeDay.date, "EEEE d MMMM", { locale: fr })}
+              </p>
+              {!activeDay?.isFuture && (
+                <button
+                  onClick={() => setShowLogModal(true)}
+                  className="flex items-center gap-1.5 text-[12px] font-semibold text-[#C6684F] hover:text-[#b05a42] transition-colors"
+                >
+                  <Plus size={14} />
+                  Ajouter
+                </button>
+              )}
+            </div>
+
+            {/* Activities list */}
+            {activeDayCompletions.length > 0 ? (
+              <div className="space-y-2">
+                {activeDayCompletions.map((c) => {
+                  const info = SESSION_ICONS[c.session_type] || SESSION_ICONS.libre
+                  const Icon = info.icon
+                  return (
+                    <motion.div
+                      key={c.id}
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="flex items-center gap-3 bg-[#FAF6F1] rounded-xl px-3.5 py-3"
+                    >
+                      <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: `${info.color}12` }}>
+                        <Icon size={15} style={{ color: info.color }} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[13px] font-medium text-[#1D1D1F]">
+                          {c.session_type === 'repos' ? 'Jour de repos' : info.label}
+                          {c.libre_label && <span className="text-[#86868B]"> · {c.libre_label}</span>}
+                        </p>
+                        {c.session_type !== 'repos' && c.duration_watched_minutes != null && c.duration_watched_minutes > 0 && (
+                          <p className="text-[11px] text-[#9B8E82]">{c.duration_watched_minutes} min</p>
+                        )}
+                      </div>
+                      {c.rating && (
+                        <span className="text-[16px]">
+                          {c.rating === 1 ? '😓' : c.rating === 2 ? '😐' : c.rating === 3 ? '🙂' : c.rating === 4 ? '😊' : '🤩'}
+                        </span>
+                      )}
+                      <button
+                        onClick={() => handleDeleteCompletion(c.id)}
+                        disabled={deletingId === c.id}
+                        className="p-1.5 rounded-lg text-[#D1CCC5] hover:text-red-400 hover:bg-red-50 transition-colors flex-shrink-0"
+                      >
+                        {deletingId === c.id ? (
+                          <div className="w-3.5 h-3.5 border-2 border-[#D1CCC5] border-t-transparent rounded-full animate-spin" />
+                        ) : (
+                          <Trash2 size={14} />
+                        )}
+                      </button>
+                    </motion.div>
+                  )
+                })}
               </div>
-            ))}
+            ) : (
+              <div className="text-center py-3">
+                {activeDay?.isFuture ? (
+                  <p className="text-[13px] text-[#D1CCC5]">Jour à venir</p>
+                ) : (
+                  <p className="text-[13px] text-[#9B8E82]">Aucune activité enregistrée</p>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </motion.div>
@@ -502,7 +741,7 @@ export default function DashboardPage() {
         </div>
       </motion.div>
 
-      {/* ─── MON ACCOMPAGNEMENT — fixed percentage ─── */}
+      {/* ─── MON ACCOMPAGNEMENT ─── */}
       {profile.subscription_start && (() => {
         const end = new Date(profile.subscription_start)
         end.setFullYear(end.getFullYear() + 1)
@@ -542,6 +781,13 @@ export default function DashboardPage() {
           </motion.div>
         )
       })()}
+
+      {/* Practice log modal */}
+      <PracticeLogModal
+        open={showLogModal}
+        onClose={() => setShowLogModal(false)}
+        onSuccess={handleLogSuccess}
+      />
 
     </div>
   )
