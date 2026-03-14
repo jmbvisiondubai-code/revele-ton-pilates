@@ -25,6 +25,7 @@ export const DEMO_PROFILE: Profile = {
   is_teacher: false,
   has_seen_tour: true,
   start_level: 'intermediaire',
+  subscription_start: null,
   created_at: new Date().toISOString(),
   updated_at: new Date().toISOString(),
 }

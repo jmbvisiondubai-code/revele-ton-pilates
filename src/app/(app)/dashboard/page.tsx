@@ -25,7 +25,7 @@ import { useAuthStore } from '@/stores/auth-store'
 import { useDataCache, isCacheValid } from '@/stores/data-cache'
 import { Card, ProgressBar, StreakBadge, BadgePill } from '@/components/ui'
 import { AddToCalendar } from '@/components/add-to-calendar'
-import { getGreeting, formatDuration } from '@/lib/utils'
+import { getGreeting, formatDuration, formatSubscriptionRemaining } from '@/lib/utils'
 import type { Profile, DailyInspiration, LiveSession, LiveSessionType, PrivateAppointment } from '@/types/database'
 
 const SESSION_TYPE_LABELS: Record<LiveSessionType, string> = {
@@ -551,6 +551,42 @@ export default function DashboardPage() {
               </Card>
             </div>
           </motion.div>
+
+          {/* Subscription */}
+          {profile.subscription_start && (() => {
+            const end = new Date(profile.subscription_start)
+            end.setFullYear(end.getFullYear() + 1)
+            const info = formatSubscriptionRemaining(end.toISOString())
+            return (
+              <motion.div initial="hidden" animate="visible" custom={2} variants={fadeInUp}>
+                <Card className={`${info.urgent ? 'bg-amber-50/50 border-amber-200' : 'bg-[#FAF6F1] border-[#DCCFBF]'} lg:p-4`}>
+                  <div className="flex items-center gap-2 mb-2">
+                    <Calendar size={16} className={info.urgent ? 'text-amber-600' : 'text-[#C6684F]'} />
+                    <p className="text-xs font-semibold text-[#2C2C2C]">Mon accompagnement</p>
+                  </div>
+                  <div className="flex items-baseline justify-between mb-1.5">
+                    <p className={`text-sm font-medium ${info.urgent ? 'text-amber-700' : 'text-[#2C2C2C]'}`}>
+                      {info.label}
+                    </p>
+                    <p className="text-[10px] text-[#A09488]">
+                      jusqu&apos;au {end.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}
+                    </p>
+                  </div>
+                  <div className="h-1.5 bg-white/60 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full rounded-full transition-all ${info.urgent ? 'bg-amber-500' : 'bg-[#C6684F]'}`}
+                      style={{ width: `${info.percent}%` }}
+                    />
+                  </div>
+                  {info.urgent && (
+                    <p className="text-[10px] text-amber-600 mt-1.5">
+                      Contacte Marjorie pour renouveler ton accompagnement
+                    </p>
+                  )}
+                </Card>
+              </motion.div>
+            )
+          })()}
 
           {/* Inspiration */}
           <motion.div data-tour="dashboard-inspiration" initial="hidden" animate="visible" custom={2.5} variants={fadeInUp}>

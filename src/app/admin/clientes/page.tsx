@@ -3,8 +3,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/client'
 import { Card } from '@/components/ui'
-import { Users, Clock, Trophy, Star, X, Plus, ExternalLink, ChevronRight, Upload, Link as LinkIcon } from 'lucide-react'
-import { formatDuration, LEVEL_LABELS } from '@/lib/utils'
+import { Users, Clock, Trophy, Star, X, Plus, ExternalLink, ChevronRight, Upload, Link as LinkIcon, Calendar, AlertTriangle } from 'lucide-react'
+import { formatDuration, LEVEL_LABELS, formatSubscriptionRemaining } from '@/lib/utils'
 import type { Recommendation, VodCategory } from '@/types/database'
 
 type ClientSummary = {
@@ -18,6 +18,7 @@ type ClientSummary = {
   total_practice_minutes: number
   limitations: string | null
   goals: string[]
+  subscription_start: string | null
   created_at: string
 }
 
@@ -44,6 +45,7 @@ export default function ClientesPage() {
   const [form, setForm] = useState({ title: '', message: '', recCategory: 'cours', vodCategory: '', directUrl: '', thumbnailUrl: '', thumbnailMode: 'none' as 'none' | 'url' | 'upload' })
   const [saving, setSaving] = useState(false)
   const [savingLevel, setSavingLevel] = useState(false)
+  const [savingSub, setSavingSub] = useState(false)
   const [uploadingThumb, setUploadingThumb] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -55,7 +57,7 @@ export default function ClientesPage() {
       const [{ data: profiles }, { data: cats }] = await Promise.all([
         supabase
           .from('profiles')
-          .select('id, first_name, last_name, username, avatar_url, practice_level, total_sessions, total_practice_minutes, limitations, goals, created_at')
+          .select('id, first_name, last_name, username, avatar_url, practice_level, total_sessions, total_practice_minutes, limitations, goals, subscription_start, created_at')
           .eq('is_admin', false)
           .order('total_sessions', { ascending: false }),
         supabase
@@ -172,6 +174,23 @@ export default function ClientesPage() {
     setSavingLevel(false)
   }
 
+  async function handleSubscriptionChange(dateStr: string) {
+    if (!selected || savingSub) return
+    setSavingSub(true)
+    try {
+      const res = await fetch('/api/admin/update-profile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: selected.id, updates: { subscription_start: dateStr || null } }),
+      })
+      if (res.ok) {
+        setSelected(prev => prev ? { ...prev, subscription_start: dateStr || null } : prev)
+        setClients(prev => prev.map(c => c.id === selected.id ? { ...c, subscription_start: dateStr || null } : c))
+      }
+    } catch { /* silent */ }
+    setSavingSub(false)
+  }
+
   if (!isSupabaseConfigured()) return <p className="text-[#6B6359]">Supabase non configuré.</p>
 
   return (
@@ -198,6 +217,11 @@ export default function ClientesPage() {
                 <p className="text-xs text-[#A09488]">@{client.username}</p>
                 <p className="text-xs text-[#6B6359]">
                   {LEVEL_LABELS[client.practice_level || ''] || 'Niveau non défini'} · Membre depuis {new Date(client.created_at).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}
+                  {client.subscription_start && (() => {
+                    const end = new Date(client.subscription_start); end.setFullYear(end.getFullYear() + 1)
+                    const info = formatSubscriptionRemaining(end.toISOString())
+                    return <span className={info.urgent ? ' text-amber-600 font-medium' : ''}> · {info.label}</span>
+                  })()}
                 </p>
               </div>
               <div className="flex items-center gap-4 flex-shrink-0">
@@ -271,6 +295,58 @@ export default function ClientesPage() {
                         <span>{opt.emoji}</span> {opt.label}
                       </button>
                     ))}
+                  </div>
+                </div>
+
+                {/* Subscription */}
+                <div>
+                  <h3 className="font-semibold text-sm text-[#2C2C2C] mb-2 flex items-center gap-1.5">
+                    <Calendar size={14} className="text-[#C6684F]" /> Abonnement (1 an)
+                  </h3>
+                  <div className="bg-[#FAF6F1] rounded-xl p-3 space-y-2">
+                    <div className="flex items-center gap-2">
+                      <label className="text-xs text-[#6B6359] whitespace-nowrap">Début :</label>
+                      <input
+                        type="date"
+                        value={selected.subscription_start || ''}
+                        onChange={e => handleSubscriptionChange(e.target.value)}
+                        disabled={savingSub}
+                        className="flex-1 text-sm border border-[#DCCFBF] rounded-lg px-3 py-1.5 focus:outline-none focus:border-[#C6684F] bg-white disabled:opacity-50"
+                      />
+                      {selected.subscription_start && (
+                        <button onClick={() => handleSubscriptionChange('')} disabled={savingSub}
+                          className="text-[#A09488] hover:text-red-500 transition-colors p-1">
+                          <X size={14} />
+                        </button>
+                      )}
+                    </div>
+                    {selected.subscription_start && (() => {
+                      const endDate = new Date(selected.subscription_start)
+                      endDate.setFullYear(endDate.getFullYear() + 1)
+                      const info = formatSubscriptionRemaining(endDate.toISOString())
+                      return (
+                        <div>
+                          <div className="flex items-center justify-between text-xs mb-1">
+                            <span className={info.urgent ? 'text-amber-600 font-semibold flex items-center gap-1' : 'text-[#6B6359]'}>
+                              {info.urgent && <AlertTriangle size={11} />}
+                              {info.label}
+                            </span>
+                            <span className="text-[#A09488]">
+                              Fin : {endDate.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}
+                            </span>
+                          </div>
+                          <div className="h-1.5 bg-[#DCCFBF] rounded-full overflow-hidden">
+                            <div
+                              className={`h-full rounded-full transition-all ${info.urgent ? 'bg-amber-500' : 'bg-[#C6684F]'}`}
+                              style={{ width: `${info.percent}%` }}
+                            />
+                          </div>
+                        </div>
+                      )
+                    })()}
+                    {!selected.subscription_start && (
+                      <p className="text-xs text-[#A09488]">Aucune date renseignée</p>
+                    )}
                   </div>
                 </div>
 

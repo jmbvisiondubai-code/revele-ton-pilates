@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Plus, Copy, Check, Trash2, Clock, UserCheck, Link as LinkIcon } from 'lucide-react'
-import { formatRelativeDate } from '@/lib/utils'
+import { formatRelativeDate, formatFutureDate } from '@/lib/utils'
 
 interface Invitation {
   id: string
@@ -157,7 +157,7 @@ export default function InvitationsPage() {
                         </p>
                         <p className="text-xs text-[#A09488] mt-0.5 flex items-center gap-1">
                           <Clock size={10} />
-                          Expire {formatRelativeDate(inv.expires_at)}
+                          {formatFutureDate(inv.expires_at)}
                         </p>
                         <p className="text-xs text-[#A09488] font-mono mt-1 truncate">
                           /signup?token={inv.token.slice(0, 16)}…

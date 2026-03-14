@@ -70,6 +70,36 @@ export function formatRelativeDate(dateString: string): string {
   return date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
 }
 
+export function formatFutureDate(dateString: string): string {
+  const date = new Date(dateString)
+  const now = new Date()
+  const diffMs = date.getTime() - now.getTime()
+  const diffDays = Math.ceil(diffMs / 86400000)
+
+  if (diffDays <= 0) return 'Expiré'
+  if (diffDays === 1) return 'Expire demain'
+  if (diffDays < 30) return `Expire dans ${diffDays} jours`
+  const diffMonths = Math.floor(diffDays / 30)
+  if (diffMonths === 1) return 'Expire dans 1 mois'
+  return `Expire dans ${diffMonths} mois`
+}
+
+export function formatSubscriptionRemaining(endDateString: string): { label: string; percent: number; urgent: boolean } {
+  const end = new Date(endDateString)
+  const now = new Date()
+  const diffMs = end.getTime() - now.getTime()
+  const diffDays = Math.ceil(diffMs / 86400000)
+  const totalDays = 365
+  const elapsed = totalDays - diffDays
+  const percent = Math.max(0, Math.min(100, (elapsed / totalDays) * 100))
+
+  if (diffDays <= 0) return { label: 'Abonnement expiré', percent: 100, urgent: true }
+  if (diffDays <= 30) return { label: `${diffDays} jour${diffDays > 1 ? 's' : ''} restant${diffDays > 1 ? 's' : ''}`, percent, urgent: true }
+  if (diffDays <= 90) return { label: `${Math.ceil(diffDays / 30)} mois restant${diffDays > 45 ? 's' : ''}`, percent, urgent: false }
+  const months = Math.round(diffDays / 30)
+  return { label: `${months} mois restants`, percent, urgent: false }
+}
+
 export const GOAL_LABELS: Record<string, string> = {
   posture: 'Posture',
   souplesse: 'Souplesse',

@@ -45,6 +45,7 @@ export interface Profile {
   is_teacher: boolean
   has_seen_tour: boolean
   start_level: PracticeLevel | null
+  subscription_start: string | null
   created_at: string
   updated_at: string
 }
