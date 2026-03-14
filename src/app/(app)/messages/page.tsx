@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   MessageSquare, Send, ArrowLeft, Smile, Paperclip, X,
-  CornerUpLeft, Check, Pencil, Trash2, Pin, PinOff,
+  CornerUpLeft, Check, CheckCheck, Pencil, Trash2, Pin, PinOff,
   MoreHorizontal, FileText, Archive, ArchiveRestore, ChevronDown,
   EyeOff, Eye, Copy,
 } from 'lucide-react'
@@ -97,6 +97,12 @@ function MessagesPage() {
   const [hoverReaction,  setHoverReaction]  = useState<string | null>(null)
   const [swipingMsg,     setSwipingMsg]     = useState<{ msgId: string; deltaX: number } | null>(null)
   const [doubleTapHeart, setDoubleTapHeart] = useState<string | null>(null)
+
+  // Typing & presence
+  const [partnerTyping, setPartnerTyping] = useState(false)
+  const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const typingChannelRef = useRef<ReturnType<typeof createClient>['channel'] extends (name: string) => infer R ? R : never>(null as never)
+  const lastTypingSentRef = useRef(0)
 
   // Refs
   const messagesEndRef  = useRef<HTMLDivElement>(null)
@@ -304,11 +310,12 @@ function MessagesPage() {
 
   useEffect(() => { loadMessages() }, [loadMessages])
 
-  // Real-time new message listener
+  // Real-time message listener (INSERT + UPDATE + DELETE)
   useEffect(() => {
     if (!myId || !isSupabaseConfigured()) return
     const supabase = createClient()
     const channel = supabase.channel(`dm-inbox-${myId}`)
+      // New incoming messages
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'direct_messages', filter: `receiver_id=eq.${myId}` }, (payload) => {
         const msg = payload.new as DirectMessage
         if (msg.sender_id === activeId) {
@@ -318,9 +325,71 @@ function MessagesPage() {
           loadConversations()
         }
       })
+      // Message updates (edits, read receipts, pins)
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'direct_messages', filter: `sender_id=eq.${myId}` }, (payload) => {
+        const updated = payload.new as DirectMessage
+        setMessages(prev => prev.map(m => m.id === updated.id ? { ...m, ...updated } : m))
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'direct_messages', filter: `receiver_id=eq.${myId}` }, (payload) => {
+        const updated = payload.new as DirectMessage
+        setMessages(prev => prev.map(m => m.id === updated.id ? { ...m, ...updated } : m))
+      })
+      // Message deletions
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'direct_messages' }, (payload) => {
+        const deleted = payload.old as { id: string }
+        setMessages(prev => prev.filter(m => m.id !== deleted.id))
+        loadConversations()
+      })
       .subscribe()
     return () => { supabase.removeChannel(channel) }
   }, [myId, activeId]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Typing indicator — Supabase Presence channel
+  useEffect(() => {
+    if (!myId || !activeId || !isSupabaseConfigured()) return
+    const supabase = createClient()
+    const roomId = [myId, activeId].sort().join('-')
+    const channel = supabase.channel(`typing-${roomId}`, { config: { presence: { key: myId } } })
+
+    channel.on('presence', { event: 'sync' }, () => {
+      const state = channel.presenceState()
+      const partnerPresence = state[activeId]
+      if (partnerPresence && Array.isArray(partnerPresence) && partnerPresence.length > 0) {
+        const p = partnerPresence[0] as { typing?: boolean }
+        if (p.typing) {
+          setPartnerTyping(true)
+          if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current)
+          typingTimeoutRef.current = setTimeout(() => setPartnerTyping(false), 4000)
+        } else {
+          setPartnerTyping(false)
+        }
+      } else {
+        setPartnerTyping(false)
+      }
+    })
+
+    channel.subscribe(async (status) => {
+      if (status === 'SUBSCRIBED') {
+        await channel.track({ typing: false })
+      }
+    })
+
+    typingChannelRef.current = channel as typeof typingChannelRef.current
+    return () => {
+      setPartnerTyping(false)
+      supabase.removeChannel(channel)
+      typingChannelRef.current = null as never
+    }
+  }, [myId, activeId])
+
+  // Broadcast typing state (throttled to avoid spamming)
+  const broadcastTyping = useCallback((isTyping: boolean) => {
+    if (!typingChannelRef.current) return
+    const now = Date.now()
+    if (isTyping && now - lastTypingSentRef.current < 2000) return
+    lastTypingSentRef.current = now
+    typingChannelRef.current.track({ typing: isTyping })
+  }, [])
 
   // Auto-scroll
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages])
@@ -429,6 +498,7 @@ function MessagesPage() {
     const text  = inputText.trim()
     const reply = replyingTo
     setInputText(''); setPendingFile(null); setReplyingTo(null)
+    broadcastTyping(false)
 
     const optimistic: MsgWithMeta = {
       id: `opt-${Date.now()}`, sender_id: myId, receiver_id: activeId, content: text,
@@ -745,7 +815,18 @@ function MessagesPage() {
                 {activeProfile && <ProfileAvatar p={activeProfile} size={36} />}
                 <div className="flex-1 min-w-0">
                   <p className="font-semibold text-sm text-[#2C2C2C]">{activePartnerName}</p>
-                  {activeConvUnread > 0 && <p className="text-[10px] text-[#C6684F]">{activeConvUnread} non lu{activeConvUnread > 1 ? 's' : ''}</p>}
+                  {partnerTyping ? (
+                    <p className="text-[10px] text-[#5B9A6B] font-medium flex items-center gap-1">
+                      <span className="flex gap-0.5">
+                        <span className="w-1 h-1 bg-[#5B9A6B] rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                        <span className="w-1 h-1 bg-[#5B9A6B] rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                        <span className="w-1 h-1 bg-[#5B9A6B] rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                      </span>
+                      En train d&apos;écrire...
+                    </p>
+                  ) : activeConvUnread > 0 ? (
+                    <p className="text-[10px] text-[#C6684F]">{activeConvUnread} non lu{activeConvUnread > 1 ? 's' : ''}</p>
+                  ) : null}
                 </div>
               </div>
               {/* Archive banner */}
@@ -1012,11 +1093,18 @@ function MessagesPage() {
                                   <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">{parseTextWithLinks(msg.content).map((part, i) => part.type === 'url' ? (<button key={i} onClick={e => { e.stopPropagation(); window.open(safeUrl(part.value), '_blank', 'noopener,noreferrer') }} className={`underline underline-offset-2 break-all ${isMe ? 'text-white/90' : 'text-[#C6684F]'}`}>{part.value}</button>) : part.value)}</p>
                                 </div>
                               )}
-                              {/* Timestamp */}
+                              {/* Timestamp + read receipt */}
                               <div className="px-3.5 pb-2 pt-0.5">
-                                <p className={`text-[10px] text-right ${isMe ? 'text-white/60' : 'text-[#A09488]'}`}>
+                                <p className={`text-[10px] text-right flex items-center justify-end gap-1 ${isMe ? 'text-white/60' : 'text-[#A09488]'}`}>
                                   {new Date(msg.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
                                   {msg.edited_at && <span className="ml-1">· modifié</span>}
+                                  {isMe && (
+                                    msg.read_at ? (
+                                      <CheckCheck size={14} className="text-[#5BC4FF] ml-0.5 flex-shrink-0" />
+                                    ) : (
+                                      <Check size={14} className="text-white/50 ml-0.5 flex-shrink-0" />
+                                    )
+                                  )}
                                 </p>
                               </div>
                             </div>
@@ -1052,6 +1140,26 @@ function MessagesPage() {
                   )
                 })
               }</>)}
+              {/* Typing indicator bubble */}
+              <AnimatePresence>
+                {partnerTyping && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 8 }}
+                    transition={{ duration: 0.2 }}
+                    className="flex items-end gap-1.5 justify-start mb-0.5"
+                  >
+                    <div className="rounded-2xl rounded-bl-sm bg-white border border-[#EDE5DA] shadow-sm px-4 py-3">
+                      <div className="flex gap-1">
+                        <span className="w-2 h-2 bg-[#A09488] rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                        <span className="w-2 h-2 bg-[#A09488] rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                        <span className="w-2 h-2 bg-[#A09488] rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
               <div ref={messagesEndRef} />
             </div>
 
@@ -1194,7 +1302,8 @@ function MessagesPage() {
                 <textarea
                   ref={textareaRef}
                   value={inputText}
-                  onChange={e => { setInputText(e.target.value); e.target.style.height = 'auto'; e.target.style.height = `${Math.min(e.target.scrollHeight, 200)}px` }}
+                  onChange={e => { setInputText(e.target.value); e.target.style.height = 'auto'; e.target.style.height = `${Math.min(e.target.scrollHeight, 200)}px`; broadcastTyping(true) }}
+                  onBlur={() => broadcastTyping(false)}
                   placeholder="Écrire un message..."
                   rows={2}
                   className="flex-1 bg-[#FAF6F1] border border-[#EDE5DA] rounded-2xl px-4 py-2.5 text-sm text-[#2C2C2C] placeholder-[#A09488] focus:outline-none focus:border-[#C6684F] resize-none max-h-[200px] overflow-y-auto"

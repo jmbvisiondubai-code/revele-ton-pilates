@@ -276,6 +276,16 @@ export default function CommunautePage() {
           }
         }
       })
+      // Real-time edits
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'community_posts' }, async (payload) => {
+        const updated = payload.new as CommunityPost & { profiles?: { username: string; avatar_url: string | null } }
+        setPosts(prev => prev.map(p => p.id === updated.id ? { ...p, ...updated } : p))
+      })
+      // Real-time deletions
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'community_posts' }, (payload) => {
+        const deleted = payload.old as { id: string }
+        setPosts(prev => prev.filter(p => p.id !== deleted.id))
+      })
       .subscribe()
     return () => { channelRef.current?.unsubscribe() }
   }, [profile?.id]) // eslint-disable-line react-hooks/exhaustive-deps
