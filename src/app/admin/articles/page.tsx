@@ -29,7 +29,7 @@ export default function AdminArticlesPage() {
   const supabase = createClient()
 
   async function loadArticles() {
-    const { data } = await supabase.from('articles').select('*').order('published_at', { ascending: false, nullsFirst: false })
+    const { data } = await supabase.from('articles').select('*').is('deleted_at', null).order('published_at', { ascending: false, nullsFirst: false })
     if (data) setArticles(data as Article[])
   }
 
@@ -121,8 +121,11 @@ export default function AdminArticlesPage() {
   }
 
   async function deleteArticle(id: string) {
-    if (!confirm('Supprimer cet article ?')) return
-    await supabase.from('articles').delete().eq('id', id)
+    await fetch('/api/admin/trash', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ table: 'articles', ids: [id] }),
+    })
     loadArticles()
   }
 

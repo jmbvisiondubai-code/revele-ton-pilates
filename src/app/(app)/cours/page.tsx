@@ -113,9 +113,9 @@ export default function CoursPage() {
 
       // Fetch all data in parallel
       const [liveRes, settingsRes, catsRes, apptsRes] = await Promise.all([
-        supabase.from('live_sessions').select('*').eq('is_cancelled', false).gte('scheduled_at', now).order('scheduled_at', { ascending: true }).limit(1).single(),
+        supabase.from('live_sessions').select('*').eq('is_cancelled', false).is('deleted_at', null).gte('scheduled_at', now).order('scheduled_at', { ascending: true }).limit(1).single(),
         supabase.from('app_settings').select('key, value').in('key', ['vimeo_replay_url', 'vimeo_replay_code', 'collective_zoom_url']),
-        supabase.from('vod_categories').select('*').eq('is_active', true).order('order_index'),
+        supabase.from('vod_categories').select('*').eq('is_active', true).is('deleted_at', null).order('order_index'),
         user ? supabase.from('private_appointments').select('*').eq('client_id', user.id).in('status', ['pending', 'confirmed']).gte('scheduled_at', now).order('scheduled_at', { ascending: true }) : Promise.resolve({ data: null }),
       ])
 

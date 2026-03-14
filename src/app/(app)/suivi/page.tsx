@@ -147,7 +147,7 @@ export default function SuiviPage() {
       startOfWeek.setHours(0, 0, 0, 0)
 
       const [recsRes, completionsRes, weekCountRes, allBadgesRes, userBadgesRes] = await Promise.all([
-        supabase.from('recommendations').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
+        supabase.from('recommendations').select('*').eq('user_id', user.id).is('deleted_at', null).order('created_at', { ascending: false }),
         supabase.from('course_completions')
           .select('id, completed_at, duration_watched_minutes, session_type, libre_label, courses(title, duration_minutes)')
           .eq('user_id', user.id).order('completed_at', { ascending: false }).limit(10),

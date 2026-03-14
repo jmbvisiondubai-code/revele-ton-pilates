@@ -66,7 +66,7 @@ export default function ConseilsPage() {
         if (prof) setProfile(prof)
       }
       const { data: arts } = await supabase
-        .from('articles').select('*').eq('is_published', true).order('published_at', { ascending: false, nullsFirst: false })
+        .from('articles').select('*').eq('is_published', true).is('deleted_at', null).order('published_at', { ascending: false, nullsFirst: false })
       if (arts) setArticles(arts as Article[])
       setLoading(false)
     }

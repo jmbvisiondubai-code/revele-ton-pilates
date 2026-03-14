@@ -53,7 +53,7 @@ export default function AdminCoursPage() {
   useEffect(() => { loadCategories() }, [])
 
   async function loadCategories() {
-    const { data } = await supabase.from('vod_categories').select('*').order('order_index')
+    const { data } = await supabase.from('vod_categories').select('*').is('deleted_at', null).order('order_index')
     setCategories((data as VodCategory[]) ?? [])
     setLoading(false)
   }
@@ -98,7 +98,11 @@ export default function AdminCoursPage() {
 
   async function deleteCategory(id: string) {
     setDeleting(id)
-    await supabase.from('vod_categories').delete().eq('id', id)
+    await fetch('/api/admin/trash', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ table: 'vod_categories', ids: [id] }),
+    })
     setCategories(prev => prev.filter(c => c.id !== id))
     setDeleting(null)
   }

@@ -39,7 +39,7 @@ export default function AdminLivesPage() {
   const supabase = createClient()
 
   async function loadLives() {
-    const { data } = await supabase.from('live_sessions').select('*').order('scheduled_at', { ascending: true })
+    const { data } = await supabase.from('live_sessions').select('*').is('deleted_at', null).order('scheduled_at', { ascending: true })
     if (data) setLives(data as LiveSession[])
   }
 
@@ -134,8 +134,11 @@ export default function AdminLivesPage() {
   }
 
   async function deleteLive(id: string) {
-    if (!confirm('Supprimer cette session live ?')) return
-    await supabase.from('live_sessions').delete().eq('id', id)
+    await fetch('/api/admin/trash', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ table: 'live_sessions', ids: [id] }),
+    })
     loadLives()
   }
 

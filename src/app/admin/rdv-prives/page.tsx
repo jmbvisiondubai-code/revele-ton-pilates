@@ -51,6 +51,7 @@ export default function AdminRdvPrivesPage() {
     const { data } = await supabase
       .from('private_appointments')
       .select('*')
+      .is('deleted_at', null)
       .order('scheduled_at', { ascending: false })
     if (!data) return
 
@@ -135,8 +136,11 @@ export default function AdminRdvPrivesPage() {
   }
 
   async function deleteAppt(id: string) {
-    if (!confirm('Supprimer ce rendez-vous ?')) return
-    await supabase.from('private_appointments').delete().eq('id', id)
+    await fetch('/api/admin/trash', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ table: 'private_appointments', ids: [id] }),
+    })
     loadAppointments()
   }
 

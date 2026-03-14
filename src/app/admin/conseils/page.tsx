@@ -34,6 +34,7 @@ export default function AdminConseilsPage() {
       .from('recommendations')
       .select('*')
       .is('user_id', null)
+      .is('deleted_at', null)
       .order('created_at', { ascending: false })
     setTips((data as Recommendation[]) ?? [])
     setLoading(false)
@@ -78,7 +79,11 @@ export default function AdminConseilsPage() {
 
   async function deleteTip(id: string) {
     setDeleting(id)
-    await supabase.from('recommendations').delete().eq('id', id)
+    await fetch('/api/admin/trash', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ table: 'recommendations', ids: [id] }),
+    })
     setTips(prev => prev.filter(t => t.id !== id))
     setDeleting(null)
   }

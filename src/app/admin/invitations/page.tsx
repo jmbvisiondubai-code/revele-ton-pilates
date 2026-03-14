@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Plus, Copy, Check, Trash2, Clock, UserCheck, Link as LinkIcon } from 'lucide-react'
+import { Plus, Copy, Check, Trash2, Clock, UserCheck, Link as LinkIcon, CheckSquare, Square } from 'lucide-react'
 import { formatRelativeDate, formatFutureDate } from '@/lib/utils'
 
 interface Invitation {
@@ -13,6 +13,7 @@ interface Invitation {
   expires_at: string
   used_at: string | null
   used_by: string | null
+  deleted_at: string | null
   used_by_profile?: { first_name: string } | null
 }
 
@@ -22,12 +23,14 @@ export default function InvitationsPage() {
   const [email, setEmail] = useState('')
   const [creating, setCreating] = useState(false)
   const [copied, setCopied] = useState<string | null>(null)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const supabase = createClient()
 
   const loadInvitations = useCallback(async () => {
     const { data } = await supabase
       .from('invitations')
       .select('*, used_by_profile:profiles!invitations_used_by_fkey(first_name)')
+      .is('deleted_at', null)
       .order('created_at', { ascending: false })
     if (data) setInvitations(data as Invitation[])
     setLoading(false)
@@ -57,17 +60,39 @@ export default function InvitationsPage() {
     setCreating(false)
   }
 
-  async function deleteInvitation(id: string) {
-    // Try client-side first, fallback to server API (RLS might block)
-    const { error } = await supabase.from('invitations').delete().eq('id', id)
-    if (error) {
-      await fetch('/api/mark-invitation-used', {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id }),
+  async function softDelete(ids: string[]) {
+    await fetch('/api/admin/trash', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ table: 'invitations', ids }),
+    })
+    setInvitations(prev => prev.filter(i => !ids.includes(i.id)))
+    setSelectedIds(new Set())
+  }
+
+  function toggleSelect(id: string) {
+    setSelectedIds(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id); else next.add(id)
+      return next
+    })
+  }
+
+  function toggleSelectAll(items: Invitation[]) {
+    const allSelected = items.every(i => selectedIds.has(i.id))
+    if (allSelected) {
+      setSelectedIds(prev => {
+        const next = new Set(prev)
+        items.forEach(i => next.delete(i.id))
+        return next
+      })
+    } else {
+      setSelectedIds(prev => {
+        const next = new Set(prev)
+        items.forEach(i => next.add(i.id))
+        return next
       })
     }
-    setInvitations(prev => prev.filter(i => i.id !== id))
   }
 
   function getInviteUrl(token: string) {
@@ -118,6 +143,23 @@ export default function InvitationsPage() {
         </p>
       </div>
 
+      {/* Bulk action bar */}
+      {selectedIds.size > 0 && (
+        <div className="sticky top-0 z-10 bg-white border border-[#DCCFBF] rounded-xl px-4 py-3 mb-4 flex items-center justify-between shadow-sm">
+          <p className="text-sm text-[#2C2C2C] font-medium">{selectedIds.size} sélectionné{selectedIds.size > 1 ? 's' : ''}</p>
+          <div className="flex gap-2">
+            <button onClick={() => setSelectedIds(new Set())}
+              className="text-xs text-[#A09488] hover:text-[#6B6359] px-2 py-1">
+              Désélectionner
+            </button>
+            <button onClick={() => softDelete(Array.from(selectedIds))}
+              className="flex items-center gap-1.5 text-xs font-medium text-red-500 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-lg transition-colors">
+              <Trash2 size={12} /> Supprimer
+            </button>
+          </div>
+        </div>
+      )}
+
       {loading ? (
         <div className="flex justify-center py-12">
           <div className="w-5 h-5 border-2 border-[#C6684F] border-t-transparent rounded-full animate-spin" />
@@ -138,7 +180,7 @@ export default function InvitationsPage() {
             ))}
           </div>
 
-          {/* Liste invitations actives */}
+          {/* Pending */}
           {pending.length > 0 && (
             <div>
               <h3 className="text-sm font-semibold text-[#6B6359] uppercase tracking-wide mb-3">
@@ -172,7 +214,7 @@ export default function InvitationsPage() {
                           {copied === inv.token ? <Check size={14} className="text-green-600" /> : <Copy size={14} />}
                         </button>
                         <button
-                          onClick={() => deleteInvitation(inv.id)}
+                          onClick={() => softDelete([inv.id])}
                           className="w-8 h-8 rounded-lg bg-[#F2E8DF] flex items-center justify-center text-[#A09488] hover:bg-red-50 hover:text-red-500 transition-colors"
                           title="Supprimer"
                         >
@@ -186,38 +228,97 @@ export default function InvitationsPage() {
             </div>
           )}
 
-          {/* Invitations utilisées */}
+          {/* Used — with multi-select */}
           {used.length > 0 && (
             <div>
-              <h3 className="text-sm font-semibold text-[#6B6359] uppercase tracking-wide mb-3">
-                Utilisées ({used.length})
-              </h3>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-semibold text-[#6B6359] uppercase tracking-wide">
+                  Utilisées ({used.length})
+                </h3>
+                {used.length > 1 && (
+                  <button onClick={() => toggleSelectAll(used)}
+                    className="text-xs text-[#A09488] hover:text-[#6B6359] transition-colors">
+                    {used.every(i => selectedIds.has(i.id)) ? 'Tout désélectionner' : 'Tout sélectionner'}
+                  </button>
+                )}
+              </div>
               <div className="space-y-2">
-                {used.map(inv => (
-                  <div key={inv.id} className="bg-white rounded-xl border border-[#DCCFBF] p-4 opacity-75">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-green-50 flex items-center justify-center shrink-0">
-                        <UserCheck size={14} className="text-green-600" />
+                {used.map(inv => {
+                  const isSelected = selectedIds.has(inv.id)
+                  return (
+                    <div key={inv.id} className={`bg-white rounded-xl border p-4 transition-colors ${isSelected ? 'border-[#C6684F]/40 bg-[#C6684F]/5' : 'border-[#DCCFBF] opacity-75'}`}>
+                      <div className="flex items-center gap-3">
+                        <button onClick={() => toggleSelect(inv.id)} className="flex-shrink-0">
+                          {isSelected ? <CheckSquare size={18} className="text-[#C6684F]" /> : <Square size={18} className="text-[#DCCFBF]" />}
+                        </button>
+                        <div className="w-8 h-8 rounded-full bg-green-50 flex items-center justify-center shrink-0">
+                          <UserCheck size={14} className="text-green-600" />
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-[#2C2C2C]">
+                            {inv.email || 'Invitation ouverte'}
+                          </p>
+                          <p className="text-xs text-[#A09488]">
+                            Compte créé {inv.used_at ? formatRelativeDate(inv.used_at) : ''}
+                            {inv.used_by_profile?.first_name && ` · ${inv.used_by_profile.first_name}`}
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => softDelete([inv.id])}
+                          className="w-8 h-8 rounded-lg bg-[#F2E8DF] flex items-center justify-center text-[#A09488] hover:bg-red-50 hover:text-red-500 transition-colors shrink-0"
+                          title="Supprimer"
+                        >
+                          <Trash2 size={14} />
+                        </button>
                       </div>
-                      <div className="flex-1">
-                        <p className="text-sm font-medium text-[#2C2C2C]">
-                          {inv.email || 'Invitation ouverte'}
-                        </p>
-                        <p className="text-xs text-[#A09488]">
-                          Compte créé {inv.used_at ? formatRelativeDate(inv.used_at) : ''}
-                          {inv.used_by_profile?.first_name && ` · ${inv.used_by_profile.first_name}`}
-                        </p>
-                      </div>
-                      <button
-                        onClick={() => deleteInvitation(inv.id)}
-                        className="w-8 h-8 rounded-lg bg-[#F2E8DF] flex items-center justify-center text-[#A09488] hover:bg-red-50 hover:text-red-500 transition-colors shrink-0"
-                        title="Supprimer"
-                      >
-                        <Trash2 size={14} />
-                      </button>
                     </div>
-                  </div>
-                ))}
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Expired — with multi-select */}
+          {expired.length > 0 && (
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-semibold text-[#6B6359] uppercase tracking-wide">
+                  Expirées ({expired.length})
+                </h3>
+                {expired.length > 1 && (
+                  <button onClick={() => toggleSelectAll(expired)}
+                    className="text-xs text-[#A09488] hover:text-[#6B6359] transition-colors">
+                    {expired.every(i => selectedIds.has(i.id)) ? 'Tout désélectionner' : 'Tout sélectionner'}
+                  </button>
+                )}
+              </div>
+              <div className="space-y-2">
+                {expired.map(inv => {
+                  const isSelected = selectedIds.has(inv.id)
+                  return (
+                    <div key={inv.id} className={`bg-white rounded-xl border p-4 transition-colors ${isSelected ? 'border-[#C6684F]/40 bg-[#C6684F]/5' : 'border-[#DCCFBF] opacity-50'}`}>
+                      <div className="flex items-center gap-3">
+                        <button onClick={() => toggleSelect(inv.id)} className="flex-shrink-0">
+                          {isSelected ? <CheckSquare size={18} className="text-[#C6684F]" /> : <Square size={18} className="text-[#DCCFBF]" />}
+                        </button>
+                        <div className="w-8 h-8 rounded-full bg-[#F2E8DF] flex items-center justify-center shrink-0">
+                          <Clock size={14} className="text-[#A09488]" />
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-[#2C2C2C]">{inv.email || 'Invitation ouverte'}</p>
+                          <p className="text-xs text-[#A09488]">Expirée</p>
+                        </div>
+                        <button
+                          onClick={() => softDelete([inv.id])}
+                          className="w-8 h-8 rounded-lg bg-[#F2E8DF] flex items-center justify-center text-[#A09488] hover:bg-red-50 hover:text-red-500 transition-colors shrink-0"
+                          title="Supprimer"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    </div>
+                  )
+                })}
               </div>
             </div>
           )}
