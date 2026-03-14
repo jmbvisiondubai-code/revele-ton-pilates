@@ -10,6 +10,7 @@ export interface PracticeLogInput {
   feedback?: string
   libreLabel?: string
   programSessionId?: string
+  completedAt?: string // YYYY-MM-DD — defaults to today
 }
 
 export interface PracticeLogResult {
@@ -29,18 +30,22 @@ export async function logPractice(input: PracticeLogInput): Promise<PracticeLogR
   if (!user) throw new Error('Non connectée')
 
   // Insert completion
+  const insertData: Record<string, unknown> = {
+    user_id: user.id,
+    course_id: input.courseId || null,
+    duration_watched_minutes: input.durationMinutes,
+    rating: input.rating || null,
+    feedback: input.feedback || null,
+    session_type: input.sessionType,
+    libre_label: input.libreLabel || null,
+    program_session_id: input.programSessionId || null,
+  }
+  if (input.completedAt) {
+    insertData.completed_at = `${input.completedAt}T12:00:00`
+  }
   const { error: insertError } = await supabase
     .from('course_completions')
-    .insert({
-      user_id: user.id,
-      course_id: input.courseId || null,
-      duration_watched_minutes: input.durationMinutes,
-      rating: input.rating || null,
-      feedback: input.feedback || null,
-      session_type: input.sessionType,
-      libre_label: input.libreLabel || null,
-      program_session_id: input.programSessionId || null,
-    })
+    .insert(insertData)
 
   if (insertError) throw new Error(insertError.message)
 

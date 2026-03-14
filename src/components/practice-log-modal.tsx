@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, Play, Radio, Dumbbell, Minus, Plus, ChevronRight, Search, Moon } from 'lucide-react'
+import { X, Play, Radio, Dumbbell, Minus, Plus, ChevronRight, Search, Moon, Calendar } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { logPractice, type PracticeLogInput, type PracticeLogResult } from '@/lib/practice-log'
 import type { SessionType, Course } from '@/types/database'
@@ -11,6 +11,7 @@ interface Props {
   open: boolean
   onClose: () => void
   onSuccess: (result: PracticeLogResult) => void
+  defaultDate?: string // YYYY-MM-DD
 }
 
 const SESSION_TYPES: { value: SessionType; label: string; icon: typeof Play; color: string; desc: string }[] = [
@@ -30,7 +31,11 @@ const RATING_EMOJIS = [
   { value: 5, emoji: '🤩', label: 'Incroyable' },
 ]
 
-export function PracticeLogModal({ open, onClose, onSuccess }: Props) {
+function toDateKey(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+export function PracticeLogModal({ open, onClose, onSuccess, defaultDate }: Props) {
   const [step, setStep] = useState<'type' | 'details' | 'feedback'>('type')
   const [sessionType, setSessionType] = useState<SessionType | null>(null)
   const [duration, setDuration] = useState(30)
@@ -42,6 +47,7 @@ export function PracticeLogModal({ open, onClose, onSuccess }: Props) {
   const [showCourseList, setShowCourseList] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [selectedDate, setSelectedDate] = useState(defaultDate || toDateKey(new Date()))
 
   // Reset on open
   useEffect(() => {
@@ -56,8 +62,9 @@ export function PracticeLogModal({ open, onClose, onSuccess }: Props) {
       setShowCourseList(false)
       setSubmitting(false)
       setError(null)
+      setSelectedDate(defaultDate || toDateKey(new Date()))
     }
-  }, [open])
+  }, [open, defaultDate])
 
   // Load courses for VOD selection
   useEffect(() => {
@@ -94,12 +101,14 @@ export function PracticeLogModal({ open, onClose, onSuccess }: Props) {
     setSubmitting(true)
     setError(null)
 
+    const isToday = selectedDate === toDateKey(new Date())
     const input: PracticeLogInput = {
       sessionType,
       durationMinutes: duration,
       rating: rating ?? undefined,
       courseId: selectedCourse?.id,
       libreLabel: libreLabel ?? undefined,
+      completedAt: isToday ? undefined : selectedDate,
     }
 
     try {
@@ -110,7 +119,7 @@ export function PracticeLogModal({ open, onClose, onSuccess }: Props) {
       setError(err instanceof Error ? err.message : 'Erreur lors de l\'enregistrement')
       setSubmitting(false)
     }
-  }, [sessionType, duration, rating, selectedCourse, libreLabel, submitting, onSuccess, onClose])
+  }, [sessionType, duration, rating, selectedCourse, libreLabel, selectedDate, submitting, onSuccess, onClose])
 
   return (
     <AnimatePresence>
@@ -146,6 +155,21 @@ export function PracticeLogModal({ open, onClose, onSuccess }: Props) {
               {/* Step 1: Type selection */}
               {step === 'type' && (
                 <div className="space-y-3">
+                  {/* Date picker */}
+                  <div className="flex items-center gap-3 p-3 rounded-xl border border-[#DCCFBF] bg-[#FAF6F1]">
+                    <Calendar size={16} className="text-[#C6684F] flex-shrink-0" />
+                    <div className="flex-1">
+                      <p className="text-[11px] font-medium text-[#A09488] uppercase tracking-wider">Date</p>
+                      <input
+                        type="date"
+                        value={selectedDate}
+                        max={toDateKey(new Date())}
+                        onChange={e => setSelectedDate(e.target.value)}
+                        className="text-[14px] font-semibold text-[#2C2C2C] bg-transparent border-none outline-none w-full cursor-pointer"
+                      />
+                    </div>
+                  </div>
+
                   {SESSION_TYPES.map(({ value, label, icon: Icon, color, desc }) => (
                     <motion.button
                       key={value}
@@ -337,6 +361,12 @@ export function PracticeLogModal({ open, onClose, onSuccess }: Props) {
                         </p>
                         <p className="text-[13px] mt-1">{duration} min</p>
                       </>
+                    )}
+                    {selectedDate !== toDateKey(new Date()) && (
+                      <p className="text-[12px] text-[#C6684F] font-medium mt-2 flex items-center gap-1">
+                        <Calendar size={12} />
+                        {new Date(selectedDate + 'T12:00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}
+                      </p>
                     )}
                   </div>
 

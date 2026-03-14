@@ -930,6 +930,7 @@ export default function DashboardPage() {
         open={showLogModal}
         onClose={() => setShowLogModal(false)}
         onSuccess={handleLogSuccess}
+        defaultDate={activeDay?.dateKey}
       />
 
     </div>
