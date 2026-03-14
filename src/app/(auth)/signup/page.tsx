@@ -1,16 +1,25 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { Suspense, useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
+import Image from 'next/image'
 import { motion } from 'framer-motion'
-import { Heart, Lock } from 'lucide-react'
+import { Lock } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { Button, Input } from '@/components/ui'
 
 const USERNAME_REGEX = /^[a-zA-Z0-9_-]{3,20}$/
 
-export default function SignupPage() {
+export default function SignupPageWrapper() {
+  return (
+    <Suspense fallback={<div className="w-full max-w-sm flex items-center justify-center py-20"><div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>}>
+      <SignupPage />
+    </Suspense>
+  )
+}
+
+function SignupPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const token = searchParams.get('token')
@@ -142,9 +151,9 @@ export default function SignupPage() {
           initial={{ scale: 0.8, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           transition={{ delay: 0.1, type: 'spring', stiffness: 200 }}
-          className="w-20 h-20 mx-auto mb-5 bg-success-light rounded-full flex items-center justify-center"
+          className="w-24 h-24 mx-auto mb-5 rounded-2xl overflow-hidden shadow-lg shadow-[#C6684F]/15"
         >
-          <Heart className="w-10 h-10 text-success" />
+          <Image src="/icon-source.png" alt="Révèle Ton Pilates" width={96} height={96} className="w-full h-full object-cover" priority />
         </motion.div>
         <h1 className="font-[family-name:var(--font-heading)] text-4xl text-text mb-2">
           Bienvenue<br />dans le cercle
