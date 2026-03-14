@@ -282,30 +282,32 @@ export default function AdminLivesPage() {
         </button>
       </div>
 
-      <div className="space-y-3">
-        {lives.length === 0 && (
-          <div className="text-center py-12 text-[#C6684F] bg-white rounded-xl border border-[#DCCFBF]">
-            Aucune session live programmée.
-          </div>
-        )}
-        {lives.map(live => {
-          const isPast = new Date(live.scheduled_at) < new Date()
+      {(() => {
+        const now = new Date()
+        const upcoming = lives.filter(l => new Date(l.scheduled_at) >= now).sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime())
+        const past = lives.filter(l => new Date(l.scheduled_at) < now).sort((a, b) => new Date(b.scheduled_at).getTime() - new Date(a.scheduled_at).getTime())
+
+        const renderLive = (live: LiveSession, isPast: boolean) => {
           return (
-            <div key={live.id} className={`bg-white rounded-xl border p-4 flex items-center gap-4 ${live.is_cancelled ? 'opacity-50 border-red-200' : 'border-[#DCCFBF]'} ${isPast ? 'cursor-pointer hover:bg-[#FAF6F1]' : ''} transition-colors`}
+            <div key={live.id}
+              className={`bg-white rounded-xl border p-4 flex items-center gap-4 transition-colors ${live.is_cancelled ? 'opacity-50 border-red-200' : 'border-[#DCCFBF]'} ${isPast ? 'cursor-pointer hover:bg-[#FAF6F1]' : ''}`}
               onClick={() => isPast && openAttendance(live)}>
-              <div className="w-14 h-14 bg-[#F2E8DF] rounded-xl flex flex-col items-center justify-center text-center flex-shrink-0">
-                <div className="text-xs text-[#C6684F] uppercase">{format(new Date(live.scheduled_at), 'MMM', { locale: fr })}</div>
-                <div className="text-lg font-bold text-[#2C2C2C] leading-none">{format(new Date(live.scheduled_at), 'd')}</div>
+              <div className={`w-14 h-14 rounded-xl flex flex-col items-center justify-center text-center flex-shrink-0 ${isPast ? 'bg-[#DCCFBF]/30' : 'bg-[#F2E8DF]'}`}>
+                <div className={`text-xs uppercase ${isPast ? 'text-[#A09488]' : 'text-[#C6684F]'}`}>{format(new Date(live.scheduled_at), 'MMM', { locale: fr })}</div>
+                <div className={`text-lg font-bold leading-none ${isPast ? 'text-[#6B6359]' : 'text-[#2C2C2C]'}`}>{format(new Date(live.scheduled_at), 'd')}</div>
               </div>
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <h3 className="font-medium text-[#2C2C2C]">{live.title}</h3>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h3 className={`font-medium ${isPast ? 'text-[#6B6359]' : 'text-[#2C2C2C]'}`}>{live.title}</h3>
                   <span className="text-[10px] bg-[#F2E8DF] text-[#C6684F] px-1.5 py-0.5 rounded font-medium">
                     {SESSION_TYPES.find(t => t.value === live.session_type)?.emoji}{' '}
                     {SESSION_TYPES.find(t => t.value === live.session_type)?.label ?? 'Cours collectif'}
                   </span>
+                  {isPast && (
+                    <span className="text-[9px] bg-[#5B9A6B]/10 text-[#5B9A6B] px-1.5 py-0.5 rounded-full font-bold uppercase">Terminé</span>
+                  )}
                 </div>
-                <p className="text-sm text-[#C6684F]">
+                <p className={`text-sm ${isPast ? 'text-[#A09488]' : 'text-[#C6684F]'}`}>
                   {format(new Date(live.scheduled_at), 'EEEE d MMMM à HH:mm', { locale: fr })} · {live.duration_minutes} min
                 </p>
                 <div className="flex items-center gap-3 mt-0.5">
@@ -330,8 +332,37 @@ export default function AdminLivesPage() {
               </div>
             </div>
           )
-        })}
-      </div>
+        }
+
+        return (
+          <div className="space-y-6">
+            {lives.length === 0 && (
+              <div className="text-center py-12 text-[#C6684F] bg-white rounded-xl border border-[#DCCFBF]">
+                Aucune session live programmée.
+              </div>
+            )}
+
+            {/* Upcoming */}
+            {upcoming.length > 0 && (
+              <div className="space-y-3">
+                <h3 className="text-sm font-semibold text-[#C6684F] uppercase tracking-wider">À venir</h3>
+                {upcoming.map(live => renderLive(live, false))}
+              </div>
+            )}
+
+            {/* Past */}
+            {past.length > 0 && (
+              <div className="space-y-3">
+                <h3 className="text-sm font-semibold text-[#A09488] uppercase tracking-wider flex items-center gap-2">
+                  Passés
+                  <span className="text-[10px] font-normal normal-case text-[#A09488]">— Clique pour gérer les présences</span>
+                </h3>
+                {past.map(live => renderLive(live, true))}
+              </div>
+            )}
+          </div>
+        )
+      })()}
 
       {/* Attendance panel */}
       {attendanceLive && (
