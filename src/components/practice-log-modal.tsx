@@ -117,26 +117,26 @@ export function PracticeLogModal({ open, onClose, onSuccess }: Props) {
           onClick={onClose}
         >
           <motion.div
-            initial={{ y: '100%' }}
-            animate={{ y: 0 }}
-            exit={{ y: '100%' }}
+            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 20 }}
             transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-            className="bg-white rounded-t-3xl lg:rounded-3xl w-full max-w-md max-h-[85dvh] overflow-y-auto safe-bottom"
+            className="bg-white rounded-3xl w-full max-w-lg max-h-[90dvh] overflow-y-auto shadow-2xl mx-4"
             onClick={e => e.stopPropagation()}
           >
             {/* Header */}
-            <div className="sticky top-0 bg-white rounded-t-3xl lg:rounded-t-3xl px-5 pt-4 pb-3 border-b border-[#F0EAE2] flex items-center justify-between z-10">
-              <h2 className="font-[family-name:var(--font-heading)] text-lg text-[#2C2C2C]">
+            <div className="sticky top-0 bg-white rounded-t-3xl px-6 pt-5 pb-4 border-b border-[#F0EAE2] flex items-center justify-between z-10">
+              <h2 className="font-[family-name:var(--font-heading)] text-xl text-[#2C2C2C]">
                 {step === 'type' && 'Enregistrer une session'}
                 {step === 'details' && (sessionType === 'vod' ? 'Cours VOD' : sessionType === 'live' ? 'Cours live' : 'Pratique libre')}
                 {step === 'feedback' && 'Comment c\'était ?'}
               </h2>
-              <button onClick={onClose} className="w-8 h-8 rounded-full flex items-center justify-center text-[#A09488] hover:bg-[#F2E8DF] transition-colors">
-                <X size={18} />
+              <button onClick={onClose} className="w-9 h-9 rounded-full flex items-center justify-center text-[#A09488] hover:bg-[#F2E8DF] transition-colors">
+                <X size={20} />
               </button>
             </div>
 
-            <div className="px-5 py-4">
+            <div className="px-6 py-5">
               {/* Step 1: Type selection */}
               {step === 'type' && (
                 <div className="space-y-3">
@@ -144,15 +144,15 @@ export function PracticeLogModal({ open, onClose, onSuccess }: Props) {
                     <motion.button
                       key={value}
                       onClick={() => handleTypeSelect(value)}
-                      className="w-full flex items-center gap-4 p-4 rounded-2xl border border-[#DCCFBF] hover:border-[#C6684F]/40 transition-colors text-left"
+                      className="w-full flex items-center gap-4 p-5 rounded-2xl border border-[#DCCFBF] hover:border-[#C6684F]/40 hover:bg-[#FAF6F1] transition-colors text-left"
                       whileTap={{ scale: 0.98 }}
                     >
-                      <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ backgroundColor: `${color}15` }}>
-                        <Icon size={22} style={{ color }} />
+                      <div className="w-14 h-14 rounded-2xl flex items-center justify-center" style={{ backgroundColor: `${color}12` }}>
+                        <Icon size={24} style={{ color }} />
                       </div>
                       <div className="flex-1">
-                        <p className="font-medium text-[#2C2C2C]">{label}</p>
-                        <p className="text-xs text-[#A09488]">
+                        <p className="font-semibold text-[15px] text-[#2C2C2C]">{label}</p>
+                        <p className="text-[13px] text-[#A09488] mt-0.5">
                           {value === 'vod' && 'Replay ou cours à la demande'}
                           {value === 'live' && 'Session en direct avec Marjorie'}
                           {value === 'libre' && 'Yoga, stretching, marche...'}
@@ -244,33 +244,33 @@ export function PracticeLogModal({ open, onClose, onSuccess }: Props) {
 
                   {/* Duration stepper */}
                   <div>
-                    <label className="text-xs font-medium text-[#6B6359] mb-2 block">Durée</label>
-                    <div className="flex items-center justify-center gap-4">
+                    <label className="text-xs font-medium text-[#6B6359] mb-3 block">Durée</label>
+                    <div className="flex items-center justify-center gap-6 py-2">
                       <button
                         onClick={() => setDuration(d => Math.max(5, d - 5))}
-                        className="w-10 h-10 rounded-full border border-[#DCCFBF] flex items-center justify-center text-[#6B6359] hover:bg-[#F2E8DF] transition-colors"
+                        className="w-12 h-12 rounded-full border-2 border-[#DCCFBF] flex items-center justify-center text-[#6B6359] hover:bg-[#F2E8DF] hover:border-[#C6684F]/30 transition-colors"
                       >
-                        <Minus size={16} />
+                        <Minus size={20} />
                       </button>
-                      <div className="text-center min-w-[80px]">
-                        <span className="text-3xl font-bold text-[#2C2C2C]">{duration}</span>
-                        <p className="text-xs text-[#A09488]">minutes</p>
+                      <div className="text-center min-w-[100px]">
+                        <span className="text-4xl font-bold text-[#2C2C2C]">{duration}</span>
+                        <p className="text-sm text-[#A09488] mt-1">minutes</p>
                       </div>
                       <button
                         onClick={() => setDuration(d => Math.min(180, d + 5))}
-                        className="w-10 h-10 rounded-full border border-[#DCCFBF] flex items-center justify-center text-[#6B6359] hover:bg-[#F2E8DF] transition-colors"
+                        className="w-12 h-12 rounded-full border-2 border-[#DCCFBF] flex items-center justify-center text-[#6B6359] hover:bg-[#F2E8DF] hover:border-[#C6684F]/30 transition-colors"
                       >
-                        <Plus size={16} />
+                        <Plus size={20} />
                       </button>
                     </div>
                     {/* Quick presets */}
-                    <div className="flex justify-center gap-2 mt-3">
+                    <div className="flex justify-center gap-2 mt-4">
                       {[15, 20, 30, 45, 60].map(min => (
                         <button
                           key={min}
                           onClick={() => setDuration(min)}
-                          className={`px-2.5 py-1 rounded-lg text-xs transition-colors ${
-                            duration === min ? 'bg-[#C6684F] text-white' : 'bg-[#F2E8DF] text-[#6B6359]'
+                          className={`px-3.5 py-2 rounded-xl text-sm font-medium transition-colors ${
+                            duration === min ? 'bg-[#C6684F] text-white shadow-sm' : 'bg-[#F2E8DF] text-[#6B6359] hover:bg-[#EDE5DA]'
                           }`}
                         >
                           {min}min
@@ -299,33 +299,33 @@ export function PracticeLogModal({ open, onClose, onSuccess }: Props) {
 
               {/* Step 3: Feedback + Submit */}
               {step === 'feedback' && (
-                <div className="space-y-5">
+                <div className="space-y-6">
                   <div>
-                    <label className="text-xs font-medium text-[#6B6359] mb-3 block">Comment tu te sens ? (optionnel)</label>
-                    <div className="flex justify-center gap-3">
+                    <label className="text-sm font-medium text-[#6B6359] mb-4 block">Comment tu te sens ? (optionnel)</label>
+                    <div className="flex justify-center gap-4">
                       {RATING_EMOJIS.map(r => (
                         <button
                           key={r.value}
                           onClick={() => setRating(rating === r.value ? null : r.value)}
-                          className={`flex flex-col items-center gap-1 transition-transform ${rating === r.value ? 'scale-110' : 'opacity-60 hover:opacity-100'}`}
+                          className={`flex flex-col items-center gap-1.5 transition-all ${rating === r.value ? 'scale-125' : 'opacity-50 hover:opacity-100 hover:scale-105'}`}
                         >
-                          <span className={`text-2xl ${rating === r.value ? '' : 'grayscale'} transition-all`}>{r.emoji}</span>
-                          <span className="text-[9px] text-[#A09488]">{r.label}</span>
+                          <span className={`text-3xl ${rating === r.value ? '' : 'grayscale'} transition-all`}>{r.emoji}</span>
+                          <span className="text-[10px] text-[#A09488] font-medium">{r.label}</span>
                         </button>
                       ))}
                     </div>
                   </div>
 
                   {/* Summary */}
-                  <div className="bg-[#FAF6F1] rounded-xl p-3 text-sm text-[#6B6359]">
-                    <p>
-                      <span className="font-medium text-[#2C2C2C]">
+                  <div className="bg-[#FAF6F1] rounded-2xl p-4 text-sm text-[#6B6359]">
+                    <p className="text-[15px]">
+                      <span className="font-semibold text-[#2C2C2C]">
                         {sessionType === 'vod' ? 'Cours VOD' : sessionType === 'live' ? 'Cours live' : 'Pratique libre'}
                       </span>
                       {selectedCourse && <span> — {selectedCourse.title}</span>}
                       {libreLabel && <span> — {libreLabel}</span>}
                     </p>
-                    <p className="text-xs mt-0.5">{duration} min</p>
+                    <p className="text-[13px] mt-1">{duration} min</p>
                   </div>
 
                   {error && (

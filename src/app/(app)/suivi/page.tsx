@@ -552,64 +552,109 @@ export default function SuiviPage() {
                 </div>
               )}
 
-              {/* ─── Sessions history ─── */}
-              {recentCompletions.length > 0 && (
-                <div>
-                  <h3 className="text-sm font-semibold text-[#2C2C2C] mb-3 flex items-center gap-2">
-                    <Play size={15} className="text-[#C6684F]" /> Historique des séances
-                    <span className="ml-auto text-xs text-[#A09488] font-normal">{recentCompletions.length} séance{recentCompletions.length > 1 ? 's' : ''}</span>
-                  </h3>
-                  <div className="space-y-2">
-                    {(showAllSessions ? recentCompletions : recentCompletions.slice(0, 6)).map(c => {
-                      const typeInfo = SESSION_TYPE_LABELS[c.session_type] ?? SESSION_TYPE_LABELS.vod
-                      const title = c.courses?.title ?? c.libre_label ?? 'Séance libre'
-                      const duration = c.duration_watched_minutes ?? c.courses?.duration_minutes ?? 0
-                      return (
-                        <Card key={c.id} className="!p-3">
-                          <div className="flex items-center gap-3">
-                            <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
-                              style={{ backgroundColor: `${typeInfo.color}15` }}>
-                              <Play size={14} style={{ color: typeInfo.color }} />
+              {/* ─── Sessions history — Whoop-style day timeline ─── */}
+              {recentCompletions.length > 0 && (() => {
+                // Group sessions by date
+                const grouped = new Map<string, Completion[]>()
+                recentCompletions.forEach(c => {
+                  const dateKey = new Date(c.completed_at).toDateString()
+                  if (!grouped.has(dateKey)) grouped.set(dateKey, [])
+                  grouped.get(dateKey)!.push(c)
+                })
+                const days = [...grouped.entries()]
+                const visibleDays = showAllSessions ? days : days.slice(0, 5)
+
+                const today = new Date().toDateString()
+                const yesterday = new Date(Date.now() - 86400000).toDateString()
+
+                function dayLabel(dateStr: string) {
+                  if (dateStr === today) return "Aujourd'hui"
+                  if (dateStr === yesterday) return 'Hier'
+                  const d = new Date(dateStr)
+                  return d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })
+                }
+
+                return (
+                  <div>
+                    <h3 className="text-sm font-semibold text-[#2C2C2C] mb-3 flex items-center gap-2">
+                      <Play size={15} className="text-[#C6684F]" /> Historique des séances
+                      <span className="ml-auto text-xs text-[#A09488] font-normal">{recentCompletions.length} séance{recentCompletions.length > 1 ? 's' : ''}</span>
+                    </h3>
+                    <div className="space-y-4">
+                      {visibleDays.map(([dateStr, sessions]) => {
+                        const isToday = dateStr === today
+                        const totalMin = sessions.reduce((s, c) => s + (c.duration_watched_minutes ?? c.courses?.duration_minutes ?? 0), 0)
+                        return (
+                          <div key={dateStr}>
+                            {/* Day header */}
+                            <div className="flex items-center gap-2 mb-2">
+                              <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${isToday ? 'bg-[#C6684F]' : 'bg-[#DCCFBF]'}`} />
+                              <p className={`text-[13px] font-semibold capitalize ${isToday ? 'text-[#C6684F]' : 'text-[#2C2C2C]'}`}>
+                                {dayLabel(dateStr)}
+                              </p>
+                              <span className="text-[11px] text-[#A09488]">
+                                {sessions.length} séance{sessions.length > 1 ? 's' : ''} · {formatDuration(totalMin)}
+                              </span>
                             </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium text-[#2C2C2C] truncate">{title}</p>
-                              <div className="flex items-center gap-2 mt-0.5">
-                                <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full"
-                                  style={{ backgroundColor: `${typeInfo.color}15`, color: typeInfo.color }}>
-                                  {typeInfo.label}
-                                </span>
-                                {duration > 0 && (
-                                  <span className="text-[10px] text-[#A09488]">{formatDuration(duration)}</span>
-                                )}
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-1.5 flex-shrink-0">
-                              <span className="text-[10px] text-[#BFAE9F]">{relativeDate(c.completed_at)}</span>
-                              <button onClick={() => startEdit(c)}
-                                className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-[#F2E8DF] transition-colors text-[#A09488] hover:text-[#6B6359]">
-                                <Pencil size={12} />
-                              </button>
-                              <button onClick={() => setConfirmDelete(c.id)}
-                                className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-red-50 transition-colors text-[#A09488] hover:text-red-500">
-                                <Trash2 size={12} />
-                              </button>
+                            {/* Sessions for this day */}
+                            <div className="ml-[5px] border-l-2 border-[#F0EAE2] pl-4 space-y-2">
+                              {sessions.map(c => {
+                                const typeInfo = SESSION_TYPE_LABELS[c.session_type] ?? SESSION_TYPE_LABELS.vod
+                                const title = c.courses?.title ?? c.libre_label ?? 'Séance libre'
+                                const duration = c.duration_watched_minutes ?? c.courses?.duration_minutes ?? 0
+                                return (
+                                  <Card key={c.id} className="!p-3">
+                                    <div className="flex items-center gap-3">
+                                      <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
+                                        style={{ backgroundColor: `${typeInfo.color}15` }}>
+                                        <Play size={14} style={{ color: typeInfo.color }} />
+                                      </div>
+                                      <div className="flex-1 min-w-0">
+                                        <p className="text-sm font-medium text-[#2C2C2C] truncate">{title}</p>
+                                        <div className="flex items-center gap-2 mt-0.5">
+                                          <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full"
+                                            style={{ backgroundColor: `${typeInfo.color}15`, color: typeInfo.color }}>
+                                            {typeInfo.label}
+                                          </span>
+                                          {duration > 0 && (
+                                            <span className="text-[10px] text-[#A09488]">{formatDuration(duration)}</span>
+                                          )}
+                                          <span className="text-[10px] text-[#BFAE9F]">
+                                            {new Date(c.completed_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                                          </span>
+                                        </div>
+                                      </div>
+                                      <div className="flex items-center gap-1 flex-shrink-0">
+                                        <button onClick={() => startEdit(c)}
+                                          className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-[#F2E8DF] transition-colors text-[#A09488] hover:text-[#6B6359]">
+                                          <Pencil size={12} />
+                                        </button>
+                                        <button onClick={() => setConfirmDelete(c.id)}
+                                          className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-red-50 transition-colors text-[#A09488] hover:text-red-500">
+                                          <Trash2 size={12} />
+                                        </button>
+                                      </div>
+                                    </div>
+                                  </Card>
+                                )
+                              })}
                             </div>
                           </div>
-                        </Card>
-                      )
-                    })}
+                        )
+                      })}
+                    </div>
+                    {days.length > 5 && (
+                      <button
+                        onClick={() => setShowAllSessions(v => !v)}
+                        className="w-full mt-4 py-2.5 text-sm font-medium text-[#C6684F] bg-[#C6684F]/5 hover:bg-[#C6684F]/10 rounded-xl transition-colors flex items-center justify-center gap-1.5"
+                      >
+                        {showAllSessions ? 'Voir moins' : `Voir tout (${days.length} jours)`}
+                        <ChevronRight size={14} className={`transition-transform ${showAllSessions ? 'rotate-90' : ''}`} />
+                      </button>
+                    )}
                   </div>
-                  {recentCompletions.length > 6 && (
-                    <button
-                      onClick={() => setShowAllSessions(v => !v)}
-                      className="w-full mt-3 py-2.5 text-sm font-medium text-[#C6684F] bg-[#C6684F]/5 hover:bg-[#C6684F]/10 rounded-xl transition-colors flex items-center justify-center gap-1.5"
-                    >
-                      {showAllSessions ? 'Voir moins' : `Voir tout (${recentCompletions.length})`}
-                      <ChevronRight size={14} className={`transition-transform ${showAllSessions ? 'rotate-90' : ''}`} />
-                    </button>
-                  )}
-                </div>
-              )}
+                )
+              })()}
 
               {/* ─── Member since ─── */}
               <p className="text-xs text-[#DCCFBF] text-center pt-2">
@@ -626,28 +671,26 @@ export default function SuiviPage() {
           <>
             <motion.div
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              className="fixed inset-0 z-[60] bg-black/30"
+              className="fixed inset-0 z-[60] bg-black/40 backdrop-blur-sm"
               onClick={() => setEditingSession(null)}
             />
             <motion.div
-              initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
+              initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }}
               transition={{ type: 'spring', damping: 30, stiffness: 400 }}
-              className="fixed bottom-0 left-0 right-0 z-[70] bg-white rounded-t-3xl shadow-2xl safe-bottom"
+              className="fixed inset-4 z-[70] m-auto bg-white rounded-3xl shadow-2xl max-w-lg max-h-[85dvh] overflow-y-auto"
+              style={{ height: 'fit-content' }}
             >
-              <div className="flex justify-center pt-3 pb-1">
-                <div className="w-10 h-1 rounded-full bg-[#DCCFBF]" />
-              </div>
-              <div className="flex items-center justify-between px-5 pb-3">
-                <p className="text-sm font-semibold text-[#2C2C2C]">Modifier la séance</p>
+              <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b border-[#F0EAE2]">
+                <p className="text-lg font-semibold text-[#2C2C2C]">Modifier la séance</p>
                 <button onClick={() => setEditingSession(null)}
-                  className="w-8 h-8 flex items-center justify-center rounded-full bg-[#F2E8DF] text-[#6B6359]">
-                  <X size={16} />
+                  className="w-9 h-9 flex items-center justify-center rounded-full bg-[#F2E8DF] text-[#6B6359] hover:bg-[#EDE5DA] transition-colors">
+                  <X size={18} />
                 </button>
               </div>
-              <div className="px-5 pb-6 space-y-4">
+              <div className="px-6 py-5 space-y-5">
                 {/* Session type selector */}
                 <div>
-                  <label className="text-xs font-medium text-[#6B6359] mb-1.5 block">Type de séance</label>
+                  <label className="text-sm font-medium text-[#6B6359] mb-2 block">Type de séance</label>
                   <div className="flex gap-2">
                     {(['vod', 'live', 'libre'] as const).map(t => {
                       const info = SESSION_TYPE_LABELS[t]
@@ -655,7 +698,7 @@ export default function SuiviPage() {
                         <button
                           key={t}
                           onClick={() => setEditType(t)}
-                          className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition-colors border ${
+                          className={`flex-1 py-3 rounded-xl text-[15px] font-medium transition-colors border-2 ${
                             editType === t
                               ? 'border-[#C6684F] bg-[#C6684F]/10 text-[#C6684F]'
                               : 'border-[#EDE5DA] text-[#6B6359] hover:bg-[#FAF6F1]'
@@ -670,44 +713,44 @@ export default function SuiviPage() {
                 {/* Label (for libre/live or override) */}
                 {(editType === 'libre' || editType === 'live') && (
                   <div>
-                    <label className="text-xs font-medium text-[#6B6359] mb-1.5 block">Nom de la séance</label>
+                    <label className="text-sm font-medium text-[#6B6359] mb-2 block">Nom de la séance</label>
                     <input
                       type="text"
                       autoCapitalize="words"
                       value={editLabel}
                       onChange={e => setEditLabel(e.target.value)}
                       placeholder={editType === 'libre' ? 'Ex : Pilates matinal' : 'Ex : Live Pilates avec Marjorie'}
-                      className="w-full px-4 py-3 rounded-xl border border-[#EDE5DA] text-sm text-[#2C2C2C] placeholder:text-[#BFAE9F] focus:outline-none focus:border-[#C6684F] transition-colors"
+                      className="w-full px-4 py-3.5 rounded-xl border border-[#EDE5DA] text-[15px] text-[#2C2C2C] placeholder:text-[#BFAE9F] focus:outline-none focus:border-[#C6684F] transition-colors"
                     />
                   </div>
                 )}
                 {editType === 'vod' && editingSession?.courses?.title && (
                   <div>
-                    <label className="text-xs font-medium text-[#6B6359] mb-1.5 block">Cours</label>
-                    <div className="px-4 py-3 rounded-xl border border-[#EDE5DA] bg-[#FAF6F1] text-sm text-[#6B6359]">
+                    <label className="text-sm font-medium text-[#6B6359] mb-2 block">Cours</label>
+                    <div className="px-4 py-3.5 rounded-xl border border-[#EDE5DA] bg-[#FAF6F1] text-[15px] text-[#6B6359]">
                       {editingSession.courses.title}
                     </div>
                   </div>
                 )}
                 <div>
-                  <label className="text-xs font-medium text-[#6B6359] mb-1.5 block">Durée (minutes)</label>
+                  <label className="text-sm font-medium text-[#6B6359] mb-2 block">Durée (minutes)</label>
                   <input
                     type="number"
                     value={editDuration}
                     onChange={e => setEditDuration(e.target.value)}
                     placeholder="30"
                     min="1"
-                    className="w-full px-4 py-3 rounded-xl border border-[#EDE5DA] text-sm text-[#2C2C2C] placeholder:text-[#BFAE9F] focus:outline-none focus:border-[#C6684F] transition-colors"
+                    className="w-full px-4 py-3.5 rounded-xl border border-[#EDE5DA] text-[15px] text-[#2C2C2C] placeholder:text-[#BFAE9F] focus:outline-none focus:border-[#C6684F] transition-colors"
                   />
                   {/* Quick duration presets */}
-                  <div className="flex gap-2 mt-2">
+                  <div className="flex gap-2 mt-3">
                     {[15, 20, 30, 45, 60].map(m => (
                       <button
                         key={m}
                         onClick={() => setEditDuration(String(m))}
-                        className={`flex-1 py-1.5 text-xs font-medium rounded-lg transition-colors ${
+                        className={`flex-1 py-2 text-sm font-medium rounded-xl transition-colors ${
                           editDuration === String(m)
-                            ? 'bg-[#C6684F]/10 text-[#C6684F] border border-[#C6684F]/30'
+                            ? 'bg-[#C6684F] text-white shadow-sm'
                             : 'bg-[#FAF6F1] text-[#6B6359] border border-[#EDE5DA] hover:bg-[#F2E8DF]'
                         }`}
                       >
@@ -719,7 +762,7 @@ export default function SuiviPage() {
                 <button
                   onClick={saveEdit}
                   disabled={editSaving}
-                  className="w-full py-3 rounded-xl bg-[#C6684F] text-white text-sm font-semibold hover:bg-[#B55A43] active:bg-[#A44F3A] transition-colors disabled:opacity-50"
+                  className="w-full py-3.5 rounded-xl bg-[#C6684F] text-white text-[15px] font-semibold hover:bg-[#B55A43] active:bg-[#A44F3A] transition-colors disabled:opacity-50"
                 >
                   {editSaving ? 'Enregistrement…' : 'Enregistrer'}
                 </button>
