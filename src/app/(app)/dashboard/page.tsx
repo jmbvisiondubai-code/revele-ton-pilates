@@ -383,27 +383,17 @@ export default function DashboardPage() {
                   </p>
                 </div>
               </div>
-              <Link href="/serie" className={`relative flex items-center gap-1.5 rounded-full px-3 py-1.5 overflow-hidden transition-colors ${
-                profile.current_streak >= 7
-                  ? 'bg-[#1D1D1F] hover:bg-[#2D2D2F]'
-                  : 'bg-[#C6684F]/10 hover:bg-[#C6684F]/20'
-              }`}>
+              <Link href="/serie" className="relative flex items-center gap-1.5 bg-[#C6684F]/10 rounded-full px-3 py-1.5 hover:bg-[#C6684F]/20 transition-colors">
                 {profile.current_streak >= 7 ? (
                   <>
-                    {/* Subtle warm glow — slow breathing */}
-                    <motion.span
-                      className="absolute inset-0 bg-gradient-to-r from-[#C6684F]/20 via-[#E8500E]/10 to-transparent rounded-full"
-                      animate={{ opacity: [0.3, 0.6, 0.3] }}
-                      transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
-                    />
                     <motion.div
-                      className="relative z-10"
-                      animate={{ y: [0, -1, 0] }}
+                      className="relative"
+                      animate={{ y: [0, -1.5, 0] }}
                       transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
                     >
-                      <Flame size={15} className="text-[#FF8A5C]" />
+                      <Flame size={16} className="text-[#E85D2A]" />
                     </motion.div>
-                    <span className="relative z-10 text-[15px] font-bold text-white">{profile.current_streak}</span>
+                    <span className="text-[15px] font-bold text-[#C6684F]">{profile.current_streak}</span>
                   </>
                 ) : (
                   <>

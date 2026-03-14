@@ -88,65 +88,65 @@ export default function SeriePage() {
 
         {/* Big flame + counter */}
         <motion.div initial="hidden" animate="visible" custom={0} variants={fadeIn} className="text-center pt-6 pb-10">
-          {streak >= 7 ? (
-            <>
-              {/* ── ACTIVATED STATE — dark card with living flame ── */}
-              <div className="relative mx-auto w-[200px] h-[200px] rounded-[32px] bg-[#1D1D1F] flex flex-col items-center justify-center mb-6 overflow-hidden">
-                {/* Ambient warm glow — slow breathe */}
+          <div className="relative inline-flex items-center justify-center mb-5">
+            {streak >= 7 ? (
+              <>
+                {/* Warm ambient glow */}
                 <motion.div
-                  className="absolute bottom-0 left-1/2 -translate-x-1/2 w-40 h-32 rounded-full bg-[#C6684F]/12 blur-3xl"
-                  animate={{ opacity: [0.4, 0.7, 0.4], scale: [1, 1.08, 1] }}
+                  className="absolute w-40 h-40 rounded-full bg-[#E8500E]/8 blur-3xl"
+                  animate={{ opacity: [0.5, 0.8, 0.5], scale: [1, 1.06, 1] }}
                   transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
                 />
 
-                {/* Flame — elegant float */}
+                {/* Stacked flame layers — Whoop style */}
                 <motion.div
-                  className="relative z-10 mb-1"
-                  animate={{ y: [0, -4, 0] }}
+                  className="relative"
+                  animate={{ y: [0, -5, 0] }}
                   transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
                 >
-                  <Flame size={56} className="text-[#FF8A5C]" strokeWidth={1.5} />
+                  {/* Outer flame — large, red-orange */}
+                  <Flame size={88} className="relative text-[#E85D2A]" strokeWidth={1.2} />
+
+                  {/* Mid flame — warm orange, offset up */}
+                  <motion.div
+                    className="absolute inset-0 flex items-center justify-center"
+                    animate={{ y: [0, -2, 0] }}
+                    transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut' }}
+                  >
+                    <Flame size={60} className="text-[#FF8A3A] mt-1" strokeWidth={1.3} />
+                  </motion.div>
+
+                  {/* Inner core — yellow-white, smaller */}
+                  <motion.div
+                    className="absolute inset-0 flex items-center justify-center"
+                    animate={{ y: [0, -3, 0], scale: [1, 1.04, 1] }}
+                    transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}
+                  >
+                    <Flame size={36} className="text-[#FFD36E] mt-3" strokeWidth={1.5} />
+                  </motion.div>
+
+                  {/* Embers floating up */}
+                  {[
+                    { left: '25%', delay: 0, dur: 2.8 },
+                    { left: '55%', delay: 0.9, dur: 3.2 },
+                    { left: '72%', delay: 1.8, dur: 2.5 },
+                  ].map((e, i) => (
+                    <motion.span
+                      key={i}
+                      className="absolute w-1 h-1 rounded-full bg-[#FF8A3A]"
+                      style={{ left: e.left, top: '15%' }}
+                      animate={{
+                        y: [0, -30, -50],
+                        x: [0, (i % 2 === 0 ? 6 : -6), (i % 2 === 0 ? 10 : -10)],
+                        opacity: [0, 0.8, 0],
+                      }}
+                      transition={{ duration: e.dur, repeat: Infinity, delay: e.delay, ease: 'easeOut' }}
+                    />
+                  ))}
                 </motion.div>
-
-                {/* Counter inside card */}
-                <motion.p
-                  className="relative z-10 text-[48px] font-bold leading-none font-[family-name:var(--font-heading)] text-white"
-                  initial={{ scale: 0.5, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  transition={{ duration: 0.6, ease: 'easeOut', delay: 0.2 }}
-                >
-                  {streak}
-                </motion.p>
-
-                {/* Embers — tiny dots floating up */}
-                {[...Array(4)].map((_, i) => (
-                  <motion.span
-                    key={i}
-                    className="absolute w-1 h-1 rounded-full bg-[#FF8A5C]"
-                    style={{ left: `${35 + i * 12}%`, bottom: '35%' }}
-                    animate={{
-                      y: [0, -40 - i * 10, -60 - i * 8],
-                      opacity: [0, 0.7, 0],
-                      scale: [0.5, 1, 0.3],
-                    }}
-                    transition={{
-                      duration: 2.5 + i * 0.4,
-                      repeat: Infinity,
-                      delay: i * 0.7,
-                      ease: 'easeOut',
-                    }}
-                  />
-                ))}
-              </div>
-
-              <p className="text-[12px] font-bold tracking-[0.15em] uppercase text-[#C6684F]">
-                jours de suite
-              </p>
-            </>
-          ) : (
-            <>
-              {/* ── INACTIVE STATE — classic ── */}
-              <div className="relative inline-flex items-center justify-center mb-5">
+              </>
+            ) : (
+              <>
                 <div className="absolute w-28 h-28 rounded-full blur-3xl bg-[#C6684F]/10" />
                 <motion.div
                   animate={{ scale: [1, 1.06, 1] }}
@@ -154,21 +154,21 @@ export default function SeriePage() {
                 >
                   <Flame size={72} className="relative text-[#C6684F]" strokeWidth={1.5} />
                 </motion.div>
-              </div>
+              </>
+            )}
+          </div>
 
-              <motion.p
-                className="text-[64px] font-bold leading-none font-[family-name:var(--font-heading)] text-[#1D1D1F]"
-                initial={{ scale: 0.5, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                transition={{ duration: 0.6, ease: 'easeOut', delay: 0.2 }}
-              >
-                {streak}
-              </motion.p>
-              <p className="text-[12px] font-bold tracking-[0.15em] uppercase text-[#9B8E82] mt-2">
-                jours de suite
-              </p>
-            </>
-          )}
+          <motion.p
+            className="text-[64px] font-bold text-[#1D1D1F] leading-none font-[family-name:var(--font-heading)]"
+            initial={{ scale: 0.5, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ duration: 0.6, ease: 'easeOut', delay: 0.2 }}
+          >
+            {streak}
+          </motion.p>
+          <p className="text-[12px] font-bold tracking-[0.15em] uppercase text-[#9B8E82] mt-2">
+            {streak >= 7 ? 'série de jours' : 'jours de suite'}
+          </p>
         </motion.div>
 
         {/* Stats row */}
