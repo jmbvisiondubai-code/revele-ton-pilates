@@ -54,27 +54,21 @@ export default function AdminMessagesPage() {
     if (!myId || !isSupabaseConfigured()) return
     setLoading(true)
 
-    // Get all non-admin profiles
-    const { data: profiles } = await supabase
-      .from('profiles')
-      .select('id, first_name, last_name, username, avatar_url')
-      .eq('is_admin', false)
-      .order('first_name')
-
-    if (!profiles || profiles.length === 0) {
-      setClients([])
-      setLoading(false)
-      return
-    }
-
-    // Get all DMs involving admin — use server-side check to avoid RLS issues
+    // Fetch profiles AND DMs from server-side API (bypasses RLS)
     const res = await fetch('/api/admin/list-conversations', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ adminId: myId }),
     })
-    const dmData = res.ok ? await res.json() : { dms: [] }
-    const allDms: { sender_id: string; receiver_id: string; content: string | null; image_url: string | null; file_name: string | null; created_at: string; read_at: string | null }[] = dmData.dms ?? []
+    const apiData = res.ok ? await res.json() : { profiles: [], dms: [] }
+    const profiles: ClientProfile[] = apiData.profiles ?? []
+    const allDms: { sender_id: string; receiver_id: string; content: string | null; image_url: string | null; file_name: string | null; created_at: string; read_at: string | null }[] = apiData.dms ?? []
+
+    if (profiles.length === 0) {
+      setClients([])
+      setLoading(false)
+      return
+    }
 
     // Build per-client stats
     const statsMap = new Map<string, { lastMessage: string | null; lastAt: string | null; unreadCount: number; hasConversation: boolean }>()

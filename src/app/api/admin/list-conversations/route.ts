@@ -12,11 +12,19 @@ export async function POST(req: NextRequest) {
   const { adminId } = await req.json()
   if (!adminId) return NextResponse.json({ error: 'adminId manquant' }, { status: 400 })
 
+  // Get all non-admin profiles
+  const { data: profiles } = await supabaseAdmin
+    .from('profiles')
+    .select('id, first_name, last_name, username, avatar_url')
+    .eq('is_admin', false)
+    .order('first_name')
+
+  // Get all DMs involving admin
   const { data: dms } = await supabaseAdmin
     .from('direct_messages')
     .select('sender_id, receiver_id, content, image_url, file_name, created_at, read_at')
     .or(`sender_id.eq.${adminId},receiver_id.eq.${adminId}`)
     .order('created_at', { ascending: false })
 
-  return NextResponse.json({ dms: dms ?? [] })
+  return NextResponse.json({ profiles: profiles ?? [], dms: dms ?? [] })
 }
