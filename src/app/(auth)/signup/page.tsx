@@ -106,11 +106,18 @@ function SignupPage() {
         .from('app_settings')
         .select('key, value')
         .in('key', ['apk_download_url', 'google_play_url', 'apple_store_url', 'desktop_app_url'])
+      const links: Record<string, string> = {}
       if (dlSettings) {
-        const links: Record<string, string> = {}
         dlSettings.forEach((s: { key: string; value: string | null }) => { if (s.value) links[s.key] = s.value })
         setDownloadLinks(links)
       }
+
+      // Send welcome email with download links (fire-and-forget)
+      fetch('/api/send-welcome-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, firstName: firstName.trim(), downloadLinks: links }),
+      }).catch(() => {})
 
       // Sign out so the user connects fresh in the app
       await supabase.auth.signOut()
@@ -270,7 +277,20 @@ function SignupPage() {
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#A09488" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
         </a>
 
-        <p className="text-[11px] text-text-muted mt-6 leading-relaxed">
+        {/* ── Email confirmation ── */}
+        <div className="mt-6 bg-[#5B9A6B]/5 border border-[#5B9A6B]/15 rounded-2xl px-4 py-3.5 flex items-start gap-3 text-left">
+          <div className="w-8 h-8 rounded-full bg-[#5B9A6B]/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+            <span className="text-sm">📧</span>
+          </div>
+          <div>
+            <p className="text-xs font-semibold text-[#2C2C2C]">Email envoyé !</p>
+            <p className="text-[11px] text-[#6B6359] leading-relaxed mt-0.5">
+              Un récapitulatif avec tous les liens de téléchargement t&apos;a été envoyé par email. Tu pourras le retrouver à tout moment.
+            </p>
+          </div>
+        </div>
+
+        <p className="text-[11px] text-text-muted mt-5 leading-relaxed">
           Connecte-toi avec ton email et ton mot de passe,<br />
           quelle que soit la plateforme choisie.
         </p>
