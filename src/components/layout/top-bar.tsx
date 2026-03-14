@@ -5,7 +5,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import { motion } from 'framer-motion'
-import { User, MessageCircle } from 'lucide-react'
+import { User, MessageCircle, Flame } from 'lucide-react'
 import { useAuthStore } from '@/stores/auth-store'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/client'
 
@@ -91,6 +91,14 @@ export function TopBar() {
               </motion.span>
             )}
           </Link>
+
+          {/* Streak flame */}
+          {profile && (
+            <Link href="/serie" className="flex items-center gap-0.5">
+              <Flame size={16} className="text-[#C6684F]" />
+              <span className="text-[14px] font-bold text-[#C6684F]">{profile.current_streak}</span>
+            </Link>
+          )}
 
           {/* Avatar → Profile */}
           <Link

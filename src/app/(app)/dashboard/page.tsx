@@ -369,17 +369,11 @@ export default function DashboardPage() {
         const greeting = getGreeting(profile.username)
         return (
           <motion.div data-tour="dashboard-greeting" initial="hidden" animate="visible" custom={0} variants={fadeInUp} className="mb-8">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-11 h-11 rounded-full bg-gradient-to-br from-[#C6684F] to-[#D4956B] flex items-center justify-center text-white font-bold text-base">
-                  {(profile.first_name || profile.username || '?')[0].toUpperCase()}
-                </div>
-                <Link href="/serie" className="flex items-center gap-1">
-                  <Flame size={16} className="text-[#C6684F]" />
-                  <span className="text-[15px] font-bold text-[#C6684F]">{profile.current_streak}</span>
-                </Link>
+            <div className="flex items-center gap-3">
+              <div className="w-11 h-11 rounded-full bg-gradient-to-br from-[#C6684F] to-[#D4956B] flex items-center justify-center text-white font-bold text-base">
+                {(profile.first_name || profile.username || '?')[0].toUpperCase()}
               </div>
-              <div className="text-right">
+              <div>
                 <h1 className="font-[family-name:var(--font-heading)] text-[20px] text-[#1D1D1F] leading-tight">
                   {greeting.message}
                 </h1>
