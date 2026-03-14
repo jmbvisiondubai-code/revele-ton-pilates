@@ -146,6 +146,12 @@ export default function CommunautePage() {
   const isAdmin = profile?.is_admin === true
   const myId = profile?.id ?? currentUserId
 
+  // Community typing indicator
+  const [typingUsers, setTypingUsers] = useState<string[]>([])
+  const communityTypingChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null)
+  const communityStopTypingRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const communityLastTypingRef = useRef(0)
+
   useEffect(() => {
     supabase.auth.getUser().then(async ({ data: { user } }) => {
       if (!user) return
@@ -290,6 +296,58 @@ export default function CommunautePage() {
     return () => { channelRef.current?.unsubscribe() }
   }, [profile?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Community typing indicator — Presence channel
+  useEffect(() => {
+    if (!myId || !isSupabaseConfigured()) return
+    const channel = supabase.channel('community-typing', { config: { presence: { key: myId } } })
+
+    channel.on('presence', { event: 'sync' }, () => {
+      const state = channel.presenceState()
+      const typing: string[] = []
+      for (const [userId, presences] of Object.entries(state)) {
+        if (userId === myId) continue
+        if (Array.isArray(presences) && presences.length > 0) {
+          const p = presences[0] as { typing?: boolean; username?: string }
+          if (p.typing && p.username) typing.push(p.username)
+        }
+      }
+      setTypingUsers(typing)
+    })
+
+    channel.subscribe(async (status) => {
+      if (status === 'SUBSCRIBED') await channel.track({ typing: false, username: profile?.username ?? '' })
+    })
+
+    communityTypingChannelRef.current = channel
+    return () => {
+      setTypingUsers([])
+      supabase.removeChannel(channel)
+      communityTypingChannelRef.current = null
+    }
+  }, [myId, profile?.username]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  function broadcastCommunityTyping(isTyping: boolean) {
+    if (!communityTypingChannelRef.current) return
+    if (communityStopTypingRef.current) { clearTimeout(communityStopTypingRef.current); communityStopTypingRef.current = null }
+    if (isTyping) {
+      const now = Date.now()
+      if (now - communityLastTypingRef.current < 1500) {
+        communityStopTypingRef.current = setTimeout(() => {
+          communityTypingChannelRef.current?.track({ typing: false, username: profile?.username ?? '' })
+        }, 2000)
+        return
+      }
+      communityLastTypingRef.current = now
+      communityTypingChannelRef.current.track({ typing: true, username: profile?.username ?? '' })
+      communityStopTypingRef.current = setTimeout(() => {
+        communityTypingChannelRef.current?.track({ typing: false, username: profile?.username ?? '' })
+      }, 2000)
+    } else {
+      communityLastTypingRef.current = 0
+      communityTypingChannelRef.current.track({ typing: false, username: profile?.username ?? '' })
+    }
+  }
+
   useEffect(() => {
     if (posts.length === 0) return
     messagesEndRef.current?.scrollIntoView({ behavior: isInitialLoad.current ? 'instant' : 'smooth' })
@@ -367,6 +425,7 @@ export default function CommunautePage() {
     if (!newPost.trim() && !postImageUrl && !postLinkUrl) return
     if (!profile) return
     setIsPosting(true)
+    broadcastCommunityTyping(false)
     if (!isSupabaseConfigured()) {
       const op: PostWithMeta = {
         id: `temp-${Date.now()}`, user_id: profile.id, content: newPost.trim(),
@@ -1443,6 +1502,21 @@ export default function CommunautePage() {
       {profile && (
         <div className={`fixed right-0 z-[45] bg-[#FAF6F1]/97 backdrop-blur-md border-t border-[#DCCFBF] safe-bottom ${isEmbedded ? 'bottom-0 left-0' : 'bottom-[5.5rem] lg:bottom-0 left-0 lg:left-[272px]'}`}>
           <div className="px-3 lg:px-8 pt-2 pb-3">
+            {/* Typing indicator */}
+            {typingUsers.length > 0 && (
+              <div className="flex items-center gap-1.5 px-1 pb-1.5 text-[11px] text-[#5B9A6B] font-medium">
+                <span className="flex gap-0.5">
+                  <span className="w-1 h-1 bg-[#5B9A6B] rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                  <span className="w-1 h-1 bg-[#5B9A6B] rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                  <span className="w-1 h-1 bg-[#5B9A6B] rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                </span>
+                {typingUsers.length === 1
+                  ? `${typingUsers[0]} écrit...`
+                  : typingUsers.length === 2
+                    ? `${typingUsers[0]} et ${typingUsers[1]} écrivent...`
+                    : `${typingUsers[0]} et ${typingUsers.length - 1} autres écrivent...`}
+              </div>
+            )}
             {replyingTo && (
               <div className="flex items-start gap-2 border-l-2 border-[#C6684F] pl-2 py-1 mb-1.5 bg-[#C6684F]/5 rounded-r-lg">
                 <div className="flex-1 min-w-0">
@@ -1555,9 +1629,10 @@ export default function CommunautePage() {
                 <textarea
                   ref={communityTextareaRef}
                   placeholder={isAdmin ? 'Écris un message... (@ pour mentionner)' : 'Partage ton expérience... (@ pour mentionner)'}
-                  value={newPost} onChange={handleTextareaChange} rows={2}
+                  value={newPost} onChange={e => { handleTextareaChange(e); broadcastCommunityTyping(e.target.value.length > 0) }} rows={2}
                   onKeyDown={e => {
                     if (e.key === 'Escape' && mentionSuggestions.length > 0) { setMentionQuery(null); setMentionSuggestions([]); return }
+                    if (e.key === 'Enter' && !e.shiftKey && !mentionSuggestions.length) { e.preventDefault(); handlePost() }
                   }}
                   className="flex-1 resize-none bg-transparent text-sm text-text placeholder:text-text-muted focus:outline-none leading-5 max-h-[200px] overflow-y-auto"
                 />

@@ -1327,6 +1327,7 @@ function MessagesPage() {
                   ref={textareaRef}
                   value={inputText}
                   onChange={e => { const v = e.target.value; setInputText(v); e.target.style.height = 'auto'; e.target.style.height = `${Math.min(e.target.scrollHeight, 200)}px`; broadcastTyping(v.length > 0) }}
+                  onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage() } }}
                   placeholder="Écrire un message..."
                   rows={2}
                   className="flex-1 bg-[#FAF6F1] border border-[#EDE5DA] rounded-2xl px-4 py-2.5 text-sm text-[#2C2C2C] placeholder-[#A09488] focus:outline-none focus:border-[#C6684F] resize-none max-h-[200px] overflow-y-auto"
