@@ -17,12 +17,14 @@ import {
   Check,
   Video,
   MessageCircle,
+  Flame,
+  Plus,
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/client'
 import { useAuthStore } from '@/stores/auth-store'
 import { useDataCache, isCacheValid } from '@/stores/data-cache'
-import { StreakBadge } from '@/components/ui'
+// UI components used: none from shared lib (using inline styles)
 import { AddToCalendar } from '@/components/add-to-calendar'
 import { getGreeting, formatDuration, formatSubscriptionRemaining } from '@/lib/utils'
 import type { Profile, DailyInspiration, LiveSession, LiveSessionType, PrivateAppointment } from '@/types/database'
@@ -189,193 +191,233 @@ export default function DashboardPage() {
     )
   }
 
+  const weeklyProgress = Math.min(100, (profile.total_sessions / Math.max(1, profile.weekly_rhythm)) * 100)
+
+  // Build week days for the weekly tracker
+  const weekDays = (() => {
+    const now = new Date()
+    const dayOfWeek = now.getDay() // 0=Sun
+    const monday = new Date(now)
+    monday.setDate(now.getDate() - ((dayOfWeek + 6) % 7))
+    const labels = ['LUN', 'MAR', 'MER', 'JEU', 'VEN', 'SAM', 'DIM']
+    return labels.map((label, i) => {
+      const d = new Date(monday)
+      d.setDate(monday.getDate() + i)
+      const isToday = d.toDateString() === now.toDateString()
+      const isPast = d < now && !isToday
+      return { label, date: d, isToday, isPast }
+    })
+  })()
+
   return (
     <div className="px-5 pt-6 pb-8 lg:px-8 xl:px-12 lg:pt-8 max-w-2xl lg:max-w-3xl mx-auto">
 
-      {/* Header — clean greeting + streak */}
+      {/* ─── TOP BAR: greeting + streak ─── */}
       {(() => {
         const greeting = getGreeting(profile.username)
         return (
-          <motion.div data-tour="dashboard-greeting" initial="hidden" animate="visible" custom={0} variants={fadeInUp} className="mb-6">
+          <motion.div data-tour="dashboard-greeting" initial="hidden" animate="visible" custom={0} variants={fadeInUp} className="mb-8">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-[13px] font-medium text-[#C6684F] tracking-wide">{greeting.salut}</p>
-                <h1 className="font-[family-name:var(--font-heading)] text-2xl text-[#2C2C2C] leading-snug mt-0.5">
+                <p className="text-[13px] font-medium text-[#C6684F] tracking-wide uppercase">{greeting.salut}</p>
+                <h1 className="font-[family-name:var(--font-heading)] text-[22px] text-[#1D1D1F] leading-tight mt-0.5">
                   {greeting.message}
                 </h1>
               </div>
-              <StreakBadge count={profile.current_streak} />
+              <div className="flex items-center gap-1.5 bg-[#C6684F]/10 rounded-full px-3 py-1.5">
+                <Flame size={16} className="text-[#C6684F]" />
+                <span className="text-sm font-bold text-[#C6684F]">{profile.current_streak}</span>
+              </div>
             </div>
           </motion.div>
         )
       })()}
 
-      <div className="space-y-3">
+      {/* ─── NOTIFICATIONS (messages, live, rdv) ─── */}
+      {(unreadMsg.count > 0 || nextLive || privateAppt) && (
+        <motion.div initial="hidden" animate="visible" custom={0.5} variants={fadeInUp} className="mb-8">
+          <div className="rounded-2xl bg-white border border-[#E8DDD4] overflow-hidden divide-y divide-[#F0EBE5]">
 
-        {/* Unread messages — compact notification */}
-        {unreadMsg.count > 0 && (
-          <motion.div data-tour="dashboard-unread" initial="hidden" animate="visible" custom={0.5} variants={fadeInUp}>
-            <Link href="/messages">
-              <div className="group flex items-center gap-3 rounded-2xl bg-white border border-[#E8DDD4] p-4 hover:border-[#C6684F]/30 transition-colors">
+            {/* Unread messages */}
+            {unreadMsg.count > 0 && (
+              <Link href="/messages" className="flex items-center gap-3 px-4 py-3.5 hover:bg-[#FAF6F1] transition-colors">
                 <div className="relative w-9 h-9 bg-[#C6684F]/10 rounded-full flex items-center justify-center flex-shrink-0">
-                  <MessageCircle size={16} className="text-[#C6684F]" />
-                  <span className="absolute -top-1 -right-1 min-w-[16px] h-[16px] px-1 bg-[#C6684F] text-white text-[9px] font-bold rounded-full flex items-center justify-center">
+                  <MessageCircle size={15} className="text-[#C6684F]" />
+                  <span className="absolute -top-0.5 -right-0.5 min-w-[15px] h-[15px] px-0.5 bg-[#C6684F] text-white text-[9px] font-bold rounded-full flex items-center justify-center">
                     {unreadMsg.count}
                   </span>
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-[#2C2C2C]">
+                  <p className="text-[13px] font-semibold text-[#1D1D1F]">
                     {unreadMsg.senderName ? `${unreadMsg.senderName} t'a écrit` : 'Nouveau message'}
                   </p>
                   {unreadMsg.lastContent && (
-                    <p className="text-xs text-[#9B8E82] truncate">{unreadMsg.lastContent}</p>
+                    <p className="text-[12px] text-[#86868B] truncate">{unreadMsg.lastContent}</p>
                   )}
                 </div>
-                <ChevronRight size={14} className="text-[#DCCFBF] group-hover:text-[#C6684F] flex-shrink-0 transition-colors" />
-              </div>
-            </Link>
-          </motion.div>
-        )}
+                <ChevronRight size={14} className="text-[#D1CCC5] flex-shrink-0" />
+              </Link>
+            )}
 
-        {/* Next live — clean card */}
-        {nextLive && (
-          <motion.div initial="hidden" animate="visible" custom={1} variants={fadeInUp}>
-            <Link href="/cours">
-              <div className="group rounded-2xl bg-white border border-[#E8DDD4] p-4 hover:border-[#C6684F]/30 transition-colors">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-gradient-to-br from-[#C6684F] to-[#D4956B] rounded-full flex items-center justify-center flex-shrink-0">
-                    <Radio size={16} className="text-white" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[10px] font-semibold tracking-widest uppercase text-[#C6684F] flex items-center gap-1.5">
-                      <span className="relative flex h-1.5 w-1.5">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#C6684F] opacity-50" />
-                        <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-[#C6684F]" />
-                      </span>
-                      {SESSION_TYPE_LABELS[nextLive.session_type] ?? 'Prochain live'}
-                    </p>
-                    <h3 className="font-[family-name:var(--font-heading)] text-base text-[#2C2C2C] mt-0.5">{nextLive.title}</h3>
-                    <p className="text-[13px] text-[#9B8E82] capitalize mt-0.5">
-                      {format(new Date(nextLive.scheduled_at), "EEEE d MMMM 'à' HH'h'mm", { locale: fr })}
-                      <span className="text-[#C6684F]/60 ml-1">{nextLive.duration_minutes} min</span>
-                    </p>
-                  </div>
-                  <ChevronRight size={14} className="text-[#DCCFBF] group-hover:text-[#C6684F] flex-shrink-0 transition-colors" />
-                </div>
-              </div>
-            </Link>
-          </motion.div>
-        )}
-
-        {/* Private appointment — compact */}
-        {privateAppt && (
-          <motion.div initial="hidden" animate="visible" custom={1.5} variants={fadeInUp}>
-            <div className="rounded-2xl bg-white border border-[#E8DDD4] p-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-[#7C3AED]/10 rounded-full flex items-center justify-center flex-shrink-0">
-                  <CalendarClock size={16} className="text-[#7C3AED]" />
+            {/* Next live */}
+            {nextLive && (
+              <Link href="/cours" className="flex items-center gap-3 px-4 py-3.5 hover:bg-[#FAF6F1] transition-colors">
+                <div className="w-9 h-9 bg-gradient-to-br from-[#C6684F] to-[#D4956B] rounded-full flex items-center justify-center flex-shrink-0">
+                  <Radio size={14} className="text-white" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-[10px] font-semibold tracking-widest uppercase text-[#7C3AED]">RDV privé</p>
-                  <h3 className="font-[family-name:var(--font-heading)] text-base text-[#2C2C2C] mt-0.5">{privateAppt.title}</h3>
-                  <p className="text-[13px] text-[#9B8E82] capitalize mt-0.5">
-                    {format(new Date(privateAppt.scheduled_at), "EEEE d MMMM 'à' HH'h'mm", { locale: fr })}
+                  <p className="text-[10px] font-semibold tracking-widest uppercase text-[#C6684F] flex items-center gap-1.5">
+                    <span className="relative flex h-1.5 w-1.5">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#C6684F] opacity-50" />
+                      <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-[#C6684F]" />
+                    </span>
+                    {SESSION_TYPE_LABELS[nextLive.session_type] ?? 'Prochain live'}
+                  </p>
+                  <p className="text-[13px] font-semibold text-[#1D1D1F] mt-0.5">{nextLive.title}</p>
+                  <p className="text-[12px] text-[#86868B] capitalize">
+                    {format(new Date(nextLive.scheduled_at), "EEEE d MMMM · HH'h'mm", { locale: fr })}
+                    <span className="ml-1">{nextLive.duration_minutes} min</span>
                   </p>
                 </div>
-              </div>
-              {(privateAppt.meeting_url || true) && (
-                <div className="flex items-center gap-2 mt-3 pl-[52px]">
+                <ChevronRight size={14} className="text-[#D1CCC5] flex-shrink-0" />
+              </Link>
+            )}
+
+            {/* Private appointment */}
+            {privateAppt && (
+              <div className="px-4 py-3.5">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 bg-[#7C3AED]/10 rounded-full flex items-center justify-center flex-shrink-0">
+                    <CalendarClock size={14} className="text-[#7C3AED]" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[10px] font-semibold tracking-widest uppercase text-[#7C3AED]">RDV privé</p>
+                    <p className="text-[13px] font-semibold text-[#1D1D1F] mt-0.5">{privateAppt.title}</p>
+                    <p className="text-[12px] text-[#86868B] capitalize">
+                      {format(new Date(privateAppt.scheduled_at), "EEEE d MMMM · HH'h'mm", { locale: fr })}
+                    </p>
+                  </div>
                   {privateAppt.meeting_url && (
                     <a href={privateAppt.meeting_url} target="_blank" rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 text-xs font-medium text-[#7C3AED] hover:text-[#6D28D9] transition-colors"
-                      onClick={e => e.stopPropagation()}>
-                      <Video size={12} /> Rejoindre
+                      className="text-[11px] font-semibold text-[#7C3AED] flex items-center gap-1">
+                      <Video size={12} /> Visio
                     </a>
                   )}
-                  <div onClick={e => e.stopPropagation()}>
-                    <AddToCalendar
-                      event={{
-                        title: `RDV privé — ${privateAppt.title}`,
-                        description: [privateAppt.description, privateAppt.meeting_url ? `Lien visio : ${privateAppt.meeting_url}` : ''].filter(Boolean).join('\n'),
-                        location: privateAppt.meeting_url || undefined,
-                        start: new Date(privateAppt.scheduled_at),
-                        end: new Date(new Date(privateAppt.scheduled_at).getTime() + privateAppt.duration_minutes * 60000),
-                      }}
-                      filename="rdv.ics"
-                      accent="purple"
-                    />
-                  </div>
                 </div>
-              )}
-            </div>
-          </motion.div>
-        )}
-
-        {/* Stats — inline compact row */}
-        <motion.div data-tour="dashboard-stats" initial="hidden" animate="visible" custom={2} variants={fadeInUp}>
-          <div className="grid grid-cols-3 gap-3">
-            <div className="rounded-2xl bg-white border border-[#E8DDD4] p-3 text-center">
-              <Trophy size={18} className="mx-auto text-[#C6684F] mb-1" />
-              <p className="text-xl font-bold text-[#2C2C2C]">{profile.total_sessions}</p>
-              <p className="text-[11px] text-[#9B8E82]">sessions</p>
-            </div>
-            <div className="rounded-2xl bg-white border border-[#E8DDD4] p-3 text-center">
-              <Clock size={18} className="mx-auto text-[#C6684F] mb-1" />
-              <p className="text-xl font-bold text-[#2C2C2C]">{formatDuration(profile.total_practice_minutes)}</p>
-              <p className="text-[11px] text-[#9B8E82]">de pratique</p>
-            </div>
-            <div className="rounded-2xl bg-white border border-[#E8DDD4] p-3 text-center">
-              <Sparkles size={18} className="mx-auto text-[#C6684F] mb-1" />
-              <p className="text-xl font-bold text-[#2C2C2C]">{profile.longest_streak}</p>
-              <p className="text-[11px] text-[#9B8E82]">meilleure série</p>
-            </div>
+              </div>
+            )}
           </div>
         </motion.div>
+      )}
 
-        {/* Programme Hebdo + Replay — compact side by side */}
-        <motion.div data-tour="dashboard-programmes" initial="hidden" animate="visible" custom={2.5} variants={fadeInUp} className="grid grid-cols-2 gap-3">
-          {featured && (
-            <button onClick={() => openExternal(featured.url)} className="w-full text-left">
-              <div className="group rounded-2xl bg-white border border-[#E8DDD4] p-0 overflow-hidden hover:border-[#C6684F]/30 transition-colors h-full">
+      {/* ─── MA SEMAINE — Whoop-style weekly tracker ─── */}
+      <motion.div initial="hidden" animate="visible" custom={1} variants={fadeInUp} className="mb-8">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-[11px] font-bold tracking-[0.15em] uppercase text-[#86868B]">Ma semaine</h2>
+          <p className="text-[12px] text-[#86868B]">
+            {Math.min(profile.total_sessions, profile.weekly_rhythm)}/{profile.weekly_rhythm} sessions
+          </p>
+        </div>
+        <div className="rounded-2xl bg-white border border-[#E8DDD4] px-3 py-4">
+          <div className="flex items-center justify-between">
+            {weekDays.map((day) => (
+              <div key={day.label} className="flex flex-col items-center gap-2">
+                <span className={`text-[10px] font-semibold tracking-wider ${day.isToday ? 'text-[#C6684F]' : 'text-[#AEAEB2]'}`}>
+                  {day.label}
+                </span>
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                  day.isToday
+                    ? 'bg-[#C6684F] text-white'
+                    : day.isPast
+                    ? 'bg-[#E8F5E8] text-[#34C759]'
+                    : 'bg-[#F5F5F7] text-[#AEAEB2]'
+                }`}>
+                  {day.isToday ? (
+                    <span className="text-[11px] font-bold">{day.date.getDate()}</span>
+                  ) : day.isPast ? (
+                    <Check size={14} strokeWidth={3} />
+                  ) : (
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#D1CCC5]" />
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </motion.div>
+
+      {/* ─── MON PARCOURS — big stats ─── */}
+      <motion.div data-tour="dashboard-stats" initial="hidden" animate="visible" custom={1.5} variants={fadeInUp} className="mb-8">
+        <h2 className="text-[11px] font-bold tracking-[0.15em] uppercase text-[#86868B] mb-4">Mon parcours</h2>
+        <div className="rounded-2xl bg-white border border-[#E8DDD4] divide-y divide-[#F0EBE5]">
+          <div className="flex items-center justify-between px-5 py-4">
+            <div className="flex items-center gap-3">
+              <Trophy size={18} className="text-[#C6684F]" />
+              <span className="text-[13px] font-medium text-[#86868B]">Sessions totales</span>
+            </div>
+            <span className="text-xl font-bold text-[#1D1D1F]">{profile.total_sessions}</span>
+          </div>
+          <div className="flex items-center justify-between px-5 py-4">
+            <div className="flex items-center gap-3">
+              <Clock size={18} className="text-[#C6684F]" />
+              <span className="text-[13px] font-medium text-[#86868B]">Temps de pratique</span>
+            </div>
+            <span className="text-xl font-bold text-[#1D1D1F]">{formatDuration(profile.total_practice_minutes)}</span>
+          </div>
+          <div className="flex items-center justify-between px-5 py-4">
+            <div className="flex items-center gap-3">
+              <Sparkles size={18} className="text-[#C6684F]" />
+              <span className="text-[13px] font-medium text-[#86868B]">Meilleure série</span>
+            </div>
+            <span className="text-xl font-bold text-[#1D1D1F]">{profile.longest_streak} <span className="text-sm font-normal text-[#AEAEB2]">jours</span></span>
+          </div>
+        </div>
+      </motion.div>
+
+      {/* ─── MES COURS — Programme + Replay ─── */}
+      {(featured || replayUrl) && (
+        <motion.div data-tour="dashboard-programmes" initial="hidden" animate="visible" custom={2} variants={fadeInUp} className="mb-8">
+          <h2 className="text-[11px] font-bold tracking-[0.15em] uppercase text-[#86868B] mb-4">Mes cours</h2>
+          <div className="rounded-2xl bg-white border border-[#E8DDD4] divide-y divide-[#F0EBE5] overflow-hidden">
+
+            {featured && (
+              <button onClick={() => openExternal(featured.url)} className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-[#FAF6F1] transition-colors text-left">
                 {featured.image ? (
-                  <div className="w-full h-24 overflow-hidden">
+                  <div className="w-12 h-12 rounded-xl overflow-hidden flex-shrink-0">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={featured.image} alt={featured.title} className="w-full h-full object-cover" />
                   </div>
                 ) : (
-                  <div className="w-full h-16 bg-[#C6684F]/5 flex items-center justify-center">
-                    <Dumbbell size={20} className="text-[#C6684F]" />
+                  <div className="w-12 h-12 rounded-xl bg-[#C6684F]/5 flex items-center justify-center flex-shrink-0">
+                    <Dumbbell size={18} className="text-[#C6684F]" />
                   </div>
                 )}
-                <div className="p-3">
-                  <p className="text-sm font-semibold text-[#2C2C2C] truncate">{featured.title}</p>
-                  <p className="text-[11px] text-[#9B8E82] mt-0.5 flex items-center gap-1">
-                    Accéder <ExternalLink size={10} />
-                  </p>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[13px] font-semibold text-[#1D1D1F] truncate">{featured.title}</p>
+                  <p className="text-[12px] text-[#86868B]">{featured.description || 'Programme de la semaine'}</p>
                 </div>
-              </div>
-            </button>
-          )}
+                <ExternalLink size={14} className="text-[#D1CCC5] flex-shrink-0" />
+              </button>
+            )}
 
-          {replayUrl && (
-            <button onClick={() => openExternal(replayUrl)} className="w-full text-left">
-              <div className="group rounded-2xl bg-white border border-[#E8DDD4] p-0 overflow-hidden hover:border-[#7C3AED]/30 transition-colors h-full">
+            {replayUrl && (
+              <button onClick={() => openExternal(replayUrl)} className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-[#FAF6F1] transition-colors text-left">
                 {replayImage ? (
-                  <div className="w-full h-24 overflow-hidden">
+                  <div className="w-12 h-12 rounded-xl overflow-hidden flex-shrink-0">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={replayImage} alt="Replay" className="w-full h-full object-cover" />
                   </div>
                 ) : (
-                  <div className="w-full h-16 bg-[#7C3AED]/5 flex items-center justify-center">
-                    <Play size={20} className="text-[#7C3AED] ml-0.5" />
+                  <div className="w-12 h-12 rounded-xl bg-[#7C3AED]/5 flex items-center justify-center flex-shrink-0">
+                    <Play size={18} className="text-[#7C3AED] ml-0.5" />
                   </div>
                 )}
-                <div className="p-3">
-                  <p className="text-sm font-semibold text-[#2C2C2C]">Replay</p>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[13px] font-semibold text-[#1D1D1F]">Replay dernier cours</p>
                   {replayCode ? (
-                    <div className="flex items-center gap-1.5 mt-0.5">
-                      <p className="text-[11px] text-[#9B8E82]">
-                        MDP : <span className="font-mono font-bold text-[#7C3AED]">{replayCode}</span>
+                    <div className="flex items-center gap-1.5">
+                      <p className="text-[12px] text-[#86868B]">
+                        Mot de passe : <span className="font-mono font-bold text-[#7C3AED]">{replayCode}</span>
                       </p>
                       <button
                         onClick={(e) => {
@@ -384,51 +426,55 @@ export default function DashboardPage() {
                           setCodeCopied(true)
                           setTimeout(() => setCodeCopied(false), 2000)
                         }}
-                        className="p-0.5 rounded text-[#7C3AED]"
+                        className="p-0.5 text-[#7C3AED]"
                       >
-                        {codeCopied ? <Check size={10} /> : <Copy size={10} />}
+                        {codeCopied ? <Check size={11} /> : <Copy size={11} />}
                       </button>
                     </div>
                   ) : (
-                    <p className="text-[11px] text-[#9B8E82] mt-0.5 flex items-center gap-1">
-                      Regarder <ExternalLink size={10} />
-                    </p>
+                    <p className="text-[12px] text-[#86868B]">Dernier cours collectif</p>
                   )}
                 </div>
-              </div>
-            </button>
-          )}
+                <ExternalLink size={14} className="text-[#D1CCC5] flex-shrink-0" />
+              </button>
+            )}
+          </div>
         </motion.div>
+      )}
 
-        {/* Subscription — compact inline */}
-        {profile.subscription_start && (() => {
-          const end = new Date(profile.subscription_start)
-          end.setFullYear(end.getFullYear() + 1)
-          const info = formatSubscriptionRemaining(end.toISOString())
-          return (
-            <motion.div initial="hidden" animate="visible" custom={3} variants={fadeInUp}>
-              <div className={`rounded-2xl border p-4 ${info.urgent ? 'bg-amber-50/50 border-amber-200' : 'bg-[#FAF6F1] border-[#E8DDD4]'}`}>
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    <Calendar size={14} className={info.urgent ? 'text-amber-600' : 'text-[#C6684F]'} />
-                    <p className="text-xs font-semibold text-[#2C2C2C]">Mon accompagnement</p>
-                  </div>
-                  <p className="text-[10px] text-[#9B8E82]">
-                    jusqu&apos;au {end.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}
-                  </p>
-                </div>
-                <div className="h-1.5 bg-white/60 rounded-full overflow-hidden">
-                  <div
-                    className={`h-full rounded-full transition-all ${info.urgent ? 'bg-amber-500' : 'bg-[#C6684F]'}`}
-                    style={{ width: `${info.percent}%` }}
-                  />
-                </div>
+      {/* ─── MON ACCOMPAGNEMENT ─── */}
+      {profile.subscription_start && (() => {
+        const end = new Date(profile.subscription_start)
+        end.setFullYear(end.getFullYear() + 1)
+        const info = formatSubscriptionRemaining(end.toISOString())
+        return (
+          <motion.div initial="hidden" animate="visible" custom={2.5} variants={fadeInUp}>
+            <h2 className="text-[11px] font-bold tracking-[0.15em] uppercase text-[#86868B] mb-4">Mon accompagnement</h2>
+            <div className={`rounded-2xl border px-5 py-4 ${info.urgent ? 'bg-amber-50/50 border-amber-200' : 'bg-white border-[#E8DDD4]'}`}>
+              <div className="flex items-center justify-between mb-3">
+                <p className={`text-[13px] font-semibold ${info.urgent ? 'text-amber-700' : 'text-[#1D1D1F]'}`}>
+                  {info.label}
+                </p>
+                <p className="text-[11px] text-[#86868B]">
+                  jusqu&apos;au {end.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}
+                </p>
               </div>
-            </motion.div>
-          )
-        })()}
+              <div className="h-2 bg-[#F5F5F7] rounded-full overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-all ${info.urgent ? 'bg-amber-500' : 'bg-[#C6684F]'}`}
+                  style={{ width: `${info.percent}%` }}
+                />
+              </div>
+              {info.urgent && (
+                <p className="text-[11px] text-amber-600 mt-2">
+                  Contacte Marjorie pour renouveler ton accompagnement
+                </p>
+              )}
+            </div>
+          </motion.div>
+        )
+      })()}
 
-      </div>
     </div>
   )
 }
