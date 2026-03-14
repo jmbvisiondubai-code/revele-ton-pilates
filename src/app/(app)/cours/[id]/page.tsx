@@ -143,9 +143,9 @@ export default function CourseDetailPage() {
     <div className="min-h-screen bg-[#faf8f5] pb-24">
       {/* Back button */}
       <div className="px-5 pt-5">
-        <button onClick={() => router.back()} className="flex items-center gap-2 text-[#93877e] hover:text-[#6b5f57] transition-colors">
-          <ArrowLeft size={20} />
-          <span className="text-sm">Retour aux cours</span>
+        <button onClick={() => router.back()} className="flex items-center gap-2.5 text-sm font-medium text-white bg-[#C6684F] hover:bg-[#b05a42] px-4 py-2 rounded-xl transition-colors shadow-sm">
+          <ArrowLeft size={16} />
+          Retour aux cours
         </button>
       </div>
 

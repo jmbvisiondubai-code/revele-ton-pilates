@@ -191,7 +191,23 @@ export default function SuiviPage() {
   function handleOpenRec(rec: Recommendation) {
     setOpenRec(rec)
     markRecAsRead(rec)
+    window.history.pushState({ recOpen: true }, '')
   }
+
+  function closeRec() {
+    setOpenRec(null)
+  }
+
+  // Handle hardware back button / browser back
+  useEffect(() => {
+    function onPopState() {
+      if (openRec) {
+        setOpenRec(null)
+      }
+    }
+    window.addEventListener('popstate', onPopState)
+    return () => window.removeEventListener('popstate', onPopState)
+  }, [openRec])
 
   // ── Edit / Delete sessions ──────────────────────────────────────────
   function startEdit(c: Completion) {
@@ -227,8 +243,8 @@ export default function SuiviPage() {
     const cat = getRecCat(openRec.category)
     return (
       <div className="px-5 pt-4 pb-8 lg:px-8 xl:px-12 max-w-5xl mx-auto">
-        <button onClick={() => setOpenRec(null)}
-          className="flex items-center gap-2 text-sm text-[#6B6359] hover:text-[#2C2C2C] mb-5 transition-colors">
+        <button onClick={() => { closeRec(); window.history.back() }}
+          className="flex items-center gap-2.5 text-sm font-medium text-white bg-[#C6684F] hover:bg-[#b05a42] px-4 py-2 rounded-xl mb-5 transition-colors shadow-sm">
           <ArrowLeft size={16} /> Retour
         </button>
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>

@@ -837,10 +837,10 @@ function MessagesPage() {
             <div className="flex-shrink-0 bg-white border-b border-[#DCCFBF]">
               <div className="flex items-center gap-3 px-4 py-3">
                 <button
-                  className="lg:hidden mr-1 text-[#6B6359]"
+                  className="lg:hidden mr-1 p-1.5 rounded-lg bg-[#F2E8DF] text-[#C6684F] hover:bg-[#E8D5C4] transition"
                   onClick={() => { sessionStorage.removeItem('dm_active_conv'); setShowList(true); setActiveId(null); setMessages([]) }}
                 >
-                  <ArrowLeft size={20} />
+                  <ArrowLeft size={18} />
                 </button>
                 {activeProfile && <ProfileAvatar p={activeProfile} size={36} />}
                 <div className="flex-1 min-w-0">

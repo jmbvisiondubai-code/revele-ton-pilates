@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/client'
 import { Card } from '@/components/ui'
-import { Users, Clock, Trophy, Star, X, Plus, ExternalLink, ChevronRight, Upload, Link as LinkIcon, Calendar, AlertTriangle, MessageCircle } from 'lucide-react'
+import { Users, Clock, Trophy, Star, X, Plus, ExternalLink, ChevronRight, Upload, Link as LinkIcon, Calendar, AlertTriangle, MessageCircle, Maximize2, PanelRight } from 'lucide-react'
 import { formatDuration, LEVEL_LABELS, formatSubscriptionRemaining } from '@/lib/utils'
 import type { Recommendation, VodCategory } from '@/types/database'
 
@@ -49,6 +49,7 @@ export default function ClientesPage() {
   const [uploadingThumb, setUploadingThumb] = useState(false)
   const [creatingConv, setCreatingConv] = useState(false)
   const [convStatus, setConvStatus] = useState<'none' | 'exists' | 'created'>('none')
+  const [viewMode, setViewMode] = useState<'side' | 'full'>('side')
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const supabase = createClient()
@@ -275,10 +276,10 @@ export default function ClientesPage() {
       )}
 
       {selected && (
-        <div className="fixed inset-0 z-50 flex items-stretch justify-end bg-black/30" onClick={() => setSelected(null)}>
-          <div className="w-full max-w-lg bg-white h-full overflow-y-auto shadow-2xl" onClick={e => e.stopPropagation()}>
+        <div className={`fixed inset-0 z-50 flex bg-black/30 ${viewMode === 'full' ? 'items-center justify-center p-6' : 'items-stretch justify-end'}`} onClick={() => setSelected(null)}>
+          <div className={`bg-white overflow-y-auto shadow-2xl ${viewMode === 'full' ? 'w-full max-w-3xl max-h-[90vh] rounded-2xl' : 'w-full max-w-lg h-full'}`} onClick={e => e.stopPropagation()}>
             {/* Header */}
-            <div className="sticky top-0 bg-white border-b border-[#DCCFBF] px-5 py-4 flex items-center gap-3">
+            <div className={`sticky top-0 bg-white border-b border-[#DCCFBF] px-5 py-4 flex items-center gap-3 ${viewMode === 'full' ? 'rounded-t-2xl' : ''}`}>
               <div className="w-10 h-10 rounded-full bg-[#F2E8DF] flex items-center justify-center text-[#C6684F] font-semibold">
                 {selected.first_name.charAt(0).toUpperCase()}
               </div>
@@ -298,13 +299,19 @@ export default function ClientesPage() {
                   <MessageCircle size={13} /> Conversation {convStatus === 'created' ? 'créée' : 'active'}
                 </span>
               )}
+              <button onClick={() => setViewMode(v => v === 'side' ? 'full' : 'side')}
+                className="p-2 rounded-lg hover:bg-[#F2E8DF] text-[#A09488] hover:text-[#6B6359] transition" title={viewMode === 'side' ? 'Plein écran' : 'Panneau latéral'}>
+                {viewMode === 'side' ? <Maximize2 size={16} /> : <PanelRight size={16} />}
+              </button>
               <button onClick={() => setSelected(null)} className="p-2 rounded-lg hover:bg-[#F2E8DF] text-[#6B6359]"><X size={18} /></button>
             </div>
 
             {loadingDetail ? (
               <div className="flex justify-center py-12"><div className="w-6 h-6 border-2 border-[#C6684F] border-t-transparent rounded-full animate-spin" /></div>
             ) : (
-              <div className="p-5 space-y-6">
+              <div className={`p-5 ${viewMode === 'full' ? 'grid grid-cols-2 gap-6' : 'space-y-6'}`}>
+              {/* Left column in full mode */}
+              <div className={viewMode === 'full' ? 'space-y-6' : 'contents'}>
                 {/* Stats */}
                 <div className="grid grid-cols-3 gap-3">
                   {[
@@ -401,7 +408,9 @@ export default function ClientesPage() {
                     <p className="text-sm text-amber-800">{selected.limitations}</p>
                   </div>
                 )}
-
+              </div>
+              {/* Right column in full mode */}
+              <div className={viewMode === 'full' ? 'space-y-6' : 'contents'}>
                 {/* Recent courses */}
                 <div>
                   <h3 className="font-semibold text-sm text-[#2C2C2C] mb-3">Derniers cours suivis</h3>
@@ -543,6 +552,7 @@ export default function ClientesPage() {
                     </button>
                   </div>
                 </div>
+              </div>
               </div>
             )}
           </div>

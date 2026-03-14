@@ -108,7 +108,24 @@ export default function ConseilsPage() {
     setComments([])
     setCommentText('')
     loadComments(article.id)
+    window.history.pushState({ articleOpen: true }, '')
   }
+
+  function closeArticle() {
+    setOpenArticle(null)
+  }
+
+  // Handle hardware back button / browser back
+  useEffect(() => {
+    function onPopState(e: PopStateEvent) {
+      if (openArticle) {
+        e.preventDefault()
+        setOpenArticle(null)
+      }
+    }
+    window.addEventListener('popstate', onPopState)
+    return () => window.removeEventListener('popstate', onPopState)
+  }, [openArticle])
 
   async function postComment() {
     setCommentError(null)
@@ -176,8 +193,8 @@ export default function ConseilsPage() {
     const cat = ARTICLE_CATS[openArticle.category]
     return (
       <div className="px-5 pt-4 pb-8 lg:px-8 max-w-5xl mx-auto">
-        <button onClick={() => setOpenArticle(null)}
-          className="flex items-center gap-2 text-sm text-[#6B6359] hover:text-[#2C2C2C] mb-5 transition-colors">
+        <button onClick={() => { closeArticle(); window.history.back() }}
+          className="flex items-center gap-2.5 text-sm font-medium text-white bg-[#C6684F] hover:bg-[#b05a42] px-4 py-2 rounded-xl mb-5 transition-colors shadow-sm">
           <ArrowLeft size={16} /> Retour aux articles
         </button>
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
