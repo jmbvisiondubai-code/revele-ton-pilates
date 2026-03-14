@@ -592,11 +592,12 @@ export default function ClientesPage() {
                     setModalSize({ w: newW, h: newH })
                   }
                   function onUp() {
-                    modalResizing.current = false
                     document.body.style.cursor = ''
                     document.body.style.userSelect = ''
                     window.removeEventListener('mousemove', onMove)
                     window.removeEventListener('mouseup', onUp)
+                    // Delay reset so the click event on overlay is still blocked
+                    setTimeout(() => { modalResizing.current = false }, 100)
                   }
                   window.addEventListener('mousemove', onMove)
                   window.addEventListener('mouseup', onUp)
