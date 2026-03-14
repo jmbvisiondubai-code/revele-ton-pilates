@@ -65,7 +65,18 @@ export async function POST(req: NextRequest) {
   }
 
   if (action === 'delete') {
-    // Delete profile data first, then auth user
+    // Soft delete: ban user + mark profile as deleted (recoverable via trash)
+    await supabaseAdmin.auth.admin.updateUserById(userId, { ban_duration: '876000h' })
+    const { error } = await supabaseAdmin
+      .from('profiles')
+      .update({ deleted_at: new Date().toISOString() })
+      .eq('id', userId)
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ ok: true })
+  }
+
+  if (action === 'permanent_delete') {
+    // Hard delete: remove all data permanently
     await supabaseAdmin.from('course_completions').delete().eq('user_id', userId)
     await supabaseAdmin.from('user_badges').delete().eq('user_id', userId)
     await supabaseAdmin.from('recommendations').delete().eq('user_id', userId)
@@ -78,8 +89,18 @@ export async function POST(req: NextRequest) {
     await supabaseAdmin.from('push_subscriptions').delete().eq('user_id', userId)
     await supabaseAdmin.from('profiles').delete().eq('id', userId)
 
-    // Delete auth user
     const { error } = await supabaseAdmin.auth.admin.deleteUser(userId)
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ ok: true })
+  }
+
+  if (action === 'restore') {
+    // Restore: unban + clear deleted_at
+    await supabaseAdmin.auth.admin.updateUserById(userId, { ban_duration: 'none' })
+    const { error } = await supabaseAdmin
+      .from('profiles')
+      .update({ deleted_at: null })
+      .eq('id', userId)
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
     return NextResponse.json({ ok: true })
   }

@@ -35,6 +35,7 @@ export default function MembresPage() {
       const { data } = await supabase
         .from('profiles')
         .select('id, first_name, last_name, username, email, avatar_url, is_admin, total_sessions, created_at')
+        .is('deleted_at', null)
         .order('created_at', { ascending: false })
       if (data) {
         // Fetch ban status from auth for each user via API
@@ -243,7 +244,7 @@ export default function MembresPage() {
                     <span className="font-medium">{actionModal.member.first_name} {actionModal.member.last_name}</span> (@{actionModal.member.username})
                   </p>
                   <p className="text-xs text-[#A09488] mt-2 leading-relaxed">
-                    {actionModal.action === 'delete' && 'Cette action est irréversible. Toutes les données de cette cliente seront définitivement supprimées (messages, sessions, badges, etc.).'}
+                    {actionModal.action === 'delete' && 'Le compte sera désactivé et placé dans la corbeille. Tu pourras le restaurer depuis la corbeille si besoin.'}
                     {actionModal.action === 'disable' && 'La cliente ne pourra plus se connecter à l\'application. Son compte et ses données seront conservés.'}
                     {actionModal.action === 'enable' && 'La cliente pourra à nouveau se connecter et utiliser l\'application.'}
                   </p>
