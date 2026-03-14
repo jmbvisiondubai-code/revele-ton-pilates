@@ -114,7 +114,8 @@ export async function POST(req: NextRequest) {
 </html>`
 
   try {
-    const { error } = await resend.emails.send({
+    console.log('[send-welcome-email] Sending to:', email, 'for:', firstName)
+    const { data, error } = await resend.emails.send({
       from: 'Révèle Ton Pilates <noreply@marjoriejamin.com>',
       to: email,
       subject: `Bienvenue ${firstName} ! Voici tes liens de téléchargement`,
@@ -122,11 +123,14 @@ export async function POST(req: NextRequest) {
     })
 
     if (error) {
+      console.error('[send-welcome-email] Resend error:', error)
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
-    return NextResponse.json({ ok: true })
+    console.log('[send-welcome-email] Success, id:', data?.id)
+    return NextResponse.json({ ok: true, id: data?.id })
   } catch (err) {
+    console.error('[send-welcome-email] Exception:', err)
     return NextResponse.json({ error: err instanceof Error ? err.message : 'Erreur envoi email' }, { status: 500 })
   }
 }

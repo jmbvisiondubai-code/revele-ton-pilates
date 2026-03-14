@@ -36,6 +36,7 @@ function SignupPage() {
   const [success, setSuccess] = useState(false)
   const [createdFirstName, setCreatedFirstName] = useState('')
   const [downloadLinks, setDownloadLinks] = useState<Record<string, string>>({})
+  const [emailSentOk, setEmailSentOk] = useState(false)
 
   const supabase = createClient()
 
@@ -112,12 +113,17 @@ function SignupPage() {
         setDownloadLinks(links)
       }
 
-      // Send welcome email with download links (fire-and-forget)
-      fetch('/api/send-welcome-email', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, firstName: firstName.trim(), downloadLinks: links }),
-      }).catch(() => {})
+      // Send welcome email with download links
+      let emailSent = false
+      try {
+        const emailRes = await fetch('/api/send-welcome-email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, firstName: firstName.trim(), downloadLinks: links }),
+        })
+        if (emailRes.ok) emailSent = true
+      } catch { /* email failed silently */ }
+      setEmailSentOk(emailSent)
 
       // Sign out so the user connects fresh in the app
       await supabase.auth.signOut()
@@ -278,17 +284,31 @@ function SignupPage() {
         </a>
 
         {/* ── Email confirmation ── */}
-        <div className="mt-6 bg-[#5B9A6B]/5 border border-[#5B9A6B]/15 rounded-2xl px-4 py-3.5 flex items-start gap-3 text-left">
-          <div className="w-8 h-8 rounded-full bg-[#5B9A6B]/10 flex items-center justify-center flex-shrink-0 mt-0.5">
-            <span className="text-sm">📧</span>
+        {emailSentOk ? (
+          <div className="mt-6 bg-[#5B9A6B]/5 border border-[#5B9A6B]/15 rounded-2xl px-4 py-3.5 flex items-start gap-3 text-left">
+            <div className="w-8 h-8 rounded-full bg-[#5B9A6B]/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+              <span className="text-sm">📧</span>
+            </div>
+            <div>
+              <p className="text-xs font-semibold text-[#2C2C2C]">Email envoyé !</p>
+              <p className="text-[11px] text-[#6B6359] leading-relaxed mt-0.5">
+                Un récapitulatif avec tous les liens de téléchargement t&apos;a été envoyé par email.
+              </p>
+            </div>
           </div>
-          <div>
-            <p className="text-xs font-semibold text-[#2C2C2C]">Email envoyé !</p>
-            <p className="text-[11px] text-[#6B6359] leading-relaxed mt-0.5">
-              Un récapitulatif avec tous les liens de téléchargement t&apos;a été envoyé par email. Tu pourras le retrouver à tout moment.
-            </p>
+        ) : (
+          <div className="mt-6 bg-[#C6684F]/5 border border-[#C6684F]/15 rounded-2xl px-4 py-3.5 flex items-start gap-3 text-left">
+            <div className="w-8 h-8 rounded-full bg-[#C6684F]/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+              <span className="text-sm">📧</span>
+            </div>
+            <div>
+              <p className="text-xs font-semibold text-[#2C2C2C]">Pense à sauvegarder cette page</p>
+              <p className="text-[11px] text-[#6B6359] leading-relaxed mt-0.5">
+                Tu retrouveras tous les liens de téléchargement ci-dessus pour installer l&apos;application.
+              </p>
+            </div>
           </div>
-        </div>
+        )}
 
         <p className="text-[11px] text-text-muted mt-5 leading-relaxed">
           Connecte-toi avec ton email et ton mot de passe,<br />

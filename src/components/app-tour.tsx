@@ -38,12 +38,12 @@ const TOUR_STEPS: TourStep[] = [
     position: 'bottom',
   },
   {
-    target: 'communaute-feed',
+    target: 'communaute-compose',
     title: 'La communauté',
-    description: 'Échange avec les autres clientes.',
+    description: 'C\'est ici que tu peux écrire tes messages dans la communauté.',
     emoji: '💬',
     page: '/communaute',
-    position: 'bottom',
+    position: 'top',
   },
   {
     target: 'nav-messages',
