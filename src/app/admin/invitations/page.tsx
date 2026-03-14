@@ -58,7 +58,15 @@ export default function InvitationsPage() {
   }
 
   async function deleteInvitation(id: string) {
-    await supabase.from('invitations').delete().eq('id', id)
+    // Try client-side first, fallback to server API (RLS might block)
+    const { error } = await supabase.from('invitations').delete().eq('id', id)
+    if (error) {
+      await fetch('/api/mark-invitation-used', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id }),
+      })
+    }
     setInvitations(prev => prev.filter(i => i.id !== id))
   }
 
@@ -200,6 +208,13 @@ export default function InvitationsPage() {
                           {inv.used_by_profile?.first_name && ` · ${inv.used_by_profile.first_name}`}
                         </p>
                       </div>
+                      <button
+                        onClick={() => deleteInvitation(inv.id)}
+                        className="w-8 h-8 rounded-lg bg-[#F2E8DF] flex items-center justify-center text-[#A09488] hover:bg-red-50 hover:text-red-500 transition-colors shrink-0"
+                        title="Supprimer"
+                      >
+                        <Trash2 size={14} />
+                      </button>
                     </div>
                   </div>
                 ))}
