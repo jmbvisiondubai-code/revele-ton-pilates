@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/client'
-import { useAuthStore } from '@/stores/auth-store'
 import { MessageSquare, Send, ArrowLeft, Search, Plus, Check, CheckCheck } from 'lucide-react'
 import { formatRelativeDate } from '@/lib/utils'
 import type { DirectMessage } from '@/types/database'
@@ -25,8 +24,7 @@ type ConvPreview = {
 }
 
 export default function AdminMessagesPage() {
-  const { profile } = useAuthStore()
-  const myId = profile?.id
+  const [myId, setMyId] = useState<string | null>(null)
 
   const [clients, setClients] = useState<ConvPreview[]>([])
   const [loading, setLoading] = useState(true)
@@ -42,6 +40,14 @@ export default function AdminMessagesPage() {
   const msgListRef = useRef<HTMLDivElement>(null)
 
   const supabase = createClient()
+
+  // ── Resolve admin ID on mount ───────────────────────────────────────────
+  useEffect(() => {
+    if (!isSupabaseConfigured()) return
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user) setMyId(user.id)
+    })
+  }, [])
 
   // ── Load all clients + conversation status ──────────────────────────────
   const loadClients = useCallback(async () => {
@@ -61,14 +67,14 @@ export default function AdminMessagesPage() {
       return
     }
 
-    // Get all DMs involving admin
-    const { data: dms } = await supabase
-      .from('direct_messages')
-      .select('sender_id, receiver_id, content, image_url, file_name, created_at, read_at')
-      .or(`sender_id.eq.${myId},receiver_id.eq.${myId}`)
-      .order('created_at', { ascending: false })
-
-    const allDms = dms ?? []
+    // Get all DMs involving admin — use server-side check to avoid RLS issues
+    const res = await fetch('/api/admin/list-conversations', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ adminId: myId }),
+    })
+    const dmData = res.ok ? await res.json() : { dms: [] }
+    const allDms: { sender_id: string; receiver_id: string; content: string | null; image_url: string | null; file_name: string | null; created_at: string; read_at: string | null }[] = dmData.dms ?? []
 
     // Build per-client stats
     const statsMap = new Map<string, { lastMessage: string | null; lastAt: string | null; unreadCount: number; hasConversation: boolean }>()
@@ -112,19 +118,26 @@ export default function AdminMessagesPage() {
   const loadMessages = useCallback(async () => {
     if (!myId || !activeClient || !isSupabaseConfigured()) return
     setLoadingMsgs(true)
-    const { data: msgs } = await supabase
-      .from('direct_messages')
-      .select('*')
-      .or(`and(sender_id.eq.${myId},receiver_id.eq.${activeClient.id}),and(sender_id.eq.${activeClient.id},receiver_id.eq.${myId})`)
-      .order('created_at', { ascending: true })
 
-    setMessages(msgs ?? [])
+    const res = await fetch('/api/admin/dm', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'list', adminId: myId, clientId: activeClient.id }),
+    })
+    const data = res.ok ? await res.json() : { messages: [] }
+    const msgs = data.messages ?? []
+
+    setMessages(msgs)
     setLoadingMsgs(false)
 
     // Mark received as read
-    const unread = (msgs ?? []).filter(m => m.receiver_id === myId && !m.read_at).map(m => m.id)
+    const unread = msgs.filter((m: DirectMessage) => m.receiver_id === myId && !m.read_at).map((m: DirectMessage) => m.id)
     if (unread.length) {
-      await supabase.from('direct_messages').update({ read_at: new Date().toISOString() }).in('id', unread)
+      await fetch('/api/admin/dm', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'mark_read', messageIds: unread }),
+      })
       loadClients()
     }
   }, [myId, activeClient])
@@ -142,7 +155,11 @@ export default function AdminMessagesPage() {
         const msg = payload.new as DirectMessage
         if (activeClient && msg.sender_id === activeClient.id) {
           setMessages(prev => [...prev, msg])
-          supabase.from('direct_messages').update({ read_at: new Date().toISOString() }).eq('id', msg.id).then(() => loadClients())
+          fetch('/api/admin/dm', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'mark_read', messageIds: [msg.id] }),
+          }).then(() => loadClients())
         } else {
           loadClients()
         }
@@ -167,15 +184,19 @@ export default function AdminMessagesPage() {
     const text = inputText.trim()
     setInputText('')
 
-    const { data, error } = await supabase.from('direct_messages')
-      .insert({ sender_id: myId, receiver_id: activeClient.id, content: text })
-      .select().single()
-
-    if (!error && data) {
-      setMessages(prev => {
-        if (prev.some(m => m.id === data.id)) return prev
-        return [...prev, data]
-      })
+    const res = await fetch('/api/admin/dm', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'send', adminId: myId, clientId: activeClient.id, content: text }),
+    })
+    if (res.ok) {
+      const data = await res.json()
+      if (data.message) {
+        setMessages(prev => {
+          if (prev.some(m => m.id === data.message.id)) return prev
+          return [...prev, data.message]
+        })
+      }
     }
     setSending(false)
     loadClients()
