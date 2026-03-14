@@ -75,7 +75,8 @@ function groupForPath(path: string): string | null {
   return null
 }
 
-const MIN_WIDTH = 56
+const COLLAPSED_WIDTH = 56
+const MIN_RESIZE = 200
 const DEFAULT_WIDTH = 260
 const MAX_WIDTH = 340
 
@@ -106,10 +107,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     function onMouseMove(ev: MouseEvent) {
       if (!isResizing.current) return
       const delta = ev.clientX - startX.current
-      const newW = Math.max(MIN_WIDTH + 20, Math.min(MAX_WIDTH, startW.current + delta))
+      const newW = Math.max(MIN_RESIZE, Math.min(MAX_WIDTH, startW.current + delta))
       setSidebarWidth(newW)
-      if (newW <= MIN_WIDTH + 30) setCollapsed(true)
-      else setCollapsed(false)
     }
     function onMouseUp() {
       isResizing.current = false
@@ -164,7 +163,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }
 
   const isActive = (href: string) => pathname === href || (href !== '/admin' && pathname.startsWith(href))
-  const effectiveWidth = collapsed ? MIN_WIDTH : sidebarWidth
+  const effectiveWidth = collapsed ? COLLAPSED_WIDTH : sidebarWidth
 
   return (
     <div className="min-h-screen bg-[#f8f6f3]">
@@ -193,11 +192,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       <div className="flex">
         {/* ── Sidebar — frosted glass ── */}
         <nav
-          className={`sticky top-[49px] h-[calc(100vh-49px)] backdrop-blur-xl bg-white/60 border-r border-black/[0.06] flex flex-col transition-[width] duration-300 ease-out relative flex-shrink-0 ${
-            collapsed ? 'cursor-pointer' : ''
-          }`}
+          className="sticky top-[49px] h-[calc(100vh-49px)] backdrop-blur-xl bg-white/60 border-r border-black/[0.06] flex flex-col transition-[width] duration-300 ease-out relative flex-shrink-0"
           style={{ width: effectiveWidth }}
-          onClick={collapsed ? () => { setCollapsed(false); setSidebarWidth(DEFAULT_WIDTH) } : undefined}
         >
           <div className="flex-1 px-2.5 py-3 space-y-0.5 overflow-y-auto overflow-x-hidden scrollbar-thin">
 
@@ -316,14 +312,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             </Link>
           </div>
 
-          {/* Resize handle / expand click zone */}
-          {collapsed ? (
-            <button
-              onClick={() => { setCollapsed(false); setSidebarWidth(DEFAULT_WIDTH) }}
-              className="absolute top-0 right-0 w-[6px] h-full cursor-pointer hover:bg-[#C6684F]/20 transition-colors duration-150"
-              title="Ouvrir le menu"
-            />
-          ) : (
+          {/* Resize handle — only when expanded */}
+          {!collapsed && (
             <div
               onMouseDown={onMouseDown}
               className="absolute top-0 right-0 w-[3px] h-full cursor-col-resize hover:bg-[#C6684F]/20 transition-colors duration-150 group"
