@@ -383,39 +383,43 @@ export default function DashboardPage() {
                   </p>
                 </div>
               </div>
-              <Link href="/serie" className="relative flex items-center gap-1.5 bg-[#C6684F]/10 rounded-full px-3 py-1.5 hover:bg-[#C6684F]/20 transition-colors overflow-visible">
+              <Link href="/serie" className={`relative flex items-center rounded-full transition-colors overflow-visible ${
+                profile.current_streak >= 7
+                  ? 'gap-2 bg-[#C6684F]/12 px-3.5 py-2 hover:bg-[#C6684F]/20'
+                  : 'gap-1.5 bg-[#C6684F]/10 px-3 py-1.5 hover:bg-[#C6684F]/20'
+              }`}>
                 {profile.current_streak >= 7 ? (
                   <>
                     <motion.div
-                      className="relative w-6 h-6"
-                      animate={{ y: [0, -1.5, 0] }}
+                      className="relative w-8 h-8 -ml-0.5"
+                      animate={{ y: [0, -2, 0] }}
                       transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
                     >
                       {/* Base — deep red */}
-                      <Flame size={24} className="absolute inset-0 text-[#D4421A]" strokeWidth={1.3} />
+                      <Flame size={32} className="absolute inset-0 text-[#D4421A]" strokeWidth={1.2} />
                       {/* Outer — red-orange */}
                       <motion.div
                         className="absolute inset-0 flex items-center justify-center"
-                        animate={{ y: [0, -0.5, 0] }}
+                        animate={{ y: [0, -1, 0] }}
                         transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
                       >
-                        <Flame size={18} className="text-[#E85D2A]" strokeWidth={1.4} />
+                        <Flame size={24} className="text-[#E85D2A]" strokeWidth={1.3} />
                       </motion.div>
                       {/* Mid — warm orange */}
                       <motion.div
                         className="absolute inset-0 flex items-center justify-center"
-                        animate={{ y: [0, -1, 0] }}
+                        animate={{ y: [0, -1.5, 0] }}
                         transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
                       >
-                        <Flame size={13} className="text-[#FF8A3A] mt-[2px]" strokeWidth={1.5} />
+                        <Flame size={16} className="text-[#FF8A3A] mt-[2px]" strokeWidth={1.4} />
                       </motion.div>
                       {/* Core — golden */}
                       <motion.div
                         className="absolute inset-0 flex items-center justify-center"
-                        animate={{ y: [0, -1, 0], scale: [1, 1.06, 1] }}
+                        animate={{ y: [0, -1.5, 0], scale: [1, 1.06, 1] }}
                         transition={{ duration: 1.6, repeat: Infinity, ease: 'easeInOut' }}
                       >
-                        <Flame size={8} className="text-[#FFD36E] mt-[3px]" strokeWidth={2} />
+                        <Flame size={10} className="text-[#FFD36E] mt-[4px]" strokeWidth={1.8} />
                       </motion.div>
                       {/* White-hot center */}
                       <motion.div
@@ -423,10 +427,10 @@ export default function DashboardPage() {
                         animate={{ opacity: [0.6, 1, 0.6] }}
                         transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut' }}
                       >
-                        <Flame size={4} className="text-[#FFF5E0] mt-[4px]" strokeWidth={2.5} />
+                        <Flame size={5} className="text-[#FFF5E0] mt-[5px]" strokeWidth={2.5} />
                       </motion.div>
                     </motion.div>
-                    <span className="text-[15px] font-bold text-[#C6684F]">{profile.current_streak}</span>
+                    <span className="text-[17px] font-bold text-[#C6684F]">{profile.current_streak}</span>
                   </>
                 ) : (
                   <>
