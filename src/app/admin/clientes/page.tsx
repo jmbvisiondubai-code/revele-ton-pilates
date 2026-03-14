@@ -279,7 +279,7 @@ export default function ClientesPage() {
       )}
 
       {selected && (
-        <div className={`fixed inset-0 z-50 flex bg-black/30 ${viewMode === 'full' ? 'items-center justify-center p-4' : 'items-stretch justify-end'}`} onClick={() => setSelected(null)}>
+        <div className={`fixed inset-0 z-50 flex bg-black/30 ${viewMode === 'full' ? 'items-center justify-center p-4' : 'items-stretch justify-end'}`} onClick={() => { if (!modalResizing.current) setSelected(null) }}>
           <div
             className={`bg-white overflow-y-auto shadow-2xl ${viewMode === 'full' ? 'rounded-2xl relative' : 'w-full max-w-3xl h-full'}`}
             style={viewMode === 'full' ? {
