@@ -24,6 +24,7 @@ type ConvPreview = {
 }
 
 export default function AdminMessagesPage() {
+  const myIdRef = useRef<string | null>(null)
   const [myId, setMyId] = useState<string | null>(null)
 
   const [clients, setClients] = useState<ConvPreview[]>([])
@@ -41,24 +42,16 @@ export default function AdminMessagesPage() {
 
   const supabase = createClient()
 
-  // ── Resolve admin ID on mount ───────────────────────────────────────────
-  useEffect(() => {
-    if (!isSupabaseConfigured()) return
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (user) setMyId(user.id)
-    })
-  }, [])
-
-  // ── Load all clients + conversation status ──────────────────────────────
-  const loadClients = useCallback(async () => {
-    if (!myId || !isSupabaseConfigured()) return
+  // ── Load everything: resolve admin ID then fetch data ──────────────────
+  async function loadClients(adminId?: string) {
+    const id = adminId || myIdRef.current
+    if (!id || !isSupabaseConfigured()) return
     setLoading(true)
 
-    // Fetch profiles AND DMs from server-side API (bypasses RLS)
     const res = await fetch('/api/admin/list-conversations', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ adminId: myId }),
+      body: JSON.stringify({ adminId: id }),
     })
     const apiData = res.ok ? await res.json() : { profiles: [], dms: [] }
     const profiles: ClientProfile[] = apiData.profiles ?? []
@@ -76,7 +69,7 @@ export default function AdminMessagesPage() {
     profiles.forEach(p => statsMap.set(p.id, { lastMessage: null, lastAt: null, unreadCount: 0, hasConversation: false }))
 
     allDms.forEach(m => {
-      const otherId = m.sender_id === myId ? m.receiver_id : m.sender_id
+      const otherId = m.sender_id === id ? m.receiver_id : m.sender_id
       const s = statsMap.get(otherId)
       if (!s) return
       s.hasConversation = true
@@ -84,7 +77,7 @@ export default function AdminMessagesPage() {
         s.lastAt = m.created_at
         s.lastMessage = m.content || (m.image_url ? '📷 Photo' : m.file_name ? `📎 ${m.file_name}` : '')
       }
-      if (m.receiver_id === myId && !m.read_at) s.unreadCount++
+      if (m.receiver_id === id && !m.read_at) s.unreadCount++
     })
 
     const result: ConvPreview[] = profiles.map(p => ({
@@ -92,7 +85,6 @@ export default function AdminMessagesPage() {
       ...(statsMap.get(p.id) ?? { lastMessage: null, lastAt: null, unreadCount: 0, hasConversation: false }),
     }))
 
-    // Sort: unread first, then by last message date, then clients without conversation last
     result.sort((a, b) => {
       if (a.unreadCount > 0 && b.unreadCount === 0) return -1
       if (b.unreadCount > 0 && a.unreadCount === 0) return 1
@@ -104,9 +96,21 @@ export default function AdminMessagesPage() {
 
     setClients(result)
     setLoading(false)
-  }, [myId])
+  }
 
-  useEffect(() => { loadClients() }, [loadClients])
+  // Init: resolve user then load
+  useEffect(() => {
+    if (!isSupabaseConfigured()) { setLoading(false); return }
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user) {
+        myIdRef.current = user.id
+        setMyId(user.id)
+        loadClients(user.id)
+      } else {
+        setLoading(false)
+      }
+    })
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Load messages for active conversation ───────────────────────────────
   const loadMessages = useCallback(async () => {
