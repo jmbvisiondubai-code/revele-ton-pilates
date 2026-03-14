@@ -89,25 +89,66 @@ export default function SeriePage() {
         {/* Big flame + counter */}
         <motion.div initial="hidden" animate="visible" custom={0} variants={fadeIn} className="text-center pt-6 pb-10">
           <div className="relative inline-flex items-center justify-center mb-5">
-            <div className="absolute w-28 h-28 rounded-full blur-3xl bg-[#C6684F]/10" />
-            <motion.div
-              animate={{ scale: [1, 1.06, 1] }}
-              transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
-            >
-              <Flame size={72} className="relative text-[#C6684F]" strokeWidth={1.5} />
-            </motion.div>
+            {streak >= 7 ? (
+              <>
+                {/* Outer glow ring */}
+                <motion.div
+                  className="absolute w-36 h-36 rounded-full bg-[#E8500E]/8 blur-2xl"
+                  animate={{ scale: [1, 1.15, 1], opacity: [0.5, 0.9, 0.5] }}
+                  transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+                />
+                {/* Inner glow */}
+                <motion.div
+                  className="absolute w-24 h-24 rounded-full bg-[#FF6B35]/15 blur-xl"
+                  animate={{ scale: [1, 1.2, 0.95, 1.1, 1], opacity: [0.6, 1, 0.5, 0.8, 0.6] }}
+                  transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut' }}
+                />
+                {/* Core flicker */}
+                <motion.div
+                  className="absolute w-14 h-14 rounded-full bg-[#E8500E]/20 blur-lg"
+                  animate={{ scale: [1, 1.4, 0.9, 1.3, 1], y: [0, -4, 2, -3, 0] }}
+                  transition={{ duration: 1.6, repeat: Infinity, ease: 'easeInOut' }}
+                />
+                {/* Main flame — aggressive animation */}
+                <motion.div
+                  className="relative"
+                  animate={{
+                    scale: [1, 1.08, 0.96, 1.05, 1],
+                    rotate: [0, -4, 5, -3, 0],
+                    y: [0, -3, 1, -2, 0],
+                  }}
+                  transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}
+                >
+                  <Flame size={72} className="relative text-[#E8500E] drop-shadow-[0_0_12px_rgba(232,80,14,0.4)]" strokeWidth={1.5} />
+                </motion.div>
+              </>
+            ) : (
+              <>
+                <div className="absolute w-28 h-28 rounded-full blur-3xl bg-[#C6684F]/10" />
+                <motion.div
+                  animate={{ scale: [1, 1.06, 1] }}
+                  transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
+                >
+                  <Flame size={72} className="relative text-[#C6684F]" strokeWidth={1.5} />
+                </motion.div>
+              </>
+            )}
           </div>
 
           <motion.p
-            className="text-[64px] font-bold text-[#1D1D1F] leading-none font-[family-name:var(--font-heading)]"
+            className={`text-[64px] font-bold leading-none font-[family-name:var(--font-heading)] ${
+              streak >= 7 ? 'bg-gradient-to-b from-[#E8500E] to-[#C6684F] bg-clip-text text-transparent' : 'text-[#1D1D1F]'
+            }`}
             initial={{ scale: 0.5, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ duration: 0.6, ease: 'easeOut', delay: 0.2 }}
           >
             {streak}
           </motion.p>
-          <p className="text-[12px] font-bold tracking-[0.15em] uppercase text-[#9B8E82] mt-2">
-            jours de suite
+          <p className={`text-[12px] font-bold tracking-[0.15em] uppercase mt-2 ${
+            streak >= 7 ? 'text-[#C6684F]' : 'text-[#9B8E82]'
+          }`}>
+            {streak >= 7 ? 'flamme activée' : 'jours de suite'}
           </p>
         </motion.div>
 
