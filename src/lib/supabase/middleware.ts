@@ -49,7 +49,7 @@ export async function updateSession(request: NextRequest) {
   } = await supabase.auth.getUser()
 
   // Public routes that don't require authentication
-  const publicRoutes = ['/login', '/signup', '/callback', '/api/']
+  const publicRoutes = ['/login', '/signup', '/callback', '/api/', '/expired']
   const isPublicRoute = publicRoutes.some(route =>
     request.nextUrl.pathname.startsWith(route)
   )
@@ -67,10 +67,10 @@ export async function updateSession(request: NextRequest) {
   }
 
   // Check if user has completed onboarding
-  if (user && !isPublicRoute && !request.nextUrl.pathname.startsWith('/onboarding')) {
+  if (user && !isPublicRoute && !request.nextUrl.pathname.startsWith('/onboarding') && !request.nextUrl.pathname.startsWith('/expired')) {
     const { data: profile } = await supabase
       .from('profiles')
-      .select('onboarding_completed')
+      .select('onboarding_completed, subscription_start, is_admin, is_teacher')
       .eq('id', user.id)
       .single()
 
@@ -78,6 +78,17 @@ export async function updateSession(request: NextRequest) {
       const url = request.nextUrl.clone()
       url.pathname = '/onboarding'
       return NextResponse.redirect(url)
+    }
+
+    // Check subscription expiry (skip for admins/teachers)
+    if (profile && !profile.is_admin && !profile.is_teacher && profile.subscription_start) {
+      const endDate = new Date(profile.subscription_start)
+      endDate.setFullYear(endDate.getFullYear() + 1)
+      if (new Date() > endDate) {
+        const url = request.nextUrl.clone()
+        url.pathname = '/expired'
+        return NextResponse.redirect(url)
+      }
     }
   }
 
