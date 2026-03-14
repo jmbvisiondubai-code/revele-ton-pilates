@@ -65,6 +65,12 @@ function MessagesPage() {
   const router  = useRouter()
   const searchParams = useSearchParams()
 
+  // ── Desktop detection (Enter to send only on desktop) ────────────────────
+  const [isDesktop, setIsDesktop] = useState(false)
+  useEffect(() => {
+    setIsDesktop(window.matchMedia('(hover: hover) and (pointer: fine)').matches)
+  }, [])
+
   // ── State ─────────────────────────────────────────────────────────────────
   const [convs,          setConvs]          = useState<ConvPreview[]>([])
   const [loadingConvs,   setLoadingConvs]   = useState(true)
@@ -1076,7 +1082,7 @@ function MessagesPage() {
                               <textarea
                                 value={editText}
                                 onChange={e => setEditText(e.target.value)}
-                                onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); saveEdit() } if (e.key === 'Escape') setEditingId(null) }}
+                                onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey && isDesktop) { e.preventDefault(); saveEdit() } if (e.key === 'Escape') setEditingId(null) }}
                                 className="rounded-2xl px-3.5 py-2.5 text-sm bg-white border border-[#C6684F] focus:outline-none resize-none min-w-[120px]"
                                 rows={2} autoFocus
                               />
@@ -1327,7 +1333,7 @@ function MessagesPage() {
                   ref={textareaRef}
                   value={inputText}
                   onChange={e => { const v = e.target.value; setInputText(v); e.target.style.height = 'auto'; e.target.style.height = `${Math.min(e.target.scrollHeight, 200)}px`; broadcastTyping(v.length > 0) }}
-                  onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage() } }}
+                  onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey && isDesktop) { e.preventDefault(); sendMessage() } }}
                   placeholder="Écrire un message..."
                   rows={2}
                   className="flex-1 bg-[#FAF6F1] border border-[#EDE5DA] rounded-2xl px-4 py-2.5 text-sm text-[#2C2C2C] placeholder-[#A09488] focus:outline-none focus:border-[#C6684F] resize-none max-h-[200px] overflow-y-auto"

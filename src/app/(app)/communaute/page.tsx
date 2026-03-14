@@ -88,8 +88,10 @@ function QuickLikeButton({ post, onReact }: {
 // ── Main page ────────────────────────────────────────────────────────────────
 export default function CommunautePage() {
   const [isEmbedded, setIsEmbedded] = useState(false)
+  const [isDesktop, setIsDesktop] = useState(false)
   useEffect(() => {
     try { setIsEmbedded(window.self !== window.top) } catch { setIsEmbedded(true) }
+    setIsDesktop(window.matchMedia('(hover: hover) and (pointer: fine)').matches)
   }, [])
 
   const [posts, setPosts] = useState<PostWithMeta[]>([])
@@ -1651,7 +1653,7 @@ export default function CommunautePage() {
                   value={newPost} onChange={e => { handleTextareaChange(e); broadcastCommunityTyping(e.target.value.length > 0) }} rows={2}
                   onKeyDown={e => {
                     if (e.key === 'Escape' && mentionSuggestions.length > 0) { setMentionQuery(null); setMentionSuggestions([]); return }
-                    if (e.key === 'Enter' && !e.shiftKey && !mentionSuggestions.length) { e.preventDefault(); handlePost() }
+                    if (e.key === 'Enter' && !e.shiftKey && !mentionSuggestions.length && isDesktop) { e.preventDefault(); handlePost() }
                   }}
                   className="flex-1 resize-none bg-transparent text-sm text-text placeholder:text-text-muted focus:outline-none leading-5 max-h-[200px] overflow-y-auto"
                 />
